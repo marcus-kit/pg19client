@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+/**
+ * ConnectionPhoneInput — поле ввода телефона с маской
+ * Использует IMask для форматирования +7 (___) ___-__-__
+ * Эмитит только цифры (79991234567) через v-model
+ */
 import IMask from 'imask'
 
 interface Props {
@@ -20,54 +24,48 @@ const emit = defineEmits<{
 }>()
 
 const inputElement = ref<HTMLInputElement | null>(null)
-let masked: any = null
+let masked: ReturnType<typeof IMask> | null = null
 
-// Валидация: телефон должен быть 11 цифр (79991234567)
+// Валидация: 11 цифр, начинается с 7
 const isValid = computed(() => {
   const digits = props.modelValue.replace(/\D/g, '')
   return digits.length === 11 && digits.startsWith('7')
 })
 
-// Инициализация IMask
+// Инициализация маски при монтировании
 onMounted(() => {
   if (!inputElement.value) return
 
-  const maskOptions = {
+  masked = IMask(inputElement.value, {
     mask: '+{7} (000) 000-00-00',
-    lazy: false, // Показывать маску всегда
+    lazy: false,           // Показывать маску сразу
     placeholderChar: '_'
-  }
-
-  masked = IMask(inputElement.value, maskOptions)
-
-  // При изменении значения маски
-  masked.on('accept', () => {
-    // Получаем только цифры (unmasked value)
-    const unmaskedValue = masked.unmaskedValue
-    emit('update:modelValue', unmaskedValue)
   })
 
-  // Устанавливаем начальное значение если есть
+  // При вводе — эмитим только цифры
+  masked.on('accept', () => {
+    emit('update:modelValue', masked!.unmaskedValue)
+  })
+
+  // Установка начального значения
   if (props.modelValue) {
     masked.unmaskedValue = props.modelValue
   }
 })
 
-// Очистка при размонтировании
+// Очистка маски при размонтировании
 onBeforeUnmount(() => {
-  if (masked) {
-    masked.destroy()
-  }
+  masked?.destroy()
 })
 
-// Следим за изменениями извне (например, сброс формы)
+// Синхронизация при внешнем изменении (сброс формы)
 watch(() => props.modelValue, (newValue) => {
   if (masked && masked.unmaskedValue !== newValue) {
     masked.unmaskedValue = newValue || ''
   }
 })
 
-// Эмитим валидацию при изменении
+// Эмит валидации при изменении
 watch(isValid, (valid) => {
   emit('validation', valid)
 }, { immediate: true })
@@ -75,10 +73,12 @@ watch(isValid, (valid) => {
 
 <template>
   <div class="w-full">
+    <!-- Label -->
     <label v-if="label" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
       {{ label }} <span v-if="required" class="text-primary">*</span>
     </label>
 
+    <!-- Input с маской -->
     <input
       ref="inputElement"
       type="tel"
@@ -95,8 +95,10 @@ watch(isValid, (valid) => {
       placeholder="+7 (___) ___-__-__"
     />
 
+    <!-- Ошибка (внешняя) -->
     <p v-if="error" class="mt-1.5 text-sm text-red-400">{{ error }}</p>
 
+    <!-- Ошибка валидации -->
     <p v-else-if="modelValue && !isValid" class="mt-1.5 text-sm text-red-400">
       Введите корректный номер телефона
     </p>

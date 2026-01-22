@@ -1,67 +1,78 @@
-# =====================================================
-# PG19 Client Portal - Production Dockerfile
-# =====================================================
+# =============================================================================
+# Dockerfile — Личный кабинет ПЖ19
+# =============================================================================
+# Сборка:  docker build -t pg19v3client .
+# Запуск:  docker run -p 3000:3000 pg19v3client
+# =============================================================================
 
-# Stage 1: Dependencies
-FROM node:20-alpine AS deps
+# -----------------------------------------------------------------------------
+# Этап 1: Установка зависимостей
+# -----------------------------------------------------------------------------
+FROM node:24-alpine AS deps
 
+# Включаем pnpm через corepack (встроен в Node.js)
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy package files
+# Копируем только файлы для установки зависимостей (кэширование слоёв)
 COPY package.json pnpm-lock.yaml .npmrc ./
 
-# Install dependencies
+# Устанавливаем зависимости (frozen-lockfile = точные версии из lock-файла)
 RUN pnpm install --frozen-lockfile
 
-# Stage 2: Build
-FROM node:20-alpine AS builder
+# -----------------------------------------------------------------------------
+# Этап 2: Сборка приложения
+# -----------------------------------------------------------------------------
+FROM node:24-alpine AS builder
 
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
-# Copy dependencies from deps stage
+# Копируем node_modules из предыдущего этапа
 COPY --from=deps /app/node_modules ./node_modules
+
+# Копируем исходный код
 COPY . .
 
-# Build args for build-time env vars
+# Build arguments — публичные переменные, нужные при сборке Nuxt
 ARG SUPABASE_URL
 ARG SUPABASE_KEY
 ARG TELEGRAM_BOT_USERNAME
-ARG YANDEX_MAPS_API_KEY
-ARG TWA_URL
 
-# Set env vars for build
+# Преобразуем ARG в ENV для процесса сборки
 ENV SUPABASE_URL=${SUPABASE_URL}
 ENV SUPABASE_KEY=${SUPABASE_KEY}
 ENV TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
-ENV YANDEX_MAPS_API_KEY=${YANDEX_MAPS_API_KEY}
-ENV TWA_URL=${TWA_URL}
 
-# Build the app
+# Собираем production-версию
 RUN pnpm build
 
-# Stage 3: Production
-FROM node:20-alpine AS runner
+# -----------------------------------------------------------------------------
+# Этап 3: Production-образ
+# -----------------------------------------------------------------------------
+FROM node:24-alpine AS runner
 
 WORKDIR /app
 
-# Create non-root user
+# Создаём непривилегированного пользователя (безопасность)
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nuxtjs
 
-# Copy built output
+# Копируем только собранное приложение (минимальный размер образа)
 COPY --from=builder --chown=nuxtjs:nodejs /app/.output ./.output
 
+# Переключаемся на непривилегированного пользователя
 USER nuxtjs
 
-# Expose port
+# Порт приложения
 EXPOSE 3000
 
+# Runtime переменные
 ENV HOST=0.0.0.0
 ENV PORT=3000
 ENV NODE_ENV=production
 
+# Запуск Nitro-сервера
 CMD ["node", ".output/server/index.mjs"]
