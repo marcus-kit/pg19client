@@ -7,6 +7,25 @@ export default {
     './layouts/**/*.{vue,js,ts}',
     './pages/**/*.{vue,js,ts}'
   ],
+  // Safelist для классов, используемых в computed properties
+  safelist: [
+    'bg-gradient-to-r',
+    'from-primary',
+    'to-secondary',
+    'shadow-primary/30',
+    'shadow-primary/40',
+    'shadow-accent/30',
+    'shadow-accent/40',
+    'text-white',
+    'bg-accent',
+    'bg-red-600',
+    'hover:bg-red-700',
+    'hover:bg-accent/90',
+    'focus:ring-primary',
+    'focus:ring-accent',
+    'focus:ring-red-500',
+    'focus:ring-primary/20',
+  ],
   theme: {
     extend: {
       colors: {
