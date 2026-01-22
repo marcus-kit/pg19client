@@ -42,13 +42,13 @@ const handleTelegramLink = async (telegramUser: TelegramUser) => {
 </script>
 
 <template>
-  <UCard>
+  <UiCard>
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Telegram</h2>
-      <UBadge v-if="isLinked" variant="success" size="sm">
+      <UiBadge v-if="isLinked" variant="success" size="sm">
         <Icon name="heroicons:check" class="w-3 h-3 mr-1" />
         Привязан
-      </UBadge>
+      </UiBadge>
     </div>
 
     <!-- Telegram привязан -->
@@ -109,5 +109,5 @@ const handleTelegramLink = async (telegramUser: TelegramUser) => {
         </ul>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

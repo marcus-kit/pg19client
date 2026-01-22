@@ -75,7 +75,7 @@ const terminateAllSessions = () => {
 </script>
 
 <template>
-  <UCard>
+  <UiCard>
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Безопасность</h2>
     </div>
@@ -92,9 +92,9 @@ const terminateAllSessions = () => {
             <p class="text-sm text-[var(--text-muted)]">Последнее изменение: 3 месяца назад</p>
           </div>
         </div>
-        <UButton size="sm" variant="secondary" @click="showPasswordModal = true">
+        <UiButton size="sm" variant="secondary" @click="showPasswordModal = true">
           Изменить
-        </UButton>
+        </UiButton>
       </div>
     </div>
 
@@ -135,9 +135,9 @@ const terminateAllSessions = () => {
               <div>
                 <div class="flex items-center gap-2">
                   <p class="text-[var(--text-primary)] font-medium text-sm">{{ session.device }}</p>
-                  <UBadge v-if="session.current" variant="success" size="sm">
+                  <UiBadge v-if="session.current" variant="success" size="sm">
                     Текущая
-                  </UBadge>
+                  </UiBadge>
                 </div>
                 <p class="text-xs text-[var(--text-muted)]">{{ session.browser }}</p>
                 <p class="text-xs text-[var(--text-muted)] mt-1">
@@ -222,22 +222,22 @@ const terminateAllSessions = () => {
               </div>
 
               <div class="flex gap-3 pt-2">
-                <UButton
+                <UiButton
                   type="button"
                   variant="secondary"
                   class="flex-1"
                   @click="showPasswordModal = false"
                 >
                   Отмена
-                </UButton>
-                <UButton type="submit" variant="primary" class="flex-1">
+                </UiButton>
+                <UiButton type="submit" variant="primary" class="flex-1">
                   Сохранить
-                </UButton>
+                </UiButton>
               </div>
             </form>
           </div>
         </div>
       </Transition>
     </Teleport>
-  </UCard>
+  </UiCard>
 </template>

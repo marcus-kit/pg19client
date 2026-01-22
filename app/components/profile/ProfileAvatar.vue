@@ -89,7 +89,7 @@ const removeAvatar = async () => {
 </script>
 
 <template>
-  <UCard class="!p-4">
+  <UiCard class="!p-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-semibold text-[var(--text-primary)]">Фото профиля</h2>
       <button
@@ -149,5 +149,5 @@ const removeAvatar = async () => {
         </p>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

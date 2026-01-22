@@ -73,7 +73,7 @@ const contacts = computed(() => [
 </script>
 
 <template>
-  <UCard class="!p-4">
+  <UiCard class="!p-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-semibold text-[var(--text-primary)]">Контакты</h2>
       <div v-if="!isEditing">
@@ -120,12 +120,12 @@ const contacts = computed(() => [
             <p class="text-sm text-[var(--text-primary)]">{{ contact.value || '—' }}</p>
           </div>
         </div>
-        <UBadge v-if="contact.value && contact.verified" variant="success" size="sm">
+        <UiBadge v-if="contact.value && contact.verified" variant="success" size="sm">
           Подтверждён
-        </UBadge>
-        <UBadge v-else-if="contact.value" variant="neutral" size="sm">
+        </UiBadge>
+        <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
           Не подтверждён
-        </UBadge>
+        </UiBadge>
       </div>
     </div>
 
@@ -160,5 +160,5 @@ const contacts = computed(() => [
         Телефон можно изменить только через поддержку
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

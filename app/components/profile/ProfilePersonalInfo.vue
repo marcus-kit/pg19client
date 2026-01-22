@@ -121,7 +121,7 @@ const saveNickname = async () => {
 </script>
 
 <template>
-  <UCard class="!p-4">
+  <UiCard class="!p-4">
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-semibold text-[var(--text-primary)]">Персональные данные</h2>
       <div v-if="!isEditing">
@@ -307,5 +307,5 @@ const saveNickname = async () => {
         </div>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

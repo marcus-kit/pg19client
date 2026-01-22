@@ -84,7 +84,7 @@ const levelInfo = computed(() => {
     <!-- Profile Tab -->
     <div v-if="activeTab === 'profile'" class="space-y-6">
       <!-- Profile Completion Card -->
-      <UCard class="p-0 overflow-hidden">
+      <UiCard class="p-0 overflow-hidden">
         <div class="px-5 py-4">
           <div class="flex items-center gap-4">
             <!-- Level Icon -->
@@ -129,7 +129,7 @@ const levelInfo = computed(() => {
             </div>
           </div>
         </div>
-      </UCard>
+      </UiCard>
 
       <!-- Avatar -->
       <ProfileAvatar />

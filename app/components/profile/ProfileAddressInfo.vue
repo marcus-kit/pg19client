@@ -5,7 +5,7 @@ const authStore = useAuthStore()
 </script>
 
 <template>
-  <UCard>
+  <UiCard>
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Адрес подключения</h2>
     </div>
@@ -19,5 +19,5 @@ const authStore = useAuthStore()
         <p class="text-sm text-[var(--text-muted)] mt-1">Адрес предоставления услуг</p>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

@@ -242,6 +242,6 @@ const servicesNav = [
     </Transition>
 
     <!-- Callback Modal -->
-    <CallbackModal v-model="isCallbackOpen" />
+    <UiCallbackModal v-model="isCallbackOpen" />
   </header>
 </template>

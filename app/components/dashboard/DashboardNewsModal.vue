@@ -99,7 +99,7 @@ onUnmounted(() => {
         <div v-else-if="error" class="p-8 text-center">
           <Icon name="heroicons:exclamation-circle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
           <p class="text-red-400 mb-4">Ошибка при загрузке новости</p>
-          <UButton @click="emit('close')" variant="secondary">Закрыть</UButton>
+          <UiButton @click="emit('close')" variant="secondary">Закрыть</UiButton>
         </div>
 
         <!-- Content -->
@@ -108,13 +108,13 @@ onUnmounted(() => {
           <div class="flex items-start justify-between mb-6">
             <div class="flex-1">
               <div class="flex items-center gap-2 mb-3">
-                <UBadge :variant="categoryVariants[news.category]" size="sm">
+                <UiBadge :variant="categoryVariants[news.category]" size="sm">
                   {{ categoryLabels[news.category] }}
-                </UBadge>
-                <UBadge v-if="news.isPinned" variant="warning" size="sm">
+                </UiBadge>
+                <UiBadge v-if="news.isPinned" variant="warning" size="sm">
                   <Icon name="heroicons:star-solid" class="w-3 h-3 mr-1" />
                   Закреплено
-                </UBadge>
+                </UiBadge>
               </div>
               <h2 class="text-2xl font-bold text-[var(--text-primary)] mb-2">
                 {{ news.title }}
@@ -170,9 +170,9 @@ onUnmounted(() => {
 
           <!-- Footer Actions -->
           <div class="mt-8 pt-6 border-t border-[var(--glass-border)] flex justify-end">
-            <UButton @click="emit('close')" variant="secondary">
+            <UiButton @click="emit('close')" variant="secondary">
               Закрыть
-            </UButton>
+            </UiButton>
           </div>
         </div>
       </div>

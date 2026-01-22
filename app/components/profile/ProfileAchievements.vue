@@ -24,7 +24,7 @@ const getProgressPercent = (achievement: { progress?: number; maxProgress?: numb
 </script>
 
 <template>
-  <UCard class="lg:col-span-2">
+  <UiCard class="lg:col-span-2">
     <div class="flex items-center justify-between mb-5">
       <div>
         <h2 class="text-lg font-semibold text-[var(--text-primary)]">Достижения</h2>
@@ -108,5 +108,5 @@ const getProgressPercent = (achievement: { progress?: number; maxProgress?: numb
         </div>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

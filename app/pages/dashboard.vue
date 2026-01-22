@@ -65,7 +65,7 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
 
     <!-- Special Offer -->
     <section>
-      <UCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
+      <UiCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
         <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
           <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
             <Icon name="heroicons:gift" class="w-8 h-8 text-white" />
@@ -84,12 +84,12 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
             </p>
           </div>
           <div class="flex-shrink-0">
-            <UButton variant="primary">
+            <UiButton variant="primary">
               Подключить
-            </UButton>
+            </UiButton>
           </div>
         </div>
-      </UCard>
+      </UiCard>
     </section>
 
     <!-- Community News -->
@@ -100,11 +100,11 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
 
       <!-- Loading State -->
       <div v-if="pending" class="grid md:grid-cols-3 gap-4">
-        <UCard v-for="i in 3" :key="i" class="p-5 animate-pulse">
+        <UiCard v-for="i in 3" :key="i" class="p-5 animate-pulse">
           <div class="h-3 bg-white/10 rounded w-20 mb-2" />
           <div class="h-5 bg-white/10 rounded w-full mb-2" />
           <div class="h-4 bg-white/10 rounded w-full" />
-        </UCard>
+        </UiCard>
       </div>
 
       <!-- Error State -->
@@ -120,7 +120,7 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
 
       <!-- News Grid -->
       <div v-else class="grid md:grid-cols-3 gap-4">
-        <UCard
+        <UiCard
           v-for="item in news"
           :key="item.id"
           hover
@@ -131,16 +131,16 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
             <p class="text-xs text-[var(--text-muted)]">
               {{ formatShortDate(item.publishedAt) }}
             </p>
-            <UBadge :variant="categoryVariants[item.category]" size="sm">
+            <UiBadge :variant="categoryVariants[item.category]" size="sm">
               {{ categoryLabels[item.category] }}
-            </UBadge>
+            </UiBadge>
             <Icon v-if="item.isPinned" name="heroicons:star-solid" class="w-3 h-3 text-primary ml-auto" />
           </div>
           <h3 class="font-medium text-[var(--text-primary)] mb-2">{{ item.title }}</h3>
           <p class="text-sm text-[var(--text-secondary)] line-clamp-2">
             {{ item.summary || item.content.substring(0, 100) + '...' }}
           </p>
-        </UCard>
+        </UiCard>
       </div>
 
       <!-- Modal -->

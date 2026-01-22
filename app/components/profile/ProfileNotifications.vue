@@ -78,7 +78,7 @@ const toggleType = (key: 'payments' | 'maintenance' | 'promotions' | 'news') => 
 </script>
 
 <template>
-  <UCard>
+  <UiCard>
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Уведомления</h2>
     </div>
@@ -157,5 +157,5 @@ const toggleType = (key: 'payments' | 'maintenance' | 'promotions' | 'news') => 
         </button>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

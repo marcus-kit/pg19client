@@ -63,12 +63,12 @@ const shareOptions = [
 </script>
 
 <template>
-  <UCard class="lg:col-span-2">
+  <UiCard class="lg:col-span-2">
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Пригласи друга</h2>
-      <UBadge variant="success" size="sm">
+      <UiBadge variant="success" size="sm">
         +300 ₽ за друга
-      </UBadge>
+      </UiBadge>
     </div>
 
     <div class="grid lg:grid-cols-2 gap-6">
@@ -174,5 +174,5 @@ const shareOptions = [
         </div>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

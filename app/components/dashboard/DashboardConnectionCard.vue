@@ -5,7 +5,7 @@ const authStore = useAuthStore()
 </script>
 
 <template>
-  <UCard hover>
+  <UiCard hover>
     <div class="flex items-start justify-between mb-4">
       <div>
         <p class="text-sm text-[var(--text-muted)] mb-1">Подключение</p>
@@ -29,5 +29,5 @@ const authStore = useAuthStore()
         <span class="line-clamp-1">{{ authStore.account?.address }}</span>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

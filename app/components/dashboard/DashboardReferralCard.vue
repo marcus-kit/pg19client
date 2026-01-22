@@ -32,7 +32,7 @@ const copyCode = async () => {
 </script>
 
 <template>
-  <UCard class="border-accent/30 bg-gradient-to-r from-accent/10 to-primary/5">
+  <UiCard class="border-accent/30 bg-gradient-to-r from-accent/10 to-primary/5">
     <div class="flex items-center gap-4">
       <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
         <Icon name="heroicons:gift" class="w-6 h-6 text-white" />
@@ -40,7 +40,7 @@ const copyCode = async () => {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm font-medium text-[var(--text-primary)]">Ваш промокод</span>
-          <UBadge variant="success" size="sm">+300 ₽</UBadge>
+          <UiBadge variant="success" size="sm">+300 ₽</UiBadge>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xl font-bold text-[var(--text-primary)] tracking-wider">
@@ -58,10 +58,10 @@ const copyCode = async () => {
         </div>
       </div>
       <NuxtLink to="/profile" class="flex-shrink-0">
-        <UButton size="sm" variant="secondary">
+        <UiButton size="sm" variant="secondary">
           Подробнее
-        </UButton>
+        </UiButton>
       </NuxtLink>
     </div>
-  </UCard>
+  </UiCard>
 </template>

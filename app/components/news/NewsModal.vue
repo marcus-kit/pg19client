@@ -65,9 +65,9 @@ function getCategoryLabel(category: string): string {
 
           <!-- Header -->
           <div class="mb-6 pr-10">
-            <UBadge class="bg-secondary/20 text-secondary mb-3">
+            <UiBadge class="bg-secondary/20 text-secondary mb-3">
               {{ getCategoryLabel(news.category) }}
-            </UBadge>
+            </UiBadge>
 
             <h2 class="text-2xl md:text-3xl font-bold text-[var(--text-primary)] mb-3">
               {{ news.title }}

@@ -357,9 +357,9 @@ const handleContractSubmit = async () => {
           <div class="text-center py-4">
             <Icon name="heroicons:x-circle" class="w-16 h-16 text-red-500 mx-auto mb-4" />
             <p class="text-lg font-medium text-[var(--text-primary)] mb-4">Время истекло</p>
-            <UButton variant="primary" @click="resetCall">
+            <UiButton variant="primary" @click="resetCall">
               Попробовать снова
-            </UButton>
+            </UiButton>
           </div>
         </template>
       </div>

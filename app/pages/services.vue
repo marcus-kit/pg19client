@@ -99,7 +99,7 @@ const requestConnection = async (service: Service) => {
       <section>
         <div class="h-6 bg-[var(--glass-bg)] rounded w-40 mb-4"></div>
         <div class="space-y-4">
-          <UCard v-for="i in 2" :key="i" class="animate-pulse">
+          <UiCard v-for="i in 2" :key="i" class="animate-pulse">
             <div class="flex items-center gap-4">
               <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
               <div class="flex-1 space-y-2">
@@ -107,25 +107,25 @@ const requestConnection = async (service: Service) => {
                 <div class="h-3 bg-[var(--glass-bg)] rounded w-1/2"></div>
               </div>
             </div>
-          </UCard>
+          </UiCard>
         </div>
       </section>
     </div>
 
     <!-- Error State -->
-    <UCard v-else-if="error" class="border-red-500/30">
+    <UiCard v-else-if="error" class="border-red-500/30">
       <div class="text-center py-4">
         <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
         <p class="text-red-400 mb-4">Ошибка загрузки услуг</p>
       </div>
-    </UCard>
+    </UiCard>
 
     <template v-else>
       <!-- Active Services (Subscriptions) -->
       <section>
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
         <div v-if="subscriptions.length" class="grid gap-4">
-          <UCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
+          <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
             <div class="flex items-start gap-4 p-5">
               <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
                 <Icon :name="getServiceIcon(sub.service)" class="w-6 h-6 text-primary" />
@@ -136,9 +136,9 @@ const requestConnection = async (service: Service) => {
                     <h3 class="font-semibold text-[var(--text-primary)]">{{ sub.service?.name || 'Услуга' }}</h3>
                     <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ sub.service?.description || '' }}</p>
                   </div>
-                  <UBadge :class="getStatusColor(sub.status)">
+                  <UiBadge :class="getStatusColor(sub.status)">
                     {{ subscriptionStatusLabels[sub.status] }}
-                  </UBadge>
+                  </UiBadge>
                 </div>
                 <div class="flex items-center justify-between mt-4">
                   <span class="text-lg font-bold text-[var(--text-primary)]">
@@ -151,21 +151,21 @@ const requestConnection = async (service: Service) => {
                 </div>
               </div>
             </div>
-          </UCard>
+          </UiCard>
         </div>
-        <UCard v-else padding="lg">
+        <UiCard v-else padding="lg">
           <div class="text-center py-4">
             <Icon name="heroicons:cube" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
             <p class="text-[var(--text-muted)]">Нет подключенных услуг</p>
           </div>
-        </UCard>
+        </UiCard>
       </section>
 
       <!-- Available Services -->
       <section v-if="availableServices.length">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
         <div class="grid md:grid-cols-2 gap-4">
-          <UCard
+          <UiCard
             v-for="service in availableServices"
             :key="service.id"
             class="p-0 overflow-hidden hover:border-primary/30 transition-colors cursor-pointer"
@@ -185,17 +185,17 @@ const requestConnection = async (service: Service) => {
                   {{ formatPrice(service.priceMonthly) }}
                   <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
                 </span>
-                <UButton
+                <UiButton
                   size="sm"
                   variant="secondary"
                   :loading="connectingServiceId === service.id"
                   @click.stop="requestConnection(service)"
                 >
                   {{ connectingServiceId === service.id ? 'Отправка...' : 'Подключить' }}
-                </UButton>
+                </UiButton>
               </div>
             </div>
-          </UCard>
+          </UiCard>
         </div>
       </section>
     </template>

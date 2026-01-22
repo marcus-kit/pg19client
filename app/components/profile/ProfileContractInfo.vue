@@ -13,7 +13,7 @@ const formatDate = (date: string) => {
 </script>
 
 <template>
-  <UCard>
+  <UiCard>
     <div class="flex items-center justify-between mb-5">
       <h2 class="text-lg font-semibold text-[var(--text-primary)]">Договор</h2>
     </div>
@@ -25,9 +25,9 @@ const formatDate = (date: string) => {
       </div>
       <div class="flex items-center justify-between py-3" style="border-bottom: 1px solid var(--glass-border);">
         <span class="text-[var(--text-muted)]">Статус</span>
-        <UBadge :variant="authStore.isBlocked ? 'danger' : 'success'">
+        <UiBadge :variant="authStore.isBlocked ? 'danger' : 'success'">
           {{ authStore.isBlocked ? 'Приостановлен' : 'Активен' }}
-        </UBadge>
+        </UiBadge>
       </div>
       <div class="flex items-center justify-between py-3" style="border-bottom: 1px solid var(--glass-border);">
         <span class="text-[var(--text-muted)]">Тариф</span>
@@ -38,5 +38,5 @@ const formatDate = (date: string) => {
         <span class="text-[var(--text-primary)]">{{ formatDate(authStore.account?.startDate || '') }}</span>
       </div>
     </div>
-  </UCard>
+  </UiCard>
 </template>

@@ -51,7 +51,7 @@ const statusConfig = computed(() => {
 </script>
 
 <template>
-  <UCard hover>
+  <UiCard hover>
     <div class="flex items-start justify-between mb-4">
       <div>
         <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
@@ -83,11 +83,11 @@ const statusConfig = computed(() => {
           Следующая оплата: <span class="text-[var(--text-primary)] font-medium">{{ nextPaymentDate }}</span>
         </span>
       </div>
-      <UButton size="sm" variant="secondary" @click="handlePayClick">
+      <UiButton size="sm" variant="secondary" @click="handlePayClick">
         Оплатить сейчас
-      </UButton>
+      </UiButton>
     </div>
-  </UCard>
+  </UiCard>
 
   <!-- Модальное окно "Все счета оплачены" -->
   <Teleport to="body">
@@ -104,9 +104,9 @@ const statusConfig = computed(() => {
           </div>
           <h3 class="text-xl font-semibold text-[var(--text-primary)] mb-2">Все счета оплачены!</h3>
           <p class="text-[var(--text-muted)] mb-6">У вас нет неоплаченных счетов</p>
-          <UButton @click="showAllPaidModal = false" class="w-full">
+          <UiButton @click="showAllPaidModal = false" class="w-full">
             Отлично
-          </UButton>
+          </UiButton>
         </div>
       </div>
     </Transition>
