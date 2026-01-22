@@ -1,0 +1,28 @@
+import type { LoginSession } from '~/types'
+
+export function useSessionsApi() {
+  async function load(userId: string): Promise<LoginSession[]> {
+    try {
+      return await $fetch<LoginSession[]>('/api/user/sessions', {
+        query: { userId }
+      })
+    } catch (error) {
+      console.error('Failed to load sessions:', error)
+      return []
+    }
+  }
+
+  async function terminate(sessionId: string): Promise<boolean> {
+    try {
+      await $fetch(`/api/user/sessions/${sessionId}`, {
+        method: 'DELETE'
+      })
+      return true
+    } catch (error) {
+      console.error('Failed to terminate session:', error)
+      return false
+    }
+  }
+
+  return { load, terminate }
+}
