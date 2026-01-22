@@ -187,12 +187,20 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  // Отправляем подтверждение пользователю
+  // Отправляем подтверждение пользователю с кнопкой для возврата
   const successMessage = authRequest.purpose === 'login'
-    ? 'Авторизация подтверждена! Вернитесь в браузер.'
-    : 'Telegram успешно привязан! Вернитесь в браузер.'
+    ? '✅ Авторизация подтверждена!\n\nНажмите кнопку ниже, чтобы перейти в личный кабинет.'
+    : '✅ Telegram успешно привязан!\n\nНажмите кнопку ниже, чтобы вернуться в профиль.'
 
-  await sendTelegramMessage(chat.id, successMessage, config.telegramBotToken)
+  const buttonUrl = authRequest.purpose === 'login'
+    ? 'https://pg19v3client.doka.team/dashboard'
+    : 'https://pg19v3client.doka.team/profile'
+
+  const buttonText = authRequest.purpose === 'login'
+    ? '🏠 Открыть личный кабинет'
+    : '👤 Вернуться в профиль'
+
+  await sendTelegramMessageWithButton(chat.id, successMessage, buttonText, buttonUrl, config.telegramBotToken)
 
   console.log('[TelegramWebhook] Auth verified:', { token, telegramId: from.id })
 
@@ -214,5 +222,32 @@ async function sendTelegramMessage(chatId: number, text: string, botToken: strin
     })
   } catch (e) {
     console.error('[TelegramWebhook] Failed to send message:', e)
+  }
+}
+
+/**
+ * Отправка сообщения с inline-кнопкой (URL)
+ */
+async function sendTelegramMessageWithButton(
+  chatId: number,
+  text: string,
+  buttonText: string,
+  buttonUrl: string,
+  botToken: string
+): Promise<void> {
+  try {
+    await $fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      body: {
+        chat_id: chatId,
+        text,
+        parse_mode: 'HTML',
+        reply_markup: {
+          inline_keyboard: [[{ text: buttonText, url: buttonUrl }]]
+        }
+      }
+    })
+  } catch (e) {
+    console.error('[TelegramWebhook] Failed to send message with button:', e)
   }
 }
