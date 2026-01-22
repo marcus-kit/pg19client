@@ -1,6 +1,13 @@
 <script setup lang="ts">
+/**
+ * Страница авторизации — три метода входа:
+ * 1. Telegram — через виджет Telegram Login
+ * 2. Договор — по номеру договора + ФИО
+ * 3. Звонок — верификация по входящему звонку (IMask для телефона)
+ */
 import { useTelegramLogin, type TelegramUser } from '~/composables/useTelegramLogin'
 import { useCallVerification } from '~/composables/useCallVerification'
+import IMask from 'imask'
 
 definePageMeta({
   layout: 'guest'
@@ -9,7 +16,9 @@ definePageMeta({
 const { init: authInit } = useAuthInit()
 const { initWidget, loginWithTelegram, isLoading: telegramLoading, error: telegramError, cleanup } = useTelegramLogin()
 
+// -----------------------------------------------------------------------------
 // Call verification (Realtime-based)
+// -----------------------------------------------------------------------------
 const {
   isLoading: callLoading,
   error: callError,
@@ -21,8 +30,16 @@ const {
   reset: resetCall
 } = useCallVerification()
 
+// Телефон с маской IMask
 const callPhone = ref('')
-const callPhoneValid = ref(false)
+const phoneInputRef = ref<HTMLInputElement | null>(null)
+let phoneMask: ReturnType<typeof IMask> | null = null
+
+// Валидация телефона: 11 цифр, начинается с 7
+const callPhoneValid = computed(() => {
+  const digits = callPhone.value.replace(/\D/g, '')
+  return digits.length === 11 && digits.startsWith('7')
+})
 
 // Метод авторизации: 'telegram' | 'contract' | 'call'
 const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
@@ -58,13 +75,28 @@ const startCallVerification = async () => {
   await requestVerification(callPhone.value)
 }
 
-// Watch для автоматического входа при verified
-// Данные приходят через Realtime broadcast → completeVerification → verifiedData
+// Watch для автоматического входа при verified + переинициализация маски при сбросе
 watch(callStatus, async (newStatus) => {
   if (newStatus === 'verified' && verifiedData.value?.user && verifiedData.value?.account) {
     await authInit(verifiedData.value.user, verifiedData.value.account)
     await nextTick()
     await navigateTo('/dashboard')
+  }
+
+  // При сбросе на idle — уничтожаем маску (новый инпут будет создан)
+  if (newStatus === 'idle') {
+    phoneMask?.destroy()
+    phoneMask = null
+    // Ждём рендер нового инпута и инициализируем маску
+    await nextTick()
+    setTimeout(() => initPhoneMask(), 50)
+  }
+})
+
+// Синхронизация маски при внешнем изменении (сброс формы)
+watch(callPhone, (newValue) => {
+  if (phoneMask && phoneMask.unmaskedValue !== newValue) {
+    phoneMask.unmaskedValue = newValue || ''
   }
 })
 
@@ -81,8 +113,22 @@ const initTelegramWidget = () => {
   initWidget('telegram-login-container', handleTelegramAuth)
 }
 
+// Инициализация маски телефона (вызывается когда инпут появляется в DOM)
+const initPhoneMask = () => {
+  if (phoneMask || !phoneInputRef.value) return
+
+  phoneMask = IMask(phoneInputRef.value, {
+    mask: '+{7} (000) 000-00-00',
+    lazy: false,
+    placeholderChar: '_'
+  })
+  phoneMask.on('accept', () => {
+    callPhone.value = phoneMask!.unmaskedValue
+  })
+}
+
 onMounted(() => {
-  // Даём время на рендер DOM
+  // Telegram: даём время на рендер DOM
   setTimeout(() => {
     if (authMethod.value === 'telegram') {
       initTelegramWidget()
@@ -90,12 +136,14 @@ onMounted(() => {
   }, 100)
 })
 
-// При переключении на Telegram - инициализируем виджет
-watch(authMethod, (method) => {
+// При переключении метода авторизации
+watch(authMethod, async (method) => {
   if (method === 'telegram') {
-    setTimeout(() => {
-      initTelegramWidget()
-    }, 100)
+    setTimeout(() => initTelegramWidget(), 100)
+  } else if (method === 'call') {
+    // Ждём рендер DOM, затем инициализируем маску
+    await nextTick()
+    setTimeout(() => initPhoneMask(), 50)
   }
 })
 
@@ -111,6 +159,7 @@ const clearTelegramContainer = () => {
 onUnmounted(() => {
   clearTelegramContainer()
   cleanup()
+  phoneMask?.destroy()
 })
 
 // Обработка авторизации через Telegram
@@ -282,11 +331,23 @@ const handleContractSubmit = async () => {
             Введите номер телефона из договора
           </p>
 
-          <ConnectionPhoneInput
-            v-model="callPhone"
-            label="Номер телефона"
-            @validation="callPhoneValid = $event"
-          />
+          <!-- Поле телефона с маской IMask -->
+          <div class="w-full">
+            <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+              Номер телефона <span class="text-primary">*</span>
+            </label>
+            <input
+              ref="phoneInputRef"
+              type="tel"
+              required
+              class="w-full px-4 py-4 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 border-[var(--glass-border)]"
+              style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+              placeholder="+7 (___) ___-__-__"
+            />
+            <p v-if="callPhone && !callPhoneValid" class="mt-1.5 text-sm text-red-400">
+              Введите корректный номер телефона
+            </p>
+          </div>
 
           <UiButton
             variant="primary"

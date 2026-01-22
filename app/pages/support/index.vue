@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Ticket, TicketCategory } from '~/types/ticket'
 import { ticketStatusLabels, ticketStatusColors, ticketCategoryLabels } from '~/types/ticket'
-import type { FaqItem } from '~/server/api/faq.get'
+import type { FaqItem } from '~/server/api/support/faq.get'
 
 definePageMeta({
   middleware: 'auth'
@@ -139,10 +139,39 @@ function removePendingFile() {
 }
 
 // Форматирование размера файла
-function formatFileSize(bytes: number): string {
+function formatFileSize(bytes: number | undefined): string {
+  if (!bytes) return ''
   if (bytes < 1024) return `${bytes} Б`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
   return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
+}
+
+// -----------------------------------------------------------------------------
+// Helpers для отображения сообщений чата (инлайн из ChatMessage.vue)
+// -----------------------------------------------------------------------------
+import type { ChatMessage } from '~/types/chat'
+
+// Определение типа отправителя
+const msgIsUser = (msg: ChatMessage) => msg.sender_type === 'user'
+const msgIsOperator = (msg: ChatMessage) => msg.sender_type === 'admin' || msg.sender_type === 'bot'
+const msgIsSystem = (msg: ChatMessage) => msg.sender_type === 'system'
+
+// Вложения
+const msgIsImage = (msg: ChatMessage) => msg.content_type === 'image'
+const msgIsFile = (msg: ChatMessage) => msg.content_type === 'file'
+const msgHasAttachment = (msg: ChatMessage) => !!msg.attachment_url
+
+// Форматирование времени сообщения (ЧЧ:ММ)
+function formatMsgTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+// Имя отправителя для отображения
+function getMsgSenderLabel(msg: ChatMessage): string {
+  if (msgIsOperator(msg)) return msg.sender_name || 'Оператор'
+  if (msgIsSystem(msg)) return 'Система'
+  return 'Вы'
 }
 
 // Отправка сообщения
@@ -501,12 +530,96 @@ const submitTicket = async () => {
               </p>
             </div>
 
-            <!-- Messages -->
-            <ChatMessage
+            <!-- Messages (инлайн из ChatMessage.vue) -->
+            <div
               v-for="msg in messages"
               :key="msg.id"
-              :message="msg"
-            />
+              class="flex gap-2"
+              :class="msgIsUser(msg) ? 'flex-row-reverse' : 'flex-row'"
+            >
+              <!-- Аватар отправителя -->
+              <div
+                class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+                :class="{
+                  'bg-primary/20': msgIsUser(msg),
+                  'bg-accent/20': msgIsOperator(msg),
+                  'bg-white/10': msgIsSystem(msg)
+                }"
+              >
+                <Icon
+                  :name="msgIsUser(msg) ? 'heroicons:user' : msgIsOperator(msg) ? 'heroicons:user-circle' : 'heroicons:information-circle'"
+                  class="w-4 h-4"
+                  :class="{
+                    'text-primary': msgIsUser(msg),
+                    'text-accent': msgIsOperator(msg),
+                    'text-[var(--text-muted)]': msgIsSystem(msg)
+                  }"
+                />
+              </div>
+
+              <!-- Блок сообщения -->
+              <div
+                class="max-w-[75%] rounded-2xl px-4 py-2"
+                :class="{
+                  'bg-primary text-white rounded-br-md': msgIsUser(msg),
+                  'bg-white/10 text-[var(--text-primary)] rounded-bl-md': !msgIsUser(msg)
+                }"
+              >
+                <!-- Имя отправителя (только для не-пользователя) -->
+                <div
+                  v-if="!msgIsUser(msg)"
+                  class="text-xs font-medium mb-1"
+                  :class="{
+                    'text-accent': msgIsOperator(msg),
+                    'text-[var(--text-muted)]': msgIsSystem(msg)
+                  }"
+                >
+                  {{ getMsgSenderLabel(msg) }}
+                </div>
+
+                <!-- Текст сообщения -->
+                <p v-if="msg.content" class="text-sm whitespace-pre-wrap break-words">
+                  {{ msg.content }}
+                </p>
+
+                <!-- Вложение: изображение -->
+                <div v-if="msgIsImage(msg) && msgHasAttachment(msg)" class="mt-2">
+                  <a :href="msg.attachment_url!" target="_blank" class="block">
+                    <img
+                      :src="msg.attachment_url!"
+                      :alt="msg.attachment_name || 'Изображение'"
+                      class="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                </div>
+
+                <!-- Вложение: файл -->
+                <a
+                  v-else-if="msgIsFile(msg) && msgHasAttachment(msg)"
+                  :href="msg.attachment_url!"
+                  target="_blank"
+                  class="mt-2 flex items-center gap-2 p-2 rounded-lg transition-colors"
+                  :class="msgIsUser(msg) ? 'bg-white/10 hover:bg-white/20' : 'bg-white/5 hover:bg-white/10'"
+                >
+                  <Icon name="heroicons:document" class="w-5 h-5 flex-shrink-0" :class="msgIsUser(msg) ? 'text-white/80' : 'text-primary'" />
+                  <div class="flex-1 min-w-0">
+                    <p class="text-sm truncate">{{ msg.attachment_name }}</p>
+                    <p class="text-xs" :class="msgIsUser(msg) ? 'text-white/60' : 'text-[var(--text-muted)]'">
+                      {{ formatFileSize(msg.attachment_size) }}
+                    </p>
+                  </div>
+                  <Icon name="heroicons:arrow-down-tray" class="w-4 h-4 flex-shrink-0" :class="msgIsUser(msg) ? 'text-white/60' : 'text-[var(--text-muted)]'" />
+                </a>
+
+                <!-- Время отправки -->
+                <div
+                  class="text-[10px] mt-1"
+                  :class="msgIsUser(msg) ? 'text-white/70 text-right' : 'text-[var(--text-muted)]'"
+                >
+                  {{ formatMsgTime(msg.created_at) }}
+                </div>
+              </div>
+            </div>
 
             <!-- Typing indicator -->
             <div v-if="isOperatorTyping" class="flex gap-2">

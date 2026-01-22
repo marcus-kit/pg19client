@@ -1,4 +1,4 @@
-import type { FaqItem } from '~/server/api/faq.get'
+import type { FaqItem } from '~/server/api/support/faq.get'
 
 export const useFaq = () => {
   /**
@@ -6,7 +6,7 @@ export const useFaq = () => {
    */
   const fetchFaq = async () => {
     const { data, error, pending, refresh } = await useFetch<{ faq: FaqItem[] }>(
-      '/api/faq',
+      '/api/support/faq',
       {
         key: 'faq-list'
       }
