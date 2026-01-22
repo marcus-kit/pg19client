@@ -151,29 +151,29 @@ useHead({
 
     <!-- Loading -->
     <div v-if="pending" class="space-y-4">
-      <UCard class="animate-pulse">
+      <UiCard class="animate-pulse">
         <div class="space-y-4">
           <div class="h-6 bg-[var(--glass-bg)] rounded w-1/4"></div>
           <div class="h-4 bg-[var(--glass-bg)] rounded w-3/4"></div>
           <div class="h-4 bg-[var(--glass-bg)] rounded w-1/2"></div>
         </div>
-      </UCard>
+      </UiCard>
     </div>
 
     <!-- Error -->
-    <UCard v-else-if="error" class="border-red-500/30">
+    <UiCard v-else-if="error" class="border-red-500/30">
       <div class="text-center py-8">
         <Icon name="heroicons:exclamation-triangle" class="w-16 h-16 text-red-400 mx-auto mb-4" />
         <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Заявка не найдена</h3>
         <p class="text-[var(--text-muted)] mb-4">Возможно, она была удалена или у вас нет доступа</p>
-        <UButton @click="router.push('/support')">Вернуться к заявкам</UButton>
+        <UiButton @click="router.push('/support')">Вернуться к заявкам</UiButton>
       </div>
-    </UCard>
+    </UiCard>
 
     <!-- Ticket Content -->
     <template v-else-if="ticket">
       <!-- Header Card -->
-      <UCard>
+      <UiCard>
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div class="flex items-start gap-4">
             <div class="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
@@ -185,12 +185,12 @@ useHead({
             <div>
               <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span class="text-sm text-[var(--text-muted)]">{{ ticket.number }}</span>
-                <UBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
+                <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
                   {{ statusConfig[ticket.status]?.label || ticket.status }}
-                </UBadge>
-                <UBadge variant="neutral" size="sm">
+                </UiBadge>
+                <UiBadge variant="neutral" size="sm">
                   {{ ticketCategoryLabels[ticket.category] || ticket.category }}
-                </UBadge>
+                </UiBadge>
               </div>
               <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ ticket.subject }}</h1>
               <p class="text-sm text-[var(--text-muted)] mt-1">
@@ -201,22 +201,22 @@ useHead({
 
           <!-- Кнопки закрытия -->
           <div v-if="canClose" class="flex gap-2 flex-shrink-0">
-            <UButton
+            <UiButton
               variant="success"
               size="sm"
               @click="openCloseModal('resolved')"
             >
               <Icon name="heroicons:check" class="w-4 h-4 mr-1" />
               Решено
-            </UButton>
-            <UButton
+            </UiButton>
+            <UiButton
               variant="secondary"
               size="sm"
               @click="openCloseModal('closed')"
             >
               <Icon name="heroicons:x-mark" class="w-4 h-4 mr-1" />
               Закрыть
-            </UButton>
+            </UiButton>
           </div>
         </div>
 
@@ -224,10 +224,10 @@ useHead({
         <div class="mt-6 pt-6" style="border-top: 1px solid var(--glass-border);">
           <p class="text-[var(--text-secondary)] whitespace-pre-wrap">{{ ticket.description }}</p>
         </div>
-      </UCard>
+      </UiCard>
 
       <!-- Messages -->
-      <UCard v-if="ticket.comments?.length">
+      <UiCard v-if="ticket.comments?.length">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
           Переписка
           <span class="text-sm text-[var(--text-muted)] font-normal ml-2">
@@ -300,17 +300,17 @@ useHead({
             </div>
           </div>
         </div>
-      </UCard>
+      </UiCard>
 
       <!-- No messages yet -->
-      <UCard v-else class="text-center py-8">
+      <UiCard v-else class="text-center py-8">
         <Icon name="heroicons:chat-bubble-left-right" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
         <p class="text-[var(--text-muted)]">Пока нет ответов от поддержки</p>
         <p class="text-sm text-[var(--text-muted)] mt-1">Мы ответим в ближайшее время</p>
-      </UCard>
+      </UiCard>
 
       <!-- Reply Form -->
-      <UCard v-if="canReply">
+      <UiCard v-if="canReply">
         <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Добавить сообщение</h3>
         <form @submit.prevent="submitReply" class="space-y-4">
           <textarea
@@ -322,17 +322,17 @@ useHead({
             required
           />
           <div class="flex justify-end">
-            <UButton type="submit" :disabled="submitting || !replyContent.trim()">
+            <UiButton type="submit" :disabled="submitting || !replyContent.trim()">
               <Icon v-if="submitting" name="heroicons:arrow-path" class="w-4 h-4 mr-2 animate-spin" />
               <Icon v-else name="heroicons:paper-airplane" class="w-4 h-4 mr-2" />
               {{ submitting ? 'Отправка...' : 'Отправить' }}
-            </UButton>
+            </UiButton>
           </div>
         </form>
-      </UCard>
+      </UiCard>
 
       <!-- Closed ticket notice -->
-      <UCard v-else class="text-center py-6">
+      <UiCard v-else class="text-center py-6">
         <Icon name="heroicons:lock-closed" class="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
         <p class="text-[var(--text-muted)]">
           {{ ticket.status === 'resolved' ? 'Заявка решена' : 'Заявка закрыта' }}
@@ -340,11 +340,11 @@ useHead({
         <p class="text-sm text-[var(--text-muted)] mt-1">
           Создайте новую заявку, если у вас есть вопросы
         </p>
-        <UButton class="mt-4" @click="router.push('/support')">
+        <UiButton class="mt-4" @click="router.push('/support')">
           <Icon name="heroicons:plus" class="w-4 h-4 mr-2" />
           Создать новую заявку
-        </UButton>
-      </UCard>
+        </UiButton>
+      </UiCard>
     </template>
 
     <!-- Модалка подтверждения закрытия -->
@@ -385,15 +385,15 @@ useHead({
             </div>
 
             <div class="flex gap-3">
-              <UButton
+              <UiButton
                 variant="secondary"
                 class="flex-1"
                 @click="showCloseModal = false"
                 :disabled="closing"
               >
                 Отмена
-              </UButton>
-              <UButton
+              </UiButton>
+              <UiButton
                 :variant="closeStatus === 'resolved' ? 'success' : 'primary'"
                 class="flex-1"
                 @click="handleClose"
@@ -401,7 +401,7 @@ useHead({
               >
                 <Icon v-if="closing" name="heroicons:arrow-path" class="w-4 h-4 mr-2 animate-spin" />
                 {{ closing ? 'Закрытие...' : (closeStatus === 'resolved' ? 'Решено' : 'Закрыть') }}
-              </UButton>
+              </UiButton>
             </div>
           </div>
         </div>
