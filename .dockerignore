@@ -1,0 +1,51 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.nuxt
+.output
+.data
+.nitro
+.cache
+dist
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+.fleet
+
+# Environment files (secrets!)
+.env
+.env.*
+!.env.example
+
+# Documentation
+*.md
+!README.md
+
+# Large/unnecessary files
+*.tif
+*.psd
+*.ai
+*.png
+logo.png
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude
+
+# Logs
+*.log
+logs
+
+# Docker files (prevent recursion)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
