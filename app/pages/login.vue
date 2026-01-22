@@ -288,7 +288,7 @@ const handleContractSubmit = async () => {
             Введите номер телефона из договора
           </p>
 
-          <ConnectionPhoneInput
+          <PhoneInput
             v-model="callPhone"
             label="Номер телефона"
             @validation="callPhoneValid = $event"

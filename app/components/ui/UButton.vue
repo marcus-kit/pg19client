@@ -14,37 +14,115 @@ const props = withDefaults(defineProps<Props>(), {
   loading: false,
   block: false
 })
-
-const classes = computed(() => {
-  const base = 'inline-flex items-center justify-center font-semibold rounded-lg transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2'
-
-  const variants = {
-    primary: 'bg-gradient-to-r from-primary to-secondary text-white shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 focus:ring-primary',
-    secondary: 'btn-secondary focus:ring-primary',
-    ghost: 'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)] focus:ring-primary/20',
-    danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    success: 'bg-accent text-white hover:bg-accent/90 shadow-lg shadow-accent/30 hover:shadow-xl hover:shadow-accent/40 hover:-translate-y-0.5 focus:ring-accent'
-  }
-
-  const sizes = {
-    sm: 'px-3 py-1.5 text-sm gap-1.5',
-    md: 'px-4 py-2.5 text-sm gap-2',
-    lg: 'px-6 py-3 text-base gap-2'
-  }
-
-  return [
-    base,
-    variants[props.variant],
-    sizes[props.size],
-    props.block && 'w-full',
-    (props.disabled || props.loading) && 'opacity-50 cursor-not-allowed pointer-events-none'
-  ]
-})
 </script>
 
 <template>
-  <button :class="classes" :disabled="disabled || loading">
+  <button
+    class="u-btn"
+    :class="[
+      `u-btn--${variant}`,
+      `u-btn--${size}`,
+      block && 'u-btn--block',
+      (disabled || loading) && 'u-btn--disabled'
+    ]"
+    :disabled="disabled || loading"
+  >
     <Icon v-if="loading" name="heroicons:arrow-path" class="w-4 h-4 animate-spin" />
     <slot />
   </button>
 </template>
+
+<style>
+.u-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+}
+
+.u-btn--sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  gap: 0.375rem;
+}
+
+.u-btn--md {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  gap: 0.5rem;
+}
+
+.u-btn--lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  gap: 0.5rem;
+}
+
+.u-btn--primary {
+  background: linear-gradient(to right, #F7941D, #E91E8C) !important;
+  color: white !important;
+  box-shadow: 0 10px 15px -3px rgba(247, 148, 29, 0.3);
+}
+
+.u-btn--primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(247, 148, 29, 0.4);
+}
+
+.u-btn--secondary {
+  background: transparent;
+  color: var(--btn-secondary-text);
+  border: 2px solid var(--btn-secondary-border);
+}
+
+.u-btn--secondary:hover {
+  border-color: #F7941D;
+  color: #F7941D;
+  background: var(--btn-secondary-hover-bg);
+}
+
+.u-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.u-btn--ghost:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg);
+}
+
+.u-btn--danger {
+  background: #dc2626;
+  color: white;
+}
+
+.u-btn--danger:hover {
+  background: #b91c1c;
+}
+
+.u-btn--success {
+  background: #00A651;
+  color: white;
+  box-shadow: 0 10px 15px -3px rgba(0, 166, 81, 0.3);
+}
+
+.u-btn--success:hover {
+  background: #008541;
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(0, 166, 81, 0.4);
+}
+
+.u-btn--block {
+  width: 100%;
+}
+
+.u-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+</style>

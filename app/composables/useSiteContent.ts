@@ -22,9 +22,9 @@ export function useSiteContent<T extends Record<string, unknown>>(page: string) 
 }
 
 /**
- * Загрузка списка услуг
+ * Загрузка списка услуг для публичного сайта
  */
-export function useServices() {
+export function usePublicServices() {
   return useFetch('/api/content/services', {
     key: 'services-list'
   })

@@ -1,6 +1,11 @@
 import { useAuthStore } from '~/stores/auth'
 
 export default defineNuxtRouteMiddleware((to) => {
+  // DEV BYPASS - удалить для продакшена!
+  if (import.meta.dev) {
+    return
+  }
+
   // Skip auth check on server - localStorage not available
   if (import.meta.server) {
     return

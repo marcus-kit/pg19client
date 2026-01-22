@@ -11,6 +11,14 @@ export default defineNuxtConfig({
     appManifest: false
   },
 
+  // Убираем префикс папки для компонентов (ui/UButton → UButton, не UiUButton)
+  components: [
+    {
+      path: '~/components',
+      pathPrefix: false
+    }
+  ],
+
   css: [
     'vue-yandex-maps/css',
     '~/assets/css/main.css'
