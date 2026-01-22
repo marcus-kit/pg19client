@@ -5,7 +5,6 @@ interface ChatState {
   isMinimized: boolean
   unreadCount: number
   sessionId: string | null
-  guestName: string | null
 }
 
 export const useChatStore = defineStore('chat', {
@@ -13,8 +12,7 @@ export const useChatStore = defineStore('chat', {
     isOpen: false,
     isMinimized: false,
     unreadCount: 0,
-    sessionId: null,
-    guestName: null
+    sessionId: null
   }),
 
   actions: {
@@ -50,10 +48,6 @@ export const useChatStore = defineStore('chat', {
       this.sessionId = id
     },
 
-    setGuestName(name: string) {
-      this.guestName = name
-    },
-
     incrementUnread() {
       this.unreadCount++
     },
@@ -61,9 +55,5 @@ export const useChatStore = defineStore('chat', {
     clearUnread() {
       this.unreadCount = 0
     }
-  },
-
-  persist: {
-    pick: ['sessionId', 'guestName']
   }
 })

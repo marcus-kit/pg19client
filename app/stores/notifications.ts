@@ -2,8 +2,6 @@ import { defineStore } from 'pinia'
 import type { NotificationSettings } from '~/types'
 import { defaultNotificationSettings } from '~/types'
 
-const STORAGE_KEY = 'pg19_notifications'
-
 interface NotificationsState {
   notifications: NotificationSettings
 }
@@ -33,10 +31,5 @@ export const useNotificationsStore = defineStore('notifications', {
     reset() {
       this.notifications = { ...defaultNotificationSettings }
     }
-  },
-
-  persist: {
-    key: STORAGE_KEY,
-    pick: ['notifications']
   }
 })

@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import type { Account } from '~/types'
 
-const STORAGE_KEY = 'pg19_account'
-
 interface AccountState {
   account: Account | null
 }
@@ -30,10 +28,5 @@ export const useAccountStore = defineStore('account', {
     clear() {
       this.account = null
     }
-  },
-
-  persist: {
-    key: STORAGE_KEY,
-    pick: ['account']
   }
 })
