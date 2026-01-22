@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 // Editing state
 const isEditing = ref(false)
@@ -15,10 +13,10 @@ const editData = ref({
 
 const startEdit = () => {
   editData.value = {
-    lastName: authStore.user?.lastName || '',
-    firstName: authStore.user?.firstName || '',
-    middleName: authStore.user?.middleName || '',
-    birthDate: authStore.user?.birthDate || ''
+    lastName: userStore.user?.lastName || '',
+    firstName: userStore.user?.firstName || '',
+    middleName: userStore.user?.middleName || '',
+    birthDate: userStore.user?.birthDate || ''
   }
   isEditing.value = true
 }
@@ -28,22 +26,24 @@ const cancelEdit = () => {
 }
 
 const saveChanges = async () => {
+  if (!userStore.user?.id) return
   isSaving.value = true
-  const success = await authStore.updateUserData({
+  const updatedUser = await useUserApi().update(userStore.user.id, {
     lastName: editData.value.lastName,
     firstName: editData.value.firstName,
     middleName: editData.value.middleName,
     birthDate: editData.value.birthDate || null
   })
   isSaving.value = false
-  if (success) {
+  if (updatedUser) {
+    userStore.updateUser(updatedUser)
     isEditing.value = false
   }
 }
 
 const formattedBirthDate = computed(() => {
-  if (!authStore.user?.birthDate) return null
-  return new Date(authStore.user.birthDate).toLocaleDateString('ru-RU', {
+  if (!userStore.user?.birthDate) return null
+  return new Date(userStore.user.birthDate).toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long',
     year: 'numeric'
@@ -51,8 +51,8 @@ const formattedBirthDate = computed(() => {
 })
 
 const age = computed(() => {
-  if (!authStore.user?.birthDate) return null
-  const birthDate = new Date(authStore.user.birthDate)
+  if (!userStore.user?.birthDate) return null
+  const birthDate = new Date(userStore.user.birthDate)
   const today = new Date()
   let years = today.getFullYear() - birthDate.getFullYear()
   const monthDiff = today.getMonth() - birthDate.getMonth()
@@ -79,7 +79,7 @@ const nicknameInput = ref('')
 const nicknameError = ref('')
 
 const startEditNickname = () => {
-  nicknameInput.value = authStore.user?.nickname || ''
+  nicknameInput.value = userStore.user?.nickname || ''
   nicknameError.value = ''
   isEditingNickname.value = true
 }
@@ -107,8 +107,8 @@ const saveNickname = async () => {
       body: { nickname }
     })
 
-    if (response.success && authStore.user) {
-      authStore.user.nickname = response.nickname
+    if (response.success && userStore.user) {
+      userStore.user.nickname = response.nickname
       isEditingNickname.value = false
     }
   } catch (e: unknown) {
@@ -159,7 +159,7 @@ const saveNickname = async () => {
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Фамилия</p>
-          <p class="text-sm text-[var(--text-primary)]">{{ authStore.user?.lastName || '—' }}</p>
+          <p class="text-sm text-[var(--text-primary)]">{{ userStore.user?.lastName || '—' }}</p>
         </div>
       </div>
 
@@ -169,7 +169,7 @@ const saveNickname = async () => {
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Имя</p>
-          <p class="text-sm text-[var(--text-primary)]">{{ authStore.user?.firstName || '—' }}</p>
+          <p class="text-sm text-[var(--text-primary)]">{{ userStore.user?.firstName || '—' }}</p>
         </div>
       </div>
 
@@ -179,7 +179,7 @@ const saveNickname = async () => {
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Отчество</p>
-          <p class="text-sm text-[var(--text-primary)]">{{ authStore.user?.middleName || '—' }}</p>
+          <p class="text-sm text-[var(--text-primary)]">{{ userStore.user?.middleName || '—' }}</p>
         </div>
       </div>
 
@@ -205,7 +205,7 @@ const saveNickname = async () => {
       <div>
         <label class="text-xs text-[var(--text-muted)] mb-1 block">Фамилия</label>
         <input
-          :value="authStore.user?.lastName || ''"
+          :value="userStore.user?.lastName || ''"
           type="text"
           readonly
           class="w-full px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-muted)] cursor-not-allowed"
@@ -216,7 +216,7 @@ const saveNickname = async () => {
       <div>
         <label class="text-xs text-[var(--text-muted)] mb-1 block">Имя</label>
         <input
-          :value="authStore.user?.firstName || ''"
+          :value="userStore.user?.firstName || ''"
           type="text"
           readonly
           class="w-full px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-muted)] cursor-not-allowed"
@@ -227,7 +227,7 @@ const saveNickname = async () => {
       <div>
         <label class="text-xs text-[var(--text-muted)] mb-1 block">Отчество</label>
         <input
-          :value="authStore.user?.middleName || ''"
+          :value="userStore.user?.middleName || ''"
           type="text"
           readonly
           class="w-full px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-muted)] cursor-not-allowed"
@@ -261,7 +261,7 @@ const saveNickname = async () => {
           <div>
             <p class="text-xs text-[var(--text-muted)]">Никнейм в чате</p>
             <p v-if="!isEditingNickname" class="text-sm text-[var(--text-primary)]">
-              {{ authStore.user?.nickname || 'Не задан' }}
+              {{ userStore.user?.nickname || 'Не задан' }}
             </p>
           </div>
         </div>
@@ -270,7 +270,7 @@ const saveNickname = async () => {
           class="text-xs text-primary hover:text-primary/80 transition-colors"
           @click="startEditNickname"
         >
-          {{ authStore.user?.nickname ? 'Изменить' : 'Задать' }}
+          {{ userStore.user?.nickname ? 'Изменить' : 'Задать' }}
         </button>
       </div>
 

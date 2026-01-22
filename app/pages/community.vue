@@ -5,7 +5,7 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const {
   rooms,
   currentRoom,
@@ -301,7 +301,7 @@ const handleScroll = (e: Event) => {
             v-for="msg in messages"
             :key="msg.id"
             :message="msg"
-            :is-own="msg.userId === authStore.user?.id"
+            :is-own="msg.userId === userStore.user?.id"
             :show-moderation="showModeration"
             :is-user-moderator="isUserModerator(msg.userId)"
             @contextmenu="handleContextMenu"
@@ -344,7 +344,7 @@ const handleScroll = (e: Event) => {
       :show="contextMenu.show"
       :x="contextMenu.x"
       :y="contextMenu.y"
-      :is-own="contextMenu.message?.userId === authStore.user?.id"
+      :is-own="contextMenu.message?.userId === userStore.user?.id"
       :is-pinned="contextMenu.message?.isPinned || false"
       :show-moderation="showModeration"
       @close="closeContextMenu"

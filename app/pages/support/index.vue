@@ -25,7 +25,7 @@ const activeTab = ref<'tickets' | 'faq' | 'chat'>(initialTab)
 
 // Chat
 const chatStore = useChatStore()
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const { session, messages, isLoading: chatLoading, isSending, isUploading, error: chatError, initSession, uploadFile, sendMessage } = useChat()
 
 const messageText = ref('')
@@ -59,7 +59,7 @@ async function initChatSession() {
   const savedSessionId = chatStore.sessionId
   if (savedSessionId) {
     try {
-      await initSession({ chatId: savedSessionId, userId: authStore.user?.id })
+      await initSession({ chatId: savedSessionId, userId: userStore.user?.id })
       if (session.value) {
         chatStore.setSessionId(session.value.id)
         scrollToBottom()
@@ -68,8 +68,8 @@ async function initChatSession() {
       chatStore.sessionId = null
     }
   }
-  if (!savedSessionId && !session.value && authStore.isAuthenticated) {
-    await initSession({ userId: authStore.user?.id })
+  if (!savedSessionId && !session.value && userStore.isAuthenticated) {
+    await initSession({ userId: userStore.user?.id })
     if (session.value) {
       chatStore.setSessionId(session.value.id)
       scrollToBottom()

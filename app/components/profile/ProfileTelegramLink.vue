@@ -1,12 +1,18 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
 import { useTelegramLogin, type TelegramUser } from '~/composables/useTelegramLogin'
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const { initWidget, linkTelegram, isLoading, error, cleanup } = useTelegramLogin()
 
-const isLinked = computed(() => !!authStore.user?.telegramId)
-const telegramUsername = computed(() => authStore.user?.telegram || '')
+const updateTelegram = (telegramId: string, telegramUsername?: string) => {
+  userStore.updateUser({
+    telegramId,
+    telegram: telegramUsername ? `@${telegramUsername}` : ''
+  })
+}
+
+const isLinked = computed(() => !!userStore.user?.telegramId)
+const telegramUsername = computed(() => userStore.user?.telegram || '')
 
 const linkSuccess = ref(false)
 
@@ -23,13 +29,13 @@ onUnmounted(() => {
 })
 
 const handleTelegramLink = async (telegramUser: TelegramUser) => {
-  if (!authStore.user?.id) return
+  if (!userStore.user?.id) return
 
   try {
-    const response = await linkTelegram(authStore.user.id, telegramUser)
+    const response = await linkTelegram(userStore.user.id, telegramUser)
 
     // Обновляем данные в store
-    authStore.updateTelegram(
+    updateTelegram(
       response.telegramId.toString(),
       response.telegramUsername
     )

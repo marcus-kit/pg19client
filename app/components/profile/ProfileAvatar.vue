@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
+const userStore = useUserStore()
 
-const authStore = useAuthStore()
+const updateAvatar = (avatar: string | null) => {
+  userStore.updateUser({ avatar })
+}
 
 const initials = computed(() => {
-  if (!authStore.user) return ''
-  const first = authStore.user.firstName?.charAt(0) || ''
-  const last = authStore.user.lastName?.charAt(0) || ''
+  if (!userStore.user) return ''
+  const first = userStore.user.firstName?.charAt(0) || ''
+  const last = userStore.user.lastName?.charAt(0) || ''
   return `${first}${last}`.toUpperCase()
 })
 
@@ -19,7 +21,7 @@ const avatarGradient = computed(() => {
     'from-orange-500 to-red-600',
     'from-pink-500 to-rose-600'
   ]
-  const index = (authStore.user?.id || 0) % gradients.length
+  const index = (userStore.user?.id || 0) % gradients.length
   return gradients[index]
 })
 
@@ -60,7 +62,7 @@ const handleFileChange = async (event: Event) => {
     })
 
     if (response.success && response.avatar) {
-      authStore.updateAvatar(response.avatar)
+      updateAvatar(response.avatar)
     }
   } catch (error) {
     console.error('Error uploading avatar:', error)
@@ -77,7 +79,7 @@ const removeAvatar = async () => {
       method: 'DELETE'
     })
     if (response.success) {
-      authStore.updateAvatar(null)
+      updateAvatar(null)
     }
   } catch (error) {
     console.error('Error removing avatar:', error)
@@ -93,7 +95,7 @@ const removeAvatar = async () => {
     <div class="flex items-center justify-between mb-3">
       <h2 class="text-base font-semibold text-[var(--text-primary)]">Фото профиля</h2>
       <button
-        v-if="authStore.user?.avatar"
+        v-if="userStore.user?.avatar"
         class="text-sm text-red-400 hover:text-red-300 transition-colors"
         @click="removeAvatar"
       >
@@ -110,9 +112,9 @@ const removeAvatar = async () => {
         >
           <!-- Avatar Image or Initials -->
           <img
-            v-if="authStore.user?.avatar"
-            :src="authStore.user.avatar"
-            :alt="authStore.fullName"
+            v-if="userStore.user?.avatar"
+            :src="userStore.user.avatar"
+            :alt="userStore.fullName"
             class="w-full h-full object-cover"
           />
           <div
@@ -143,7 +145,7 @@ const removeAvatar = async () => {
 
       <!-- Info -->
       <div class="flex-1">
-        <p class="text-[var(--text-primary)] font-medium text-sm">{{ authStore.fullName }}</p>
+        <p class="text-[var(--text-primary)] font-medium text-sm">{{ userStore.fullName }}</p>
         <p class="text-xs text-[var(--text-muted)] mt-0.5">
           Нажмите на фото для загрузки · JPG, PNG до 5 МБ
         </p>

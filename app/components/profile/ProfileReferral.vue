@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const referralStore = useReferralStore()
 
 const referralLink = computed(() => {
-  const code = authStore.referralProgram?.code || ''
+  const code = referralStore.referralProgram?.code || ''
   return `https://pg19.ru/ref/${code}`
 })
 
 const copySuccess = ref(false)
 
 const copyCode = async () => {
-  const code = authStore.referralProgram?.code
+  const code = referralStore.referralProgram?.code
   if (!code) return
 
   try {
@@ -79,7 +77,7 @@ const shareOptions = [
           <p class="text-sm text-[var(--text-muted)] mb-2">Ваш промокод</p>
           <div class="flex items-center gap-3">
             <span class="text-2xl font-bold text-[var(--text-primary)] tracking-wider">
-              {{ authStore.referralProgram?.code }}
+              {{ referralStore.referralProgram?.code }}
             </span>
             <button
               class="p-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
@@ -97,11 +95,11 @@ const shareOptions = [
         <!-- Stats -->
         <div class="grid grid-cols-2 gap-3 mb-4">
           <div class="p-4 rounded-xl" style="background: var(--glass-bg);">
-            <p class="text-2xl font-bold text-[var(--text-primary)]">{{ authStore.referralProgram?.totalInvited }}</p>
+            <p class="text-2xl font-bold text-[var(--text-primary)]">{{ referralStore.referralProgram?.totalInvited }}</p>
             <p class="text-sm text-[var(--text-muted)]">Приглашено</p>
           </div>
           <div class="p-4 rounded-xl" style="background: var(--glass-bg);">
-            <p class="text-2xl font-bold text-accent">{{ authStore.referralProgram?.totalBonus }} ₽</p>
+            <p class="text-2xl font-bold text-accent">{{ referralStore.referralProgram?.totalBonus }} ₽</p>
             <p class="text-sm text-[var(--text-muted)]">Заработано</p>
           </div>
         </div>
@@ -135,9 +133,9 @@ const shareOptions = [
       <div>
         <p class="text-sm text-[var(--text-muted)] mb-3">Ваши друзья</p>
 
-        <div v-if="authStore.referralProgram?.referrals?.length" class="space-y-2">
+        <div v-if="referralStore.referralProgram?.referrals?.length" class="space-y-2">
           <div
-            v-for="referral in authStore.referralProgram.referrals"
+            v-for="referral in referralStore.referralProgram.referrals"
             :key="referral.id"
             class="flex items-center justify-between p-3 rounded-xl"
             style="background: var(--glass-bg);"

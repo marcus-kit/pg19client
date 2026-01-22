@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const accountStore = useAccountStore()
 </script>
 
 <template>
@@ -15,7 +13,7 @@ const authStore = useAuthStore()
         <Icon name="heroicons:map-pin" class="w-6 h-6 text-primary" />
       </div>
       <div>
-        <p class="text-[var(--text-primary)]">{{ authStore.account?.address }}</p>
+        <p class="text-[var(--text-primary)]">{{ accountStore.account?.address }}</p>
         <p class="text-sm text-[var(--text-muted)] mt-1">Адрес предоставления услуг</p>
       </div>
     </div>

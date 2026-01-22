@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
 const route = useRoute()
-const authStore = useAuthStore()
+const { logout } = useAuthInit()
 
 // Основные пункты навигации в нижней панели (5 максимум)
 const mainNavigation = [
@@ -25,7 +23,7 @@ const isMoreActive = computed(() => moreNavigation.some(item => isActive(item.hr
 
 const handleLogout = () => {
   showMoreMenu.value = false
-  authStore.logout()
+  logout()
   navigateTo('/login')
 }
 </script>

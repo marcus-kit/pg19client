@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const sessionsStore = useSessionsStore()
 
 const showPasswordModal = ref(false)
 const passwordForm = ref({
@@ -60,16 +58,16 @@ const handlePasswordChange = () => {
 
 const terminateSession = (sessionId: string) => {
   if (confirm('Завершить сессию?')) {
-    authStore.terminateSession(sessionId)
+    sessionsStore.remove(sessionId)
   }
 }
 
 const terminateAllSessions = () => {
   if (confirm('Завершить все сессии кроме текущей?')) {
-    const currentSessionId = authStore.sessions.find(s => s.current)?.id
-    authStore.sessions
+    const currentSessionId = sessionsStore.sessions.find(s => s.current)?.id
+    sessionsStore.sessions
       .filter(s => !s.current)
-      .forEach(s => authStore.terminateSession(s.id))
+      .forEach(s => sessionsStore.remove(s.id))
   }
 }
 </script>
@@ -103,7 +101,7 @@ const terminateAllSessions = () => {
       <div class="flex items-center justify-between mb-4">
         <p class="text-sm text-[var(--text-muted)]">Активные сессии</p>
         <button
-          v-if="authStore.sessions.length > 1"
+          v-if="sessionsStore.sessions.length > 1"
           class="text-xs text-red-400 hover:text-red-300 transition-colors"
           @click="terminateAllSessions"
         >
@@ -113,7 +111,7 @@ const terminateAllSessions = () => {
 
       <div class="space-y-3">
         <div
-          v-for="session in authStore.sessions"
+          v-for="session in sessionsStore.sessions"
           :key="session.id"
           :class="[
             'p-3 rounded-xl',

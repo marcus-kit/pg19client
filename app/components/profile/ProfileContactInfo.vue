@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 // Editing state
 const isEditing = ref(false)
@@ -14,9 +12,9 @@ const editData = ref({
 
 const startEdit = () => {
   editData.value = {
-    phone: authStore.user?.phone || '',
-    email: authStore.user?.email || '',
-    vkId: authStore.user?.vkId || ''
+    phone: userStore.user?.phone || '',
+    email: userStore.user?.email || '',
+    vkId: userStore.user?.vkId || ''
   }
   isEditing.value = true
 }
@@ -26,14 +24,16 @@ const cancelEdit = () => {
 }
 
 const saveChanges = async () => {
+  if (!userStore.user?.id) return
   isSaving.value = true
-  const success = await authStore.updateUserData({
+  const updatedUser = await useUserApi().update(userStore.user.id, {
     phone: editData.value.phone,
     email: editData.value.email,
     vkId: editData.value.vkId
   })
   isSaving.value = false
-  if (success) {
+  if (updatedUser) {
+    userStore.updateUser(updatedUser)
     isEditing.value = false
   }
 }
@@ -42,7 +42,7 @@ const contacts = computed(() => [
   {
     key: 'phone',
     label: 'Телефон',
-    value: authStore.user?.phone,
+    value: userStore.user?.phone,
     icon: 'heroicons:phone',
     verified: true,
     type: 'tel',
@@ -52,7 +52,7 @@ const contacts = computed(() => [
   {
     key: 'email',
     label: 'Email',
-    value: authStore.user?.email,
+    value: userStore.user?.email,
     icon: 'heroicons:envelope',
     verified: true,
     type: 'email',
@@ -62,7 +62,7 @@ const contacts = computed(() => [
   {
     key: 'vkId',
     label: 'VK ID',
-    value: authStore.user?.vkId,
+    value: userStore.user?.vkId,
     icon: 'simple-icons:vk',
     verified: false,
     type: 'text',

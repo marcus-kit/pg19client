@@ -1,16 +1,14 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
 definePageMeta({
   middleware: 'auth'
 })
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 const router = useRouter()
 
 onMounted(() => {
   // Middleware handles most redirects, this is a fallback
-  if (!authStore.isAuthenticated) {
+  if (!userStore.isAuthenticated) {
     router.replace('/login')
   } else {
     router.replace('/dashboard')

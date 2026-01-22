@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
+import type { NotificationSettings } from '~/types'
 
-const authStore = useAuthStore()
+const notificationsStore = useNotificationsStore()
+
+// Update notifications in store and API
+const updateNotifications = (settings: Partial<NotificationSettings>) => {
+  notificationsStore.update(settings)
+  useNotificationsApi().update(settings)
+}
 
 const channels = computed(() => [
   {
@@ -9,28 +15,28 @@ const channels = computed(() => [
     label: 'Email',
     description: 'Уведомления на почту',
     icon: 'heroicons:envelope',
-    enabled: authStore.notifications.email
+    enabled: notificationsStore.notifications.email
   },
   {
     key: 'sms' as const,
     label: 'SMS',
     description: 'Текстовые сообщения',
     icon: 'heroicons:device-phone-mobile',
-    enabled: authStore.notifications.sms
+    enabled: notificationsStore.notifications.sms
   },
   {
     key: 'push' as const,
     label: 'Push',
     description: 'Браузерные уведомления',
     icon: 'heroicons:bell',
-    enabled: authStore.notifications.push
+    enabled: notificationsStore.notifications.push
   },
   {
     key: 'telegram' as const,
     label: 'Telegram',
     description: 'Сообщения в Telegram',
     icon: 'simple-icons:telegram',
-    enabled: authStore.notifications.telegram
+    enabled: notificationsStore.notifications.telegram
   }
 ])
 
@@ -39,39 +45,39 @@ const notificationTypes = computed(() => [
     key: 'payments' as const,
     label: 'Оплата',
     description: 'Напоминания об оплате и чеки',
-    enabled: authStore.notifications.types.payments
+    enabled: notificationsStore.notifications.types.payments
   },
   {
     key: 'maintenance' as const,
     label: 'Техработы',
     description: 'Плановые работы и аварии',
-    enabled: authStore.notifications.types.maintenance
+    enabled: notificationsStore.notifications.types.maintenance
   },
   {
     key: 'promotions' as const,
     label: 'Акции',
     description: 'Специальные предложения и скидки',
-    enabled: authStore.notifications.types.promotions
+    enabled: notificationsStore.notifications.types.promotions
   },
   {
     key: 'news' as const,
     label: 'Новости',
     description: 'Новости компании и обновления',
-    enabled: authStore.notifications.types.news
+    enabled: notificationsStore.notifications.types.news
   }
 ])
 
 const toggleChannel = (key: 'email' | 'sms' | 'push' | 'telegram') => {
-  authStore.updateNotifications({
-    [key]: !authStore.notifications[key]
+  updateNotifications({
+    [key]: !notificationsStore.notifications[key]
   })
 }
 
 const toggleType = (key: 'payments' | 'maintenance' | 'promotions' | 'news') => {
-  authStore.updateNotifications({
+  updateNotifications({
     types: {
-      ...authStore.notifications.types,
-      [key]: !authStore.notifications.types[key]
+      ...notificationsStore.notifications.types,
+      [key]: !notificationsStore.notifications.types[key]
     }
   })
 }

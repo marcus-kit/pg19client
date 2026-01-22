@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const accountStore = useAccountStore()
 
 // Получаем неоплаченные счета
 const { fetchUnpaidInvoices } = useInvoices()
@@ -33,7 +31,7 @@ const nextPaymentDate = computed(() => {
 
 // Статус аккаунта
 const statusConfig = computed(() => {
-  if (authStore.isBlocked) {
+  if (accountStore.isBlocked) {
     return {
       text: 'Заблокирован',
       color: 'bg-red-500',

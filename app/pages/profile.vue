@@ -1,12 +1,9 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
 definePageMeta({
-  
   middleware: 'auth'
 })
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
 
 const activeTab = ref<'profile' | 'personal' | 'contract' | 'notifications' | 'security'>('profile')
 
@@ -20,15 +17,15 @@ const tabs = [
 
 // Profile completion calculation
 const profileFields = computed(() => [
-  { name: 'Фото', filled: !!authStore.user?.avatar, points: 10 },
-  { name: 'Имя', filled: !!authStore.user?.firstName, points: 10 },
-  { name: 'Фамилия', filled: !!authStore.user?.lastName, points: 10 },
-  { name: 'Отчество', filled: !!authStore.user?.middleName, points: 5 },
-  { name: 'Дата рождения', filled: !!authStore.user?.birthDate, points: 10 },
-  { name: 'Телефон', filled: !!authStore.user?.phone, points: 15 },
-  { name: 'Email', filled: !!authStore.user?.email, points: 15 },
-  { name: 'Telegram', filled: !!authStore.user?.telegramId, points: 10 },
-  { name: 'VK ID', filled: !!authStore.user?.vkId, points: 15 }
+  { name: 'Фото', filled: !!userStore.user?.avatar, points: 10 },
+  { name: 'Имя', filled: !!userStore.user?.firstName, points: 10 },
+  { name: 'Фамилия', filled: !!userStore.user?.lastName, points: 10 },
+  { name: 'Отчество', filled: !!userStore.user?.middleName, points: 5 },
+  { name: 'Дата рождения', filled: !!userStore.user?.birthDate, points: 10 },
+  { name: 'Телефон', filled: !!userStore.user?.phone, points: 15 },
+  { name: 'Email', filled: !!userStore.user?.email, points: 15 },
+  { name: 'Telegram', filled: !!userStore.user?.telegramId, points: 10 },
+  { name: 'VK ID', filled: !!userStore.user?.vkId, points: 15 }
 ])
 
 const completedPoints = computed(() =>

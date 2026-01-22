@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
 import type { NewsCategory } from '~/types/news'
 
 definePageMeta({
   middleware: 'auth'
 })
 
-const authStore = useAuthStore()
+const userStore = useUserStore()
+const accountStore = useAccountStore()
 
 // Загрузка новостей из API
 const { fetchNews } = useNews()
@@ -49,9 +49,9 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
     <!-- Page Header -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">
-        Добро пожаловать, {{ authStore.user?.firstName }}!
+        Добро пожаловать, {{ userStore.user?.firstName }}!
       </h1>
-      <p class="text-[var(--text-muted)] mt-1">Договор № {{ authStore.account?.contractNumber }}</p>
+      <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p>
     </div>
 
     <!-- Main Grid -->

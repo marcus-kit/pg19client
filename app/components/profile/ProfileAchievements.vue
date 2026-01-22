@@ -1,13 +1,11 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const achievementsStore = useAchievementsStore()
 
 const unlockedCount = computed(() =>
-  authStore.achievements.filter(a => a.unlockedAt).length
+  achievementsStore.achievements.filter(a => a.unlockedAt).length
 )
 
-const totalCount = computed(() => authStore.achievements.length)
+const totalCount = computed(() => achievementsStore.achievements.length)
 
 const formatDate = (dateString: string) => {
   return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -45,7 +43,7 @@ const getProgressPercent = (achievement: { progress?: number; maxProgress?: numb
 
     <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
       <div
-        v-for="achievement in authStore.achievements"
+        v-for="achievement in achievementsStore.achievements"
         :key="achievement.id"
         :class="[
           'relative p-4 rounded-xl border transition-all',

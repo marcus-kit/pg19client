@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const userStore = useUserStore()
+const accountStore = useAccountStore()
+const { logout } = useAuthInit()
 const route = useRoute()
 const colorMode = useColorMode()
 const isScrolled = ref(false)
@@ -23,7 +23,7 @@ const toggleTheme = () => {
 }
 
 const handleLogout = () => {
-  authStore.logout()
+  logout()
   navigateTo('/login')
 }
 
@@ -77,8 +77,8 @@ onMounted(() => {
           </button>
 
           <div class="text-right">
-            <p class="text-sm font-medium text-[var(--text-primary)]">{{ authStore.shortName }}</p>
-            <p class="text-xs text-[var(--text-muted)]">Договор {{ authStore.account?.contractNumber }}</p>
+            <p class="text-sm font-medium text-[var(--text-primary)]">{{ userStore.shortName }}</p>
+            <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber }}</p>
           </div>
           <button
             @click="handleLogout"

@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const accountStore = useAccountStore()
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('ru-RU', {
@@ -21,21 +19,21 @@ const formatDate = (date: string) => {
     <div class="space-y-4">
       <div class="flex items-center justify-between py-3" style="border-bottom: 1px solid var(--glass-border);">
         <span class="text-[var(--text-muted)]">Номер договора</span>
-        <span class="text-[var(--text-primary)] font-medium">{{ authStore.account?.contractNumber }}</span>
+        <span class="text-[var(--text-primary)] font-medium">{{ accountStore.account?.contractNumber }}</span>
       </div>
       <div class="flex items-center justify-between py-3" style="border-bottom: 1px solid var(--glass-border);">
         <span class="text-[var(--text-muted)]">Статус</span>
-        <UiBadge :variant="authStore.isBlocked ? 'danger' : 'success'">
-          {{ authStore.isBlocked ? 'Приостановлен' : 'Активен' }}
+        <UiBadge :variant="accountStore.isBlocked ? 'danger' : 'success'">
+          {{ accountStore.isBlocked ? 'Приостановлен' : 'Активен' }}
         </UiBadge>
       </div>
       <div class="flex items-center justify-between py-3" style="border-bottom: 1px solid var(--glass-border);">
         <span class="text-[var(--text-muted)]">Тариф</span>
-        <span class="text-[var(--text-primary)]">{{ authStore.account?.tariff }}</span>
+        <span class="text-[var(--text-primary)]">{{ accountStore.account?.tariff }}</span>
       </div>
       <div class="flex items-center justify-between py-3">
         <span class="text-[var(--text-muted)]">Дата заключения</span>
-        <span class="text-[var(--text-primary)]">{{ formatDate(authStore.account?.startDate || '') }}</span>
+        <span class="text-[var(--text-primary)]">{{ formatDate(accountStore.account?.startDate || '') }}</span>
       </div>
     </div>
   </UiCard>

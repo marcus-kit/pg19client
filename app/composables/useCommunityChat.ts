@@ -15,7 +15,7 @@ import type {
 
 export function useCommunityChat() {
   const supabase = useSupabaseClient()
-  const authStore = useAuthStore()
+  const userStore = useUserStore()
 
   // State
   const rooms = ref<CommunityRoom[]>([])
@@ -86,7 +86,7 @@ export function useCommunityChat() {
 
   // Отправить broadcast о наборе текста (с debounce)
   function broadcastTyping() {
-    if (!channel || !currentRoom.value || !authStore.user) return
+    if (!channel || !currentRoom.value || !userStore.user) return
 
     const now = Date.now()
     if (now - lastTypingBroadcast < TYPING_DEBOUNCE) return
@@ -97,8 +97,8 @@ export function useCommunityChat() {
       type: 'broadcast',
       event: 'typing',
       payload: {
-        userId: authStore.user.id,
-        name: authStore.user.firstName || 'Пользователь',
+        userId: userStore.user.id,
+        name: userStore.user.firstName || 'Пользователь',
         roomId: currentRoom.value.id
       }
     })
@@ -107,7 +107,7 @@ export function useCommunityChat() {
   // Обработчик входящих typing событий
   function handleTypingBroadcast(payload: { userId: string; name: string; roomId: string }) {
     // Игнорируем свои события
-    if (payload.userId === authStore.user?.id) return
+    if (payload.userId === userStore.user?.id) return
     // Игнорируем события из других комнат
     if (payload.roomId !== currentRoom.value?.id) return
 
@@ -196,12 +196,12 @@ export function useCommunityChat() {
 
   // Track текущего пользователя в комнате
   async function trackPresence() {
-    if (!channel || !authStore.user) return
+    if (!channel || !userStore.user) return
 
     await channel.track({
-      id: authStore.user.id,
-      name: authStore.user.firstName || 'Пользователь',
-      avatar: authStore.user.avatar
+      id: userStore.user.id,
+      name: userStore.user.firstName || 'Пользователь',
+      avatar: userStore.user.avatar
     })
   }
 
@@ -429,7 +429,7 @@ export function useCommunityChat() {
     imageHeight?: number
     replyToId?: number
   }): Promise<CommunityMessage | null> {
-    if (!currentRoom.value || !authStore.user) return null
+    if (!currentRoom.value || !userStore.user) return null
     if (!content.trim() && !options?.imageUrl) return null
 
     // 1. Создаём временное сообщение для мгновенного отображения
@@ -445,7 +445,7 @@ export function useCommunityChat() {
     const optimisticMessage: CommunityMessage = {
       id: tempId,
       roomId: currentRoom.value.id,
-      userId: authStore.user.id,
+      userId: userStore.user.id,
       content: content.trim(),
       contentType,
       imageUrl: options?.imageUrl || null,
@@ -461,10 +461,10 @@ export function useCommunityChat() {
       updatedAt: new Date().toISOString(),
       status: 'sending',
       user: {
-        id: authStore.user.id,
-        firstName: authStore.user.firstName || 'Пользователь',
-        lastName: authStore.user.lastName || '',
-        avatar: authStore.user.avatar || null
+        id: userStore.user.id,
+        firstName: userStore.user.firstName || 'Пользователь',
+        lastName: userStore.user.lastName || '',
+        avatar: userStore.user.avatar || null
       }
     }
 
@@ -621,7 +621,7 @@ export function useCommunityChat() {
           const message = payload as CommunityMessage
 
           // Игнорируем свои сообщения (уже есть через optimistic UI)
-          if (message.userId === authStore.user?.id) return
+          if (message.userId === userStore.user?.id) return
 
           // Игнорируем если уже получили
           if (messages.value.some(m => m.id === message.id)) return
@@ -741,7 +741,7 @@ export function useCommunityChat() {
         messages.value.push(msg)
 
         // Уведомление если не от текущего пользователя
-        if (msg.userId !== authStore.user?.id) {
+        if (msg.userId !== userStore.user?.id) {
           playNotificationSound()
         }
       }
@@ -803,7 +803,7 @@ export function useCommunityChat() {
   // Проверка роли модератора
   function isModerator(roomId?: string | number): boolean {
     // Сначала проверяем глобальную роль admin
-    if (authStore.user?.role === 'admin') return true
+    if (userStore.user?.role === 'admin') return true
 
     // Затем проверяем роль в конкретной комнате
     const rid = roomId || currentRoom.value?.id
@@ -818,7 +818,7 @@ export function useCommunityChat() {
 
   // Проверка роли admin в комнате
   function isRoomAdmin(roomId?: string | number): boolean {
-    if (authStore.user?.role === 'admin') return true
+    if (userStore.user?.role === 'admin') return true
 
     const rid = roomId || currentRoom.value?.id
     if (rid) {

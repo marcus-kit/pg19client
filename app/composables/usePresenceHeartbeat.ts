@@ -9,7 +9,7 @@
  */
 
 export function usePresenceHeartbeat() {
-  const authStore = useAuthStore()
+  const userStore = useUserStore()
 
   let heartbeatInterval: ReturnType<typeof setInterval> | null = null
   let visibilityHandler: (() => void) | null = null
@@ -18,7 +18,7 @@ export function usePresenceHeartbeat() {
 
   // Отправить heartbeat
   async function sendHeartbeat(status: 'online' | 'away' = 'online') {
-    if (!authStore.isAuthenticated) return
+    if (!userStore.isAuthenticated) return
 
     try {
       await $fetch('/api/user/presence', {
@@ -32,7 +32,7 @@ export function usePresenceHeartbeat() {
 
   // Пометить как offline
   async function markOffline() {
-    if (!authStore.isAuthenticated) return
+    if (!userStore.isAuthenticated) return
 
     try {
       await $fetch('/api/user/presence', {

@@ -1,12 +1,10 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
-
-const authStore = useAuthStore()
+const referralStore = useReferralStore()
 
 const copySuccess = ref(false)
 
 const copyCode = async () => {
-  const code = authStore.referralProgram?.code
+  const code = referralStore.referralProgram?.code
   if (!code) return
 
   try {
@@ -44,7 +42,7 @@ const copyCode = async () => {
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xl font-bold text-[var(--text-primary)] tracking-wider">
-            {{ authStore.referralProgram?.code || '...' }}
+            {{ referralStore.referralProgram?.code || '...' }}
           </span>
           <button
             class="p-1.5 rounded-lg hover:bg-white/10 transition-colors"

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useAuthStore } from '~/stores/auth'
 import { useTelegramLogin, type TelegramUser } from '~/composables/useTelegramLogin'
 import { useCallVerification } from '~/composables/useCallVerification'
 
@@ -7,7 +6,7 @@ definePageMeta({
   layout: 'guest'
 })
 
-const authStore = useAuthStore()
+const { init: authInit } = useAuthInit()
 const { initWidget, loginWithTelegram, isLoading: telegramLoading, error: telegramError, cleanup } = useTelegramLogin()
 
 // Call verification (Realtime-based)
@@ -63,7 +62,7 @@ const startCallVerification = async () => {
 // Данные приходят через Realtime broadcast → completeVerification → verifiedData
 watch(callStatus, async (newStatus) => {
   if (newStatus === 'verified' && verifiedData.value?.user && verifiedData.value?.account) {
-    authStore.setAuthData(verifiedData.value.user, verifiedData.value.account)
+    await authInit(verifiedData.value.user, verifiedData.value.account)
     await nextTick()
     await navigateTo('/dashboard')
   }
@@ -127,7 +126,7 @@ const handleTelegramAuth = async (telegramUser: TelegramUser) => {
     }
 
     // Сохраняем данные в store
-    authStore.setAuthData(response.user, response.account)
+    await authInit(response.user, response.account)
 
     // Используем полный редирект вместо SPA-навигации
     // Это обходит проблему конфликта Vue unmount с Telegram виджетом
@@ -163,7 +162,7 @@ const handleContractSubmit = async () => {
     })
 
     // Сохраняем данные в store
-    authStore.setAuthData(response.user, response.account)
+    await authInit(response.user, response.account)
 
     // Даём Vue завершить обновление перед навигацией
     await nextTick()
