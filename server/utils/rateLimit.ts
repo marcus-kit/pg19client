@@ -184,6 +184,11 @@ export const RATE_LIMIT_CONFIGS = {
   form: createRateLimiter('chat:form-upload', {
     windowMs: 5 * 60 * 1000,
     maxRequests: 10
+  }),
+  /** Telegram Deeplink: 5 запросов за 5 минут */
+  telegramDeeplink: createRateLimiter('auth:telegram-deeplink', {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 5
   })
 }
 

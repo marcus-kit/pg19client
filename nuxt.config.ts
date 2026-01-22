@@ -66,9 +66,10 @@ export default defineNuxtConfig({
   // ---------------------------------------------------------------------------
   runtimeConfig: {
     // Серверные переменные (недоступны на клиенте)
-    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',     // Токен Telegram бота
-    supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',   // Service role ключ Supabase
-    openaiApiKey: process.env.OPENAI_API_KEY || '',             // API ключ OpenAI (AI-бот в чате)
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',         // Токен Telegram бота
+    telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '', // Секрет для проверки webhook от Telegram
+    supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',       // Service role ключ Supabase
+    openaiApiKey: process.env.OPENAI_API_KEY || '',                 // API ключ OpenAI (AI-бот в чате)
 
     // Публичные переменные (доступны на клиенте)
     public: {
