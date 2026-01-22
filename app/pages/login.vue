@@ -375,6 +375,6 @@ const handleContractSubmit = async () => {
           Вернуться на главную
         </a>
       </div>
-    </UCard>
+    </UiCard>
   </div>
 </template>
