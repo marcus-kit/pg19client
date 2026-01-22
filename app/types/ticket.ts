@@ -82,10 +82,3 @@ export const ticketCategoryIcons: Record<TicketCategory, string> = {
   equipment: 'heroicons:tv',
   other: 'heroicons:question-mark-circle'
 }
-
-export const ticketPriorityLabels: Record<TicketPriority, string> = {
-  low: 'Низкий',
-  normal: 'Обычный',
-  high: 'Высокий',
-  urgent: 'Срочный'
-}

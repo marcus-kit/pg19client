@@ -20,21 +20,3 @@ export function useSiteContent<T extends Record<string, unknown>>(page: string) 
     getSection
   }
 }
-
-/**
- * Загрузка списка услуг для публичного сайта
- */
-export function usePublicServices() {
-  return useFetch('/api/content/services', {
-    key: 'services-list'
-  })
-}
-
-/**
- * Загрузка категорий ТВ каналов
- */
-export function useTvChannels() {
-  return useFetch('/api/content/tv-channels', {
-    key: 'tv-channels-list'
-  })
-}

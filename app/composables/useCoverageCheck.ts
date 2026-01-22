@@ -42,16 +42,10 @@ export function useCoverageCheck() {
     }
   }
 
-  function clearResult(): void {
-    result.value = null
-    error.value = null
-  }
-
   return {
     result: readonly(result),
     isChecking: readonly(isChecking),
     error: readonly(error),
-    checkCoverage,
-    clearResult
+    checkCoverage
   }
 }
