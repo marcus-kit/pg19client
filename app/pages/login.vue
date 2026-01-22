@@ -54,8 +54,8 @@ const form = reactive({
 const isLoading = ref(false)
 const error = ref('')
 
-// Переключение метода
-const setAuthMethod = (method: 'telegram' | 'contract' | 'call') => {
+// Переключение метода авторизации
+function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
   authMethod.value = method
   error.value = ''
   // Сбрасываем состояние call verification при переключении
@@ -69,7 +69,7 @@ const setAuthMethod = (method: 'telegram' | 'contract' | 'call') => {
 }
 
 // Обработка авторизации по звонку
-const startCallVerification = async () => {
+async function startCallVerification(): Promise<void> {
   if (!callPhoneValid.value) return
   error.value = ''
   await requestVerification(callPhone.value)
@@ -104,7 +104,7 @@ watch(callPhone, (newValue) => {
 const widgetInitialized = ref(false)
 
 // Инициализация Telegram виджета
-const initTelegramWidget = () => {
+function initTelegramWidget(): void {
   if (widgetInitialized.value) return
   const container = document.getElementById('telegram-login-container')
   if (!container) return
@@ -114,7 +114,7 @@ const initTelegramWidget = () => {
 }
 
 // Инициализация маски телефона (вызывается когда инпут появляется в DOM)
-const initPhoneMask = () => {
+function initPhoneMask(): void {
   if (phoneMask || !phoneInputRef.value) return
 
   phoneMask = IMask(phoneInputRef.value, {
@@ -148,7 +148,7 @@ watch(authMethod, async (method) => {
 })
 
 // Очистка контейнера Telegram виджета (важно перед навигацией!)
-const clearTelegramContainer = () => {
+function clearTelegramContainer(): void {
   const container = document.getElementById('telegram-login-container')
   if (container) {
     container.innerHTML = ''
@@ -163,7 +163,7 @@ onUnmounted(() => {
 })
 
 // Обработка авторизации через Telegram
-const handleTelegramAuth = async (telegramUser: TelegramUser) => {
+async function handleTelegramAuth(telegramUser: TelegramUser): Promise<void> {
   error.value = ''
 
   try {
@@ -186,7 +186,7 @@ const handleTelegramAuth = async (telegramUser: TelegramUser) => {
 }
 
 // Обработка авторизации по договору
-const handleContractSubmit = async () => {
+async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
   if (!form.contractNumber || !form.lastName || !form.firstName) {

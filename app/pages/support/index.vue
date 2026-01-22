@@ -2,6 +2,7 @@
 import type { Ticket, TicketCategory } from '~/types/ticket'
 import { ticketStatusLabels, ticketStatusColors, ticketCategoryLabels } from '~/types/ticket'
 import type { FaqItem } from '~/server/api/support/faq.get'
+import { formatFileSize, formatRelativeDate } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -138,13 +139,6 @@ function removePendingFile() {
   }
 }
 
-// Форматирование размера файла
-function formatFileSize(bytes: number | undefined): string {
-  if (!bytes) return ''
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / 1024 / 1024).toFixed(1)} МБ`
-}
 
 // -----------------------------------------------------------------------------
 // Helpers для отображения сообщений чата (инлайн из ChatMessage.vue)
@@ -224,26 +218,6 @@ const toggleFaq = (id: number) => {
   expandedFaq.value = expandedFaq.value === id ? null : id
 }
 
-const formatRelativeDate = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'только что'
-  if (diffMins < 60) return `${diffMins} мин. назад`
-  if (diffHours < 24) return `${diffHours} ч. назад`
-  if (diffDays < 7) return `${diffDays} дн. назад`
-
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 // Количество активных тикетов
 const activeTicketsCount = computed(() => {
@@ -699,7 +673,7 @@ const submitTicket = async () => {
                 class="w-12 h-12 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
               >
                 <Icon
-                  :name="isUploading ? 'heroicons:arrow-path' : isSending ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
+                  :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
                   class="w-5 h-5"
                   :class="{ 'animate-spin': isSending || isUploading }"
                 />

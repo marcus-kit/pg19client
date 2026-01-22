@@ -22,13 +22,8 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo('/login')
   }
 
-  // Авторизован + страница логина → на дашборд
-  if (userStore.isAuthenticated && to.path === '/login') {
-    return navigateTo('/dashboard')
-  }
-
-  // Авторизован + главная → на дашборд
-  if (to.path === '/' && userStore.isAuthenticated) {
+  // Авторизован + публичный роут (/, /login) → на дашборд
+  if (userStore.isAuthenticated && isPublicRoute) {
     return navigateTo('/dashboard')
   }
 })
