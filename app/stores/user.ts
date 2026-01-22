@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import type { User } from '~/types'
 
+const STORAGE_KEY = 'pg19_user'
+
 interface UserState {
   isAuthenticated: boolean
   user: User | null
@@ -46,5 +48,10 @@ export const useUserStore = defineStore('user', {
       this.isAuthenticated = false
       this.user = null
     }
+  },
+
+  persist: {
+    key: STORAGE_KEY,
+    pick: ['isAuthenticated', 'user']
   }
 })

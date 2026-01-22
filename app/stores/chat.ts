@@ -55,5 +55,9 @@ export const useChatStore = defineStore('chat', {
     clearUnread() {
       this.unreadCount = 0
     }
+  },
+
+  persist: {
+    pick: ['sessionId']
   }
 })
