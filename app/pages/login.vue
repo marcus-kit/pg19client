@@ -56,12 +56,7 @@ const setAuthMethod = (method: 'telegram' | 'contract' | 'call') => {
 const startCallVerification = async () => {
   if (!callPhoneValid.value) return
   error.value = ''
-
-  try {
-    await requestVerification(callPhone.value)
-  } catch (e: any) {
-    // error уже установлен в composable
-  }
+  await requestVerification(callPhone.value)
 }
 
 // Watch для автоматического входа при verified
@@ -185,7 +180,7 @@ const handleContractSubmit = async () => {
 
 <template>
   <div class="w-full max-w-md">
-    <UCard padding="lg">
+    <UiCard padding="lg">
       <!-- Header -->
       <div class="text-center mb-6">
         <h1 class="text-2xl font-bold text-[var(--text-primary)] mb-2">Вход в личный кабинет</h1>
@@ -252,7 +247,7 @@ const handleContractSubmit = async () => {
 
       <!-- Contract Login Form -->
       <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
-        <UInput
+        <UiInput
           v-model="form.contractNumber"
           type="text"
           label="Номер договора"
@@ -260,14 +255,14 @@ const handleContractSubmit = async () => {
           inputmode="numeric"
         />
 
-        <UInput
+        <UiInput
           v-model="form.lastName"
           type="text"
           label="Фамилия"
           placeholder="Иванов"
         />
 
-        <UInput
+        <UiInput
           v-model="form.firstName"
           type="text"
           label="Имя"
@@ -275,9 +270,9 @@ const handleContractSubmit = async () => {
         />
 
         <!-- Submit -->
-        <UButton type="submit" variant="primary" block :loading="isLoading">
+        <UiButton type="submit" variant="primary" block :loading="isLoading">
           Войти
-        </UButton>
+        </UiButton>
       </form>
 
       <!-- Call Verification -->
@@ -294,7 +289,7 @@ const handleContractSubmit = async () => {
             @validation="callPhoneValid = $event"
           />
 
-          <UButton
+          <UiButton
             variant="primary"
             block
             :loading="callLoading"
@@ -302,7 +297,7 @@ const handleContractSubmit = async () => {
             @click="startCallVerification"
           >
             Получить номер для звонка
-          </UButton>
+          </UiButton>
 
           <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
             <p class="text-[var(--text-muted)]">

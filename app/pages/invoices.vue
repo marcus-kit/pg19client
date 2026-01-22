@@ -89,7 +89,7 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
 
     <!-- Loading State -->
     <div v-if="pending" class="space-y-4">
-      <UCard v-for="i in 3" :key="i" class="animate-pulse">
+      <UiCard v-for="i in 3" :key="i" class="animate-pulse">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
           <div class="flex-1 space-y-2">
@@ -97,21 +97,21 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
             <div class="h-3 bg-[var(--glass-bg)] rounded w-1/2"></div>
           </div>
         </div>
-      </UCard>
+      </UiCard>
     </div>
 
     <!-- Error State -->
-    <UCard v-else-if="error" class="border-red-500/30">
+    <UiCard v-else-if="error" class="border-red-500/30">
       <div class="text-center py-4">
         <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
         <p class="text-red-400 mb-4">Ошибка загрузки счетов</p>
-        <UButton @click="refresh">Повторить</UButton>
+        <UiButton @click="refresh">Повторить</UiButton>
       </div>
-    </UCard>
+    </UiCard>
 
     <!-- Invoices List -->
     <div v-else class="space-y-4">
-      <UCard
+      <UiCard
         v-for="invoice in filteredInvoices"
         :key="invoice.id"
         hover
@@ -130,9 +130,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
             <div>
               <div class="flex items-center gap-2 mb-1">
                 <span class="text-xs text-[var(--text-muted)]">{{ invoice.invoiceNumber }}</span>
-                <UBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
+                <UiBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
                   {{ invoiceStatusLabels[invoice.status] }}
-                </UBadge>
+                </UiBadge>
               </div>
               <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
               <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
@@ -150,15 +150,15 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
             <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
           </div>
         </div>
-      </UCard>
+      </UiCard>
 
       <!-- Empty State -->
-      <UCard v-if="filteredInvoices.length === 0" padding="lg">
+      <UiCard v-if="filteredInvoices.length === 0" padding="lg">
         <div class="text-center py-8">
           <Icon name="heroicons:document-text" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
           <p class="text-[var(--text-muted)]">Счетов не найдено</p>
         </div>
-      </UCard>
+      </UiCard>
     </div>
   </div>
 </template>

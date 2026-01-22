@@ -102,18 +102,7 @@ export const useAuthStore = defineStore('auth', {
     isAuthenticated: false,
     user: null,
     account: null,
-    notifications: {
-      email: false,
-      sms: false,
-      push: false,
-      telegram: false,
-      types: {
-        payments: true,
-        maintenance: true,
-        promotions: false,
-        news: false
-      }
-    },
+    notifications: { ...defaultNotifications },
     sessions: [],
     achievements: [],
     referralProgram: null
@@ -270,18 +259,7 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       this.user = null
       this.account = null
-      this.notifications = {
-        email: false,
-        sms: false,
-        push: false,
-        telegram: false,
-        types: {
-          payments: true,
-          maintenance: true,
-          promotions: false,
-          news: false
-        }
-      }
+      this.notifications = { ...defaultNotifications }
       this.sessions = []
       this.achievements = []
       this.referralProgram = null

@@ -30,12 +30,6 @@ const displayName = computed(() => {
   return props.message.user.nickname || props.message.user.firstName || 'Аноним'
 })
 
-// Truncate helper for reply preview
-const truncate = (text: string, length: number) => {
-  if (!text) return ''
-  return text.length > length ? text.slice(0, length) + '...' : text
-}
-
 // Context menu handler
 const handleContextMenu = (event: MouseEvent) => {
   emit('contextmenu', event, props.message)
@@ -71,7 +65,7 @@ const handleContextMenu = (event: MouseEvent) => {
       <span v-if="message.replyTo" class="text-[var(--text-muted)] text-sm mr-1">
         <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3 inline -mt-0.5" />
         {{ message.replyTo.user?.firstName }}:
-        {{ truncate(message.replyTo.content, 25) }} —
+        {{ truncateText(message.replyTo.content, 25) }} —
       </span>
 
       <!-- Content -->
