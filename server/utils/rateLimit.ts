@@ -140,3 +140,76 @@ export const communityImageLimiter = createRateLimiter('community:images', {
   windowMs: 300000, // 5 минут
   maxRequests: 5    // 5 изображений за 5 минут
 })
+
+// ==================================================
+// Helper functions для API endpoints
+// ==================================================
+
+import { getHeader, getRequestIP, createError, type H3Event } from 'h3'
+
+/**
+ * Получает уникальный идентификатор клиента (IP или fingerprint)
+ */
+export function getClientIdentifier(event: H3Event): string {
+  // Пробуем получить реальный IP из заголовков (для прокси/Traefik)
+  const forwarded = getHeader(event, 'x-forwarded-for')
+  if (forwarded) {
+    return forwarded.split(',')[0].trim()
+  }
+
+  const realIp = getHeader(event, 'x-real-ip')
+  if (realIp) {
+    return realIp
+  }
+
+  // Fallback на IP из запроса
+  return getRequestIP(event) || 'unknown'
+}
+
+/**
+ * Конфигурации rate limit для разных эндпоинтов
+ */
+export const RATE_LIMIT_CONFIGS = {
+  /** Авторизация по звонку: 3 попытки за 5 минут */
+  callVerify: createRateLimiter('auth:call-verify', {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 3
+  }),
+  /** Чат: 30 сообщений в минуту */
+  chat: createRateLimiter('chat:messages', {
+    windowMs: 60 * 1000,
+    maxRequests: 30
+  }),
+  /** Загрузка файлов (form): 10 файлов за 5 минут */
+  form: createRateLimiter('chat:form-upload', {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 10
+  })
+}
+
+/**
+ * Middleware-функция для проверки rate limit
+ * Выбрасывает 429 если лимит превышен
+ */
+export function requireRateLimit(event: H3Event, limiter: RateLimiter): void {
+  const clientId = getClientIdentifier(event)
+
+  if (!limiter.check(clientId)) {
+    const resetIn = Math.ceil(limiter.resetIn(clientId) / 1000)
+    throw createError({
+      statusCode: 429,
+      message: `Слишком много запросов. Попробуйте через ${resetIn} сек.`
+    })
+  }
+}
+
+/**
+ * Сбрасывает rate limit для конкретного клиента
+ * Используется после успешной авторизации
+ */
+export function resetRateLimit(clientId: string, limiterName: string): void {
+  const store = limiters.get(limiterName)
+  if (store) {
+    store.delete(clientId)
+  }
+}

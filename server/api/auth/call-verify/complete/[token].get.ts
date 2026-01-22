@@ -100,7 +100,7 @@ export default defineEventHandler(async (event) => {
 
   // Сбрасываем rate limit после успешного входа
   const clientIp = getClientIdentifier(event)
-  resetRateLimit(clientIp, 'call_verify')
+  resetRateLimit(clientIp, 'auth:call-verify')
 
   return {
     success: true,
