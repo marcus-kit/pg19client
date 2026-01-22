@@ -32,13 +32,15 @@ export default defineNuxtConfig({
   ],
 
   supabase: {
-    redirect: false
+    redirect: false,
+    types: false,
+    serviceKey: ''
   },
 
   runtimeConfig: {
     // Server-only
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
-    supabaseServiceKey: process.env.SUPABASE_SERVICE_KEY || '',
+    supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',
     dadataApiKey: process.env.DADATA_API_KEY || '',
     dadataSecretKey: process.env.DADATA_SECRET_KEY || '',
     openaiApiKey: process.env.OPENAI_API_KEY || '',

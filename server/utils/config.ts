@@ -18,8 +18,8 @@ export function validateConfig() {
   }
 
   // Server-only variables (приватные)
-  if (!config.supabaseServiceKey) {
-    errors.push('NUXT_SUPABASE_SERVICE_KEY is not set')
+  if (!config.supabaseSecretKey) {
+    errors.push('NUXT_SUPABASE_SECRET_KEY is not set')
   }
   if (!config.telegramBotToken) {
     errors.push('NUXT_TELEGRAM_BOT_TOKEN is not set')

@@ -21,7 +21,7 @@ export default defineEventHandler(async () => {
 
   const supabase = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey
+    config.supabaseSecretKey
   )
 
   const { data, error } = await supabase

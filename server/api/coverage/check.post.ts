@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   // Подключение к Supabase с service role
   const supabase = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey
+    config.supabaseSecretKey
   )
 
   try {

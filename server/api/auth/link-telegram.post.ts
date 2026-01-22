@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
   // Подключаемся к Supabase с service role
   const supabase = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey
+    config.supabaseSecretKey
   )
 
   // Проверяем, не привязан ли уже этот Telegram к другому аккаунту

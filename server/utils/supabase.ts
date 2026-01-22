@@ -24,7 +24,7 @@ export function useSupabaseServer(): SupabaseClient {
 
   _supabaseClient = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey,
+    config.supabaseSecretKey,
     {
       auth: {
         autoRefreshToken: false,

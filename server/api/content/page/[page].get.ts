@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
   const supabase = createClient(
     config.public.supabaseUrl,
-    config.supabaseServiceKey
+    config.supabaseSecretKey
   )
 
   // Получаем контент страницы + глобальный
