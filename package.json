@@ -16,8 +16,7 @@
     "imask": "^7.6.1",
     "nuxt": "^4.2.2",
     "openai": "^6.15.0",
-    "pinia-plugin-persistedstate": "^4.7.1",
-    "vue-yandex-maps": "^2.3.0"
+    "pinia-plugin-persistedstate": "^4.7.1"
   },
   "devDependencies": {
     "@iconify-json/heroicons": "^1.2.3",
