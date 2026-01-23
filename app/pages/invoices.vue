@@ -82,7 +82,8 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
     green: 'bg-accent/20 text-accent',
     red: 'bg-red-500/20 text-red-400'
   }
-  return colorMap[invoiceStatusColors[status]] || colorMap.gray
+  const color = invoiceStatusColors[status] as string
+  return (color in colorMap ? colorMap[color] : colorMap.gray) as string
 }
 </script>
 
