@@ -95,41 +95,6 @@ export function formatDateShort(dateStr: string | null | undefined): string {
 }
 
 /**
- * Format Russian phone number
- * Input: 79991234567 or +79991234567
- * Output: +7 (999) 123-45-67
- */
-export function formatPhone(phone: string | null | undefined): string {
-  if (!phone) return '—'
-
-  const digits = phone.replace(/\D/g, '')
-
-  if (digits.length === 11) {
-    return `+${digits[0]} (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7, 9)}-${digits.slice(9, 11)}`
-  }
-
-  if (digits.length === 10) {
-    return `+7 (${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6, 8)}-${digits.slice(8, 10)}`
-  }
-
-  return phone
-}
-
-/**
- * Format balance from kopeks to rubles (with currency symbol)
- * Input: 150050 (kopeks)
- * Output: "1 500,50 ₽"
- */
-export function formatBalance(kopeks: number | null | undefined): string {
-  if (kopeks === null || kopeks === undefined) return '—'
-
-  return (kopeks / 100).toLocaleString('ru-RU', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }) + ' ₽'
-}
-
-/**
  * Format kopeks to rubles (without currency symbol)
  * Input: 150050 (kopeks)
  * Output: "1 500,50"
@@ -142,18 +107,6 @@ export function formatKopeks(kopeks: number | null | undefined): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   })
-}
-
-/**
- * Format price (already in rubles, with currency symbol)
- */
-export function formatPrice(rubles: number | null | undefined): string {
-  if (rubles === null || rubles === undefined) return '—'
-
-  return rubles.toLocaleString('ru-RU', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }) + ' ₽'
 }
 
 /**
@@ -196,10 +149,7 @@ export function useFormatters() {
     formatDateTime,
     formatDate,
     formatDateShort,
-    formatPhone,
-    formatBalance,
     formatKopeks,
-    formatPrice,
     formatFileSize,
     truncateText,
     formatContractNumber
