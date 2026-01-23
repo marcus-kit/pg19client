@@ -66,6 +66,7 @@ const error = ref('')         // Общая ошибка (для договор�
 const callPhone = ref('')
 const phoneInputRef = ref<HTMLInputElement | null>(null)
 let phoneMask: ReturnType<typeof IMask> | null = null
+let phoneClickHandler: ((e: Event) => void) | null = null
 
 // =============================================================================
 // COMPUTED — вычисляемые значения
@@ -154,11 +155,60 @@ function initPhoneMask(): void {
   phoneMask = IMask(phoneInputRef.value, {
     mask: '+{7} (000) 000-00-00',
     lazy: false,
-    placeholderChar: '_'
+    placeholderChar: '_',
+    overwrite: true, // Перезаписывать символы вместо вставки
+    autofix: true, // Автоматически исправлять неполные значения
+    prepare: (appended: string, masked: any) => {
+      // Защита от удаления статической части (+7)
+      if (masked.value && !masked.value.startsWith('+7')) {
+        return ''
+      }
+      return appended
+    }
   })
+  
   phoneMask.on('accept', () => {
+    // Синхронизируем значение с реактивной переменной
     callPhone.value = phoneMask!.unmaskedValue
+    
+    // Дополнительная защита: восстанавливаем +7 если его случайно удалили
+    if (phoneMask!.value && !phoneMask!.value.startsWith('+7')) {
+      const digits = phoneMask!.unmaskedValue.replace(/\D/g, '')
+      if (digits.length > 0) {
+        phoneMask!.unmaskedValue = '7' + digits.replace(/^7/, '')
+      } else {
+        phoneMask!.value = '+7 (___) ___-__-__'
+      }
+    }
   })
+  
+  // Защита от удаления статической части при любых изменениях
+  phoneMask.on('input', () => {
+    if (phoneMask!.value && !phoneMask!.value.startsWith('+7')) {
+      const digits = phoneMask!.unmaskedValue.replace(/\D/g, '')
+      if (digits.length > 0) {
+        phoneMask!.unmaskedValue = '7' + digits.replace(/^7/, '')
+      } else {
+        phoneMask!.value = '+7 (___) ___-__-__'
+      }
+    }
+  })
+  
+  // Защита при клике: если кликнули в область +7, не даем удалить
+  phoneClickHandler = (e: Event) => {
+    const target = e.target as HTMLInputElement
+    const selectionStart = target.selectionStart || 0
+    // Если курсор в области +7 (первые 2 символа), перемещаем его после
+    if (selectionStart < 2 && phoneMask!.value.startsWith('+7')) {
+      setTimeout(() => {
+        phoneMask!.updateCursor()
+        if (target.setSelectionRange) {
+          target.setSelectionRange(2, 2)
+        }
+      }, 0)
+    }
+  }
+  phoneInputRef.value.addEventListener('click', phoneClickHandler)
 }
 
 // =============================================================================
@@ -175,6 +225,10 @@ watch(callStatus, async (newStatus) => {
 
   // При сбросе — пересоздаём маску (инпут перемонтируется)
   if (newStatus === 'idle') {
+    if (phoneClickHandler && phoneInputRef.value) {
+      phoneInputRef.value.removeEventListener('click', phoneClickHandler)
+      phoneClickHandler = null
+    }
     phoneMask?.destroy()
     phoneMask = null
     await nextTick()
@@ -206,6 +260,14 @@ watch(authMethod, async (method) => {
   if (method === 'call') {
     await nextTick()
     setTimeout(() => initPhoneMask(), 50)
+  } else {
+    // При переключении с таба "call" уничтожаем маску и обработчик
+    if (phoneClickHandler && phoneInputRef.value) {
+      phoneInputRef.value.removeEventListener('click', phoneClickHandler)
+      phoneClickHandler = null
+    }
+    phoneMask?.destroy()
+    phoneMask = null
   }
 })
 
@@ -215,7 +277,12 @@ watch(authMethod, async (method) => {
 
 onUnmounted(() => {
   resetTelegram()
+  if (phoneClickHandler && phoneInputRef.value) {
+    phoneInputRef.value.removeEventListener('click', phoneClickHandler)
+    phoneClickHandler = null
+  }
   phoneMask?.destroy()
+  phoneMask = null
 })
 </script>
 
