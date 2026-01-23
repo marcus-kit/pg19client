@@ -1,4 +1,11 @@
 <script setup lang="ts">
+/**
+ * Главная страница (дашборд) — обзор состояния аккаунта:
+ * - Баланс и состояние подключения
+ * - Реферальная программа
+ * - Специальные предложения
+ * - Новости сообщества
+ */
 import type { NewsCategory } from '~/types/news'
 import { formatDateShort } from '~/composables/useFormatters'
 
@@ -6,25 +13,44 @@ definePageMeta({
   middleware: 'auth'
 })
 
+// =============================================================================
+// STORES
+// =============================================================================
+
 const userStore = useUserStore()
 const accountStore = useAccountStore()
 
-// Загрузка новостей из API
+// =============================================================================
+// DATA — загрузка новостей
+// =============================================================================
+
 const { fetchNews } = useNews()
 const { news, pending, error } = await fetchNews({ limit: 3, active: true })
 
-// Модальное окно
+// =============================================================================
+// STATE — модальное окно новости
+// =============================================================================
+
 const selectedNewsId = ref<number | null>(null)
 
-const openNewsModal = (id: number) => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Открыть модалку с новостью
+function openNewsModal(id: number): void {
   selectedNewsId.value = id
 }
 
-const closeNewsModal = () => {
+// Закрыть модалку
+function closeNewsModal(): void {
   selectedNewsId.value = null
 }
 
-// Маппинг категорий
+// =============================================================================
+// CONSTANTS — маппинг категорий новостей
+// =============================================================================
+
 const categoryLabels: Record<NewsCategory, string> = {
   announcement: 'Объявление',
   protocol: 'Протокол',
@@ -40,7 +66,9 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
+    <!-- =====================================================================
+         PAGE HEADER — приветствие и номер договора
+         ===================================================================== -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">
         Добро пожаловать, {{ userStore.user?.firstName }}!
@@ -48,16 +76,22 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
       <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p>
     </div>
 
-    <!-- Main Grid -->
+    <!-- =====================================================================
+         MAIN CARDS — баланс и состояние подключения
+         ===================================================================== -->
     <div class="grid md:grid-cols-2 gap-4">
       <DashboardBalanceCard />
       <DashboardConnectionCard />
     </div>
 
-    <!-- Referral Promo -->
+    <!-- =====================================================================
+         REFERRAL PROMO — карточка реферальной программы
+         ===================================================================== -->
     <DashboardReferralCard />
 
-    <!-- Special Offer -->
+    <!-- =====================================================================
+         SPECIAL OFFER — специальное предложение
+         ===================================================================== -->
     <section>
       <UiCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
         <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
@@ -86,13 +120,15 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
       </UiCard>
     </section>
 
-    <!-- Community News -->
+    <!-- =====================================================================
+         COMMUNITY NEWS — блок новостей
+         ===================================================================== -->
     <section>
       <div class="flex items-center justify-between mb-4">
         <h2 class="text-lg font-semibold text-[var(--text-primary)]">Новости сообщества</h2>
       </div>
 
-      <!-- Loading State -->
+      <!-- Загрузка -->
       <div v-if="pending" class="grid md:grid-cols-3 gap-4">
         <UiCard v-for="i in 3" :key="i" class="p-5 animate-pulse">
           <div class="h-3 bg-white/10 rounded w-20 mb-2" />
@@ -101,18 +137,18 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
         </UiCard>
       </div>
 
-      <!-- Error State -->
+      <!-- Ошибка -->
       <div v-else-if="error" class="p-6 bg-red-500/10 border border-red-500/20 rounded-lg">
         <p class="text-red-400 text-center">Не удалось загрузить новости</p>
       </div>
 
-      <!-- Empty State -->
+      <!-- Пусто -->
       <div v-else-if="news.length === 0" class="p-8 text-center bg-white/5 rounded-lg">
         <Icon name="heroicons:newspaper" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-2" />
         <p class="text-[var(--text-muted)]">Новостей пока нет</p>
       </div>
 
-      <!-- News Grid -->
+      <!-- Сетка новостей -->
       <div v-else class="grid md:grid-cols-3 gap-4">
         <UiCard
           v-for="item in news"
@@ -137,7 +173,7 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
         </UiCard>
       </div>
 
-      <!-- Modal -->
+      <!-- Модалка с деталями новости -->
       <DashboardNewsModal
         v-if="selectedNewsId"
         :news-id="selectedNewsId"

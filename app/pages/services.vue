@@ -1,4 +1,11 @@
 <script setup lang="ts">
+/**
+ * Страница услуг — управление подключенными услугами:
+ * - Подключенные услуги (subscriptions) — с индивидуальными ценами
+ * - Доступные услуги (services) — можно подключить через заявку
+ *
+ * Подключение создаёт тикет в категории 'connection'
+ */
 import type { Subscription, Service } from '~/types/service'
 import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
 import { formatKopeks } from '~/composables/useFormatters'
@@ -7,14 +14,18 @@ definePageMeta({
   middleware: 'auth'
 })
 
+// =============================================================================
+// COMPOSABLES
+// =============================================================================
+
 const router = useRouter()
 const { fetchServices, fetchSubscriptions } = useServices()
 const { createTicket } = useTickets()
 
-// Состояние для запроса подключения
-const connectingServiceId = ref<string | null>(null)
+// =============================================================================
+// DATA — загрузка услуг и подписок параллельно
+// =============================================================================
 
-// Загружаем данные параллельно
 const [servicesData, subscriptionsData] = await Promise.all([
   fetchServices(),
   fetchSubscriptions()
@@ -23,26 +34,44 @@ const [servicesData, subscriptionsData] = await Promise.all([
 const { services, pending: servicesPending, error: servicesError } = servicesData
 const { subscriptions, pending: subsPending, error: subsError } = subscriptionsData
 
+// =============================================================================
+// STATE
+// =============================================================================
+
+// ID услуги, для которой создаётся заявка (для показа спиннера)
+const connectingServiceId = ref<string | null>(null)
+
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Общий флаг загрузки
 const pending = computed(() => servicesPending.value || subsPending.value)
+
+// Общая ошибка
 const error = computed(() => servicesError.value || subsError.value)
 
-// ID подключенных услуг
+// ID уже подключенных услуг (для фильтрации)
 const subscribedServiceIds = computed(() => {
   return new Set(subscriptions.value.map(s => s.serviceId))
 })
 
-// Доступные для подключения услуги
+// Доступные для подключения (не подключенные)
 const availableServices = computed(() => {
   return services.value.filter(s => !subscribedServiceIds.value.has(s.id))
 })
 
-// Получить цену подписки (custom или стандартная)
-const getSubscriptionPrice = (sub: Subscription) => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Получить цену подписки (индивидуальная или стандартная)
+function getSubscriptionPrice(sub: Subscription): number {
   return sub.customPrice ?? sub.service?.priceMonthly ?? 0
 }
 
-// Статус подписки
-const getStatusColor = (status: string) => {
+// Получить CSS-класс для бейджа статуса
+function getStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
     green: 'bg-accent/20 text-accent',
     yellow: 'bg-yellow-500/20 text-yellow-400',
@@ -51,13 +80,13 @@ const getStatusColor = (status: string) => {
   return colorMap[subscriptionStatusColors[status as keyof typeof subscriptionStatusColors]] || colorMap.gray
 }
 
-// Иконка услуги
-const getServiceIcon = (service: Service | undefined) => {
+// Получить иконку услуги
+function getServiceIcon(service: Service | undefined): string {
   return service?.icon || 'heroicons:cube'
 }
 
-// Запрос на подключение услуги
-const requestConnection = async (service: Service) => {
+// Создать заявку на подключение услуги
+async function requestConnection(service: Service): Promise<void> {
   connectingServiceId.value = service.id
   try {
     const { ticket, error } = await createTicket({
@@ -84,13 +113,17 @@ const requestConnection = async (service: Service) => {
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
+    <!-- =====================================================================
+         PAGE HEADER
+         ===================================================================== -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">Услуги</h1>
       <p class="text-[var(--text-muted)] mt-1">Управление подключенными услугами</p>
     </div>
 
-    <!-- Loading State -->
+    <!-- =====================================================================
+         LOADING — скелетон загрузки
+         ===================================================================== -->
     <div v-if="pending" class="space-y-6">
       <section>
         <div class="h-6 bg-[var(--glass-bg)] rounded w-40 mb-4"></div>
@@ -108,7 +141,9 @@ const requestConnection = async (service: Service) => {
       </section>
     </div>
 
-    <!-- Error State -->
+    <!-- =====================================================================
+         ERROR — состояние ошибки
+         ===================================================================== -->
     <UiCard v-else-if="error">
       <UiErrorState
         title="Ошибка загрузки"
@@ -118,7 +153,9 @@ const requestConnection = async (service: Service) => {
     </UiCard>
 
     <template v-else>
-      <!-- Active Services (Subscriptions) -->
+      <!-- =================================================================
+           SUBSCRIPTIONS — подключенные услуги
+           ================================================================= -->
       <section>
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
         <div v-if="subscriptions.length" class="grid gap-4">
@@ -159,7 +196,9 @@ const requestConnection = async (service: Service) => {
         </UiCard>
       </section>
 
-      <!-- Available Services -->
+      <!-- =================================================================
+           AVAILABLE SERVICES — доступные для подключения
+           ================================================================= -->
       <section v-if="availableServices.length">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
         <div class="grid md:grid-cols-2 gap-4">

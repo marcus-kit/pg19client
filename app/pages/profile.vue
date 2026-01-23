@@ -1,12 +1,34 @@
 <script setup lang="ts">
+/**
+ * Страница профиля — 5 вкладок:
+ * 1. Профиль — аватар, достижения, реферальная программа
+ * 2. Персональные данные — ФИО, контакты, Telegram
+ * 3. Договор — информация о договоре и адресе
+ * 4. Уведомления — настройки оповещений
+ * 5. Безопасность — сессии, выход
+ *
+ * Особенности:
+ * - Прогресс-бар заполненности профиля
+ * - Уровни профиля (Новичок → Мастер)
+ */
 definePageMeta({
   middleware: 'auth'
 })
 
+// =============================================================================
+// STORES
+// =============================================================================
+
 const userStore = useUserStore()
 
+// =============================================================================
+// STATE
+// =============================================================================
+
+// Активная вкладка
 const activeTab = ref<'profile' | 'personal' | 'contract' | 'notifications' | 'security'>('profile')
 
+// Конфигурация вкладок
 const tabs = [
   { id: 'profile' as const, label: 'Профиль', icon: 'heroicons:user-circle' },
   { id: 'personal' as const, label: 'Персональные данные', icon: 'heroicons:identification' },
@@ -15,7 +37,11 @@ const tabs = [
   { id: 'security' as const, label: 'Безопасность', icon: 'heroicons:shield-check' }
 ]
 
-// Profile completion calculation
+// =============================================================================
+// COMPUTED — прогресс заполнения профиля
+// =============================================================================
+
+// Поля профиля с весами (points)
 const profileFields = computed(() => [
   { name: 'Фото', filled: !!userStore.user?.avatar, points: 10 },
   { name: 'Имя', filled: !!userStore.user?.firstName, points: 10 },
@@ -28,22 +54,27 @@ const profileFields = computed(() => [
   { name: 'VK ID', filled: !!userStore.user?.vkId, points: 15 }
 ])
 
+// Сумма заполненных полей
 const completedPoints = computed(() =>
   profileFields.value.filter(f => f.filled).reduce((sum, f) => sum + f.points, 0)
 )
 
+// Максимальная сумма (100)
 const totalPoints = computed(() =>
   profileFields.value.reduce((sum, f) => sum + f.points, 0)
 )
 
+// Процент заполнения
 const completionPercent = computed(() =>
   Math.round((completedPoints.value / totalPoints.value) * 100)
 )
 
+// Незаполненные поля (для подсказки)
 const missingFields = computed(() =>
   profileFields.value.filter(f => !f.filled)
 )
 
+// Уровень профиля (зависит от процента заполнения)
 const levelInfo = computed(() => {
   const percent = completionPercent.value
   if (percent >= 100) return { level: 'Мастер', color: 'from-yellow-400 to-amber-500', icon: 'heroicons:star' }
@@ -55,13 +86,17 @@ const levelInfo = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
+    <!-- =====================================================================
+         PAGE HEADER
+         ===================================================================== -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">Профиль</h1>
       <p class="text-[var(--text-muted)] mt-1">Управление личными данными</p>
     </div>
 
-    <!-- Tabs (moved above completion card) -->
+    <!-- =====================================================================
+         TABS — переключение между разделами
+         ===================================================================== -->
     <div class="flex gap-2 overflow-x-auto pb-2">
       <button
         v-for="tab in tabs"
@@ -78,9 +113,11 @@ const levelInfo = computed(() => {
       </button>
     </div>
 
-    <!-- Profile Tab -->
+    <!-- =====================================================================
+         PROFILE TAB — аватар, достижения, реферальная программа
+         ===================================================================== -->
     <div v-if="activeTab === 'profile'" class="space-y-6">
-      <!-- Profile Completion Card -->
+      <!-- Карточка прогресса заполнения профиля -->
       <UiCard class="p-0 overflow-hidden">
         <div class="px-5 py-4">
           <div class="flex items-center gap-4">
@@ -138,30 +175,36 @@ const levelInfo = computed(() => {
       <ProfileReferral />
     </div>
 
-    <!-- Personal Data Tab -->
+    <!-- =====================================================================
+         PERSONAL TAB — персональные данные
+         ===================================================================== -->
     <div v-if="activeTab === 'personal'" class="space-y-6">
-      <!-- Personal Info (ФИО, дата рождения) -->
+      <!-- ФИО, дата рождения -->
       <ProfilePersonalInfo />
-
-      <!-- Contact Info -->
+      <!-- Телефон, email -->
       <ProfileContactInfo />
-
-      <!-- Telegram Link -->
+      <!-- Привязка Telegram -->
       <ProfileTelegramLink />
     </div>
 
-    <!-- Contract Tab -->
+    <!-- =====================================================================
+         CONTRACT TAB — информация о договоре
+         ===================================================================== -->
     <div v-if="activeTab === 'contract'" class="space-y-6">
       <ProfileContractInfo />
       <ProfileAddressInfo />
     </div>
 
-    <!-- Notifications Tab -->
+    <!-- =====================================================================
+         NOTIFICATIONS TAB — настройки уведомлений
+         ===================================================================== -->
     <div v-if="activeTab === 'notifications'" class="space-y-6">
       <ProfileNotifications />
     </div>
 
-    <!-- Security Tab -->
+    <!-- =====================================================================
+         SECURITY TAB — сессии и безопасность
+         ===================================================================== -->
     <div v-if="activeTab === 'security'" class="space-y-6">
       <ProfileSecurity />
     </div>

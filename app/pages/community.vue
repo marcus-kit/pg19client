@@ -1,9 +1,26 @@
 <script setup lang="ts">
+/**
+ * Страница сообщества — соседский чат с комнатами по уровням:
+ * - city — городской чат
+ * - district — районный чат
+ * - building — чат дома
+ *
+ * Особенности:
+ * - Realtime сообщения через Supabase
+ * - Закреплённые сообщения
+ * - Модерация (mute, delete, pin)
+ * - Infinite scroll для истории
+ * - Typing indicator
+ */
 import type { CommunityRoom, CommunityMessage, CommunityReportReason, CommunityRoomLevel } from '~/types/community'
 
 definePageMeta({
   middleware: 'auth'
 })
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const userStore = useUserStore()
 const {
@@ -35,34 +52,18 @@ const {
   broadcastTyping
 } = useCommunityChat()
 
-// Load rooms on mount
-onMounted(async () => {
-  await loadRooms()
+// =============================================================================
+// STATE — локальное состояние
+// =============================================================================
 
-  // Auto-select building room (or first available)
-  if (rooms.value.length > 0) {
-    const buildingRoom = rooms.value.find(r => r.level === 'building')
-    await selectRoom(buildingRoom || rooms.value[0])
-  }
-})
-
-// Messages container ref for auto-scroll
+// Контейнер сообщений (для автоскролла)
 const messagesContainer = ref<HTMLElement>()
 
-// Auto-scroll on new messages
-watch(messages, () => {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
-}, { deep: true })
-
-// Reply state
+// Ответ на сообщение
 const replyTo = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
 
-// Context menu state
+// Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
   show: false,
   x: 0,
@@ -70,131 +71,29 @@ const contextMenu = ref({
   message: null as CommunityMessage | null
 })
 
-// Handlers
-const handleSend = async (content: string, options?: { replyToId?: number }) => {
-  await sendMessage(content, options)
-}
+// =============================================================================
+// MUTE MODAL — модалка блокировки пользователя
+// =============================================================================
 
-const handleUpload = async (file: File) => {
-  const { url, width, height } = await uploadImage(file)
-  await sendMessage('', { imageUrl: url, imageWidth: width, imageHeight: height })
-}
-
-const handlePin = async (messageId: number) => {
-  await togglePin(messageId)
-}
-
-const handleDelete = async (messageId: number) => {
-  if (confirm('Удалить это сообщение?')) {
-    await deleteMessage(messageId)
-  }
-}
-
-const handleRetry = async (tempId: string) => {
-  await retryMessage(tempId)
-}
-
-const handleRoomSelect = async (room: CommunityRoom) => {
-  await selectRoom(room)
-}
-
-// Context menu handlers
-const handleContextMenu = (event: MouseEvent, message: CommunityMessage) => {
-  contextMenu.value = {
-    show: true,
-    x: event.clientX,
-    y: event.clientY,
-    message
-  }
-}
-
-const closeContextMenu = () => {
-  contextMenu.value.show = false
-}
-
-const handleContextReply = () => {
-  if (contextMenu.value.message) {
-    replyTo.value = contextMenu.value.message
-    // Фокус на поле ввода
-    nextTick(() => {
-      messageInputRef.value?.focus()
-    })
-  }
-}
-
-const handleContextPin = () => {
-  if (contextMenu.value.message) {
-    handlePin(contextMenu.value.message.id as number)
-  }
-}
-
-const handleContextDelete = () => {
-  if (contextMenu.value.message) {
-    handleDelete(contextMenu.value.message.id as number)
-  }
-}
-
-// Moderation check
-const showModeration = computed(() => isModerator())
-
-// Level icons
-const levelIcon = (level: CommunityRoomLevel) => {
-  switch (level) {
-    case 'city': return 'heroicons:building-office-2'
-    case 'district': return 'heroicons:map'
-    case 'building': return 'heroicons:home'
-    default: return 'heroicons:chat-bubble-left-right'
-  }
-}
-
-// =====================================================
-// Mute Modal
-// =====================================================
 const showMuteModal = ref(false)
 const muteTargetUserId = ref<number | null>(null)
 const muteTargetUserName = ref('')
 
-const handleMuteClick = (userId: number) => {
-  const msg = messages.value.find(m => m.userId === userId)
-  muteTargetUserName.value = msg?.user?.nickname || msg?.user?.firstName || 'Пользователь'
-  muteTargetUserId.value = userId
-  showMuteModal.value = true
-}
+// =============================================================================
+// REPORT MODAL — модалка жалобы на сообщение
+// =============================================================================
 
-const handleMuteSubmit = async (data: { userId: number; duration: number; reason: string }) => {
-  try {
-    await muteUser(data.userId, data.duration, data.reason || undefined)
-    showMuteModal.value = false
-    muteTargetUserId.value = null
-  } catch {
-    // Error handled in composable
-  }
-}
-
-// =====================================================
-// Report Modal
-// =====================================================
 const showReportModal = ref(false)
 const reportTargetMessageId = ref<number | null>(null)
 
-const handleReportClick = (messageId: number) => {
-  reportTargetMessageId.value = messageId
-  showReportModal.value = true
-}
+// =============================================================================
+// COMPUTED
+// =============================================================================
 
-const handleReportSubmit = async (data: { messageId: number; reason: CommunityReportReason; details: string }) => {
-  try {
-    await reportMessage(data.messageId, data.reason, data.details || undefined)
-    showReportModal.value = false
-    reportTargetMessageId.value = null
-  } catch {
-    // Error handled in composable
-  }
-}
+// Показывать ли кнопки модерации
+const showModeration = computed(() => isModerator())
 
-// =====================================================
-// Muted status banner
-// =====================================================
+// Форматирование даты окончания мута
 const mutedUntilFormatted = computed(() => {
   if (!mutedUntil.value) return null
   return new Date(mutedUntil.value).toLocaleString('ru-RU', {
@@ -205,18 +104,191 @@ const mutedUntilFormatted = computed(() => {
   })
 })
 
-// Infinite scroll handler
-const handleScroll = (e: Event) => {
+// =============================================================================
+// METHODS — обработчики событий
+// =============================================================================
+
+// Иконка уровня комнаты
+function levelIcon(level: CommunityRoomLevel): string {
+  switch (level) {
+    case 'city': return 'heroicons:building-office-2'
+    case 'district': return 'heroicons:map'
+    case 'building': return 'heroicons:home'
+    default: return 'heroicons:chat-bubble-left-right'
+  }
+}
+
+// Отправка сообщения
+async function handleSend(content: string, options?: { replyToId?: number }): Promise<void> {
+  await sendMessage(content, options)
+}
+
+// Загрузка и отправка изображения
+async function handleUpload(file: File): Promise<void> {
+  const { url, width, height } = await uploadImage(file)
+  await sendMessage('', { imageUrl: url, imageWidth: width, imageHeight: height })
+}
+
+// Закрепить/открепить сообщение
+async function handlePin(messageId: number): Promise<void> {
+  await togglePin(messageId)
+}
+
+// Удалить сообщение (с подтверждением)
+async function handleDelete(messageId: number): Promise<void> {
+  if (confirm('Удалить это сообщение?')) {
+    await deleteMessage(messageId)
+  }
+}
+
+// Повторить отправку неудавшегося сообщения
+async function handleRetry(tempId: string): Promise<void> {
+  await retryMessage(tempId)
+}
+
+// Выбрать комнату
+async function handleRoomSelect(room: CommunityRoom): Promise<void> {
+  await selectRoom(room)
+}
+
+// -----------------------------------------------------------------------------
+// Контекстное меню
+// -----------------------------------------------------------------------------
+
+// Открыть контекстное меню на сообщении
+function handleContextMenu(event: MouseEvent, message: CommunityMessage): void {
+  contextMenu.value = {
+    show: true,
+    x: event.clientX,
+    y: event.clientY,
+    message
+  }
+}
+
+// Закрыть контекстное меню
+function closeContextMenu(): void {
+  contextMenu.value.show = false
+}
+
+// Ответить на сообщение из контекстного меню
+function handleContextReply(): void {
+  if (contextMenu.value.message) {
+    replyTo.value = contextMenu.value.message
+    nextTick(() => {
+      messageInputRef.value?.focus()
+    })
+  }
+}
+
+// Закрепить из контекстного меню
+function handleContextPin(): void {
+  if (contextMenu.value.message) {
+    handlePin(contextMenu.value.message.id as number)
+  }
+}
+
+// Удалить из контекстного меню
+function handleContextDelete(): void {
+  if (contextMenu.value.message) {
+    handleDelete(contextMenu.value.message.id as number)
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Mute Modal
+// -----------------------------------------------------------------------------
+
+// Открыть модалку блокировки
+function handleMuteClick(userId: number): void {
+  const msg = messages.value.find(m => m.userId === userId)
+  muteTargetUserName.value = msg?.user?.nickname || msg?.user?.firstName || 'Пользователь'
+  muteTargetUserId.value = userId
+  showMuteModal.value = true
+}
+
+// Отправить блокировку
+async function handleMuteSubmit(data: { userId: number; duration: number; reason: string }): Promise<void> {
+  try {
+    await muteUser(data.userId, data.duration, data.reason || undefined)
+    showMuteModal.value = false
+    muteTargetUserId.value = null
+  } catch {
+    // Ошибка обрабатывается в composable
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Report Modal
+// -----------------------------------------------------------------------------
+
+// Открыть модалку жалобы
+function handleReportClick(messageId: number): void {
+  reportTargetMessageId.value = messageId
+  showReportModal.value = true
+}
+
+// Отправить жалобу
+async function handleReportSubmit(data: { messageId: number; reason: CommunityReportReason; details: string }): Promise<void> {
+  try {
+    await reportMessage(data.messageId, data.reason, data.details || undefined)
+    showReportModal.value = false
+    reportTargetMessageId.value = null
+  } catch {
+    // Ошибка обрабатывается в composable
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Infinite Scroll
+// -----------------------------------------------------------------------------
+
+// Подгрузка истории при скролле вверх
+function handleScroll(e: Event): void {
   const el = e.target as HTMLElement
   if (el.scrollTop < 100 && hasMoreMessages.value && !isLoadingMessages.value) {
     loadMore()
   }
 }
+
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
+// Загрузка комнат и автовыбор при монтировании
+onMounted(async () => {
+  await loadRooms()
+
+  // Автовыбор комнаты дома (или первой доступной)
+  if (rooms.value.length > 0) {
+    const buildingRoom = rooms.value.find(r => r.level === 'building')
+    await selectRoom(buildingRoom || rooms.value[0])
+  }
+})
+
+// =============================================================================
+// WATCHERS
+// =============================================================================
+
+// Автоскролл при новых сообщениях
+watch(messages, () => {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}, { deep: true })
 </script>
 
 <template>
+  <!-- =========================================================================
+       COMMUNITY PAGE — полноэкранный чат сообщества
+       Высота: 100vh минус header и mobile nav
+       ========================================================================= -->
   <div class="h-[calc(100vh-theme(spacing.16)-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
-    <!-- Top Channel Tabs -->
+
+    <!-- =====================================================================
+         HEADER — табы комнат и счётчик онлайн
+         ===================================================================== -->
     <header class="flex-shrink-0 border-b border-white/10">
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
@@ -265,7 +337,9 @@ const handleScroll = (e: Event) => {
       </div>
     </header>
 
-    <!-- Chat Area -->
+    <!-- =====================================================================
+         CHAT AREA — основная область чата
+         ===================================================================== -->
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <template v-if="currentRoom">
         <!-- Room info bar -->

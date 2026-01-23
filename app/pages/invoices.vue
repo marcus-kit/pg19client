@@ -1,4 +1,14 @@
 <script setup lang="ts">
+/**
+ * Страница счетов — история выставленных счетов:
+ * - Фильтрация: все / к оплате / оплаченные
+ * - Клик по счёту открывает его на invoice.doka.team
+ *
+ * Статусы счетов:
+ * - pending, sent, viewed — неоплаченные
+ * - paid — оплаченный
+ * - expired — просроченный
+ */
 import type { InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
@@ -7,16 +17,38 @@ definePageMeta({
   middleware: 'auth'
 })
 
-const { fetchInvoices } = useInvoices()
+// =============================================================================
+// DATA — загрузка счетов
+// =============================================================================
 
-// Загружаем все счета
+const { fetchInvoices } = useInvoices()
 const { invoices, pending, error, refresh } = await fetchInvoices()
+
+// =============================================================================
+// STATE — фильтр
+// =============================================================================
 
 const filter = ref<'all' | 'unpaid' | 'paid'>('all')
 
-// Неоплаченные статусы: pending, sent, viewed, expired
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+// Статусы неоплаченных счетов
 const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
 
+// Опции фильтра
+const filters = [
+  { value: 'all', label: 'Все' },
+  { value: 'unpaid', label: 'К оплате' },
+  { value: 'paid', label: 'Оплаченные' }
+]
+
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Отфильтрованный список счетов
 const filteredInvoices = computed(() => {
   if (filter.value === 'unpaid') {
     return invoices.value.filter(inv => unpaidStatuses.includes(inv.status))
@@ -27,19 +59,17 @@ const filteredInvoices = computed(() => {
   return invoices.value
 })
 
-const filters = [
-  { value: 'all', label: 'Все' },
-  { value: 'unpaid', label: 'К оплате' },
-  { value: 'paid', label: 'Оплаченные' }
-]
+// =============================================================================
+// METHODS
+// =============================================================================
 
-// Открыть счёт в новой вкладке
-const openInvoice = (invoiceId: string) => {
+// Открыть счёт в новой вкладке (на invoice.doka.team)
+function openInvoice(invoiceId: string): void {
   window.open(`https://invoice.doka.team/invoice/${invoiceId}`, '_blank')
 }
 
-// Цвет бейджа статуса
-const getStatusBadgeClass = (status: InvoiceStatus) => {
+// Получить CSS-класс для бейджа статуса
+function getStatusBadgeClass(status: InvoiceStatus): string {
   const colorMap: Record<string, string> = {
     gray: 'bg-gray-600/20 text-gray-400',
     primary: 'bg-primary/20 text-primary',
@@ -53,7 +83,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
+    <!-- =====================================================================
+         PAGE HEADER
+         ===================================================================== -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-[var(--text-primary)]">Счета</h1>
@@ -61,7 +93,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
       </div>
     </div>
 
-    <!-- Filters -->
+    <!-- =====================================================================
+         FILTERS — фильтр по статусу оплаты
+         ===================================================================== -->
     <div class="flex gap-2">
       <button
         v-for="f in filters"
@@ -77,7 +111,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
       </button>
     </div>
 
-    <!-- Loading State -->
+    <!-- =====================================================================
+         LOADING — скелетон загрузки
+         ===================================================================== -->
     <div v-if="pending" class="space-y-4">
       <UiCard v-for="i in 3" :key="i" class="animate-pulse">
         <div class="flex items-center gap-4">
@@ -90,7 +126,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
       </UiCard>
     </div>
 
-    <!-- Error State -->
+    <!-- =====================================================================
+         ERROR — состояние ошибки
+         ===================================================================== -->
     <UiCard v-else-if="error">
       <UiErrorState
         title="Ошибка загрузки"
@@ -99,7 +137,9 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
       />
     </UiCard>
 
-    <!-- Invoices List -->
+    <!-- =====================================================================
+         INVOICES LIST — список счетов
+         ===================================================================== -->
     <div v-else class="space-y-4">
       <UiCard
         v-for="invoice in filteredInvoices"

@@ -1,4 +1,13 @@
 <script setup lang="ts">
+/**
+ * Страница детали заявки — просмотр и переписка:
+ * - Информация о заявке (статус, категория, дата создания)
+ * - История сообщений (комментарии)
+ * - Форма ответа
+ * - Кнопки закрытия/решения заявки
+ *
+ * URL: /support/:id
+ */
 import type { TicketDetail, TicketComment } from '~/types/ticket'
 import { ticketStatusLabels, ticketStatusColors, ticketCategoryLabels, ticketCategoryIcons } from '~/types/ticket'
 import { formatDateTime, formatRelativeDate } from '~/composables/useFormatters'
@@ -7,6 +16,10 @@ definePageMeta({
   middleware: 'auth'
 })
 
+// =============================================================================
+// ROUTING & DATA
+// =============================================================================
+
 const route = useRoute()
 const router = useRouter()
 const ticketId = route.params.id as string
@@ -14,16 +27,25 @@ const ticketId = route.params.id as string
 const { fetchTicket, addComment, closeTicket } = useTickets()
 const { ticket, pending, error, refresh } = await fetchTicket(ticketId)
 
-// Форма ответа
+// =============================================================================
+// STATE — форма ответа
+// =============================================================================
+
 const replyContent = ref('')
 const submitting = ref(false)
 
-// Закрытие тикета
+// =============================================================================
+// STATE — модалка закрытия заявки
+// =============================================================================
+
 const showCloseModal = ref(false)
 const closeStatus = ref<'resolved' | 'closed'>('resolved')
 const closing = ref(false)
 
-// Статусы для UI
+// =============================================================================
+// CONSTANTS — конфигурация статусов
+// =============================================================================
+
 const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' | 'success' | 'neutral'; color: string }> = {
   new: { label: 'Новый', variant: 'info', color: 'text-blue-400' },
   open: { label: 'В работе', variant: 'warning', color: 'text-yellow-400' },
@@ -32,7 +54,28 @@ const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' 
   closed: { label: 'Закрыт', variant: 'neutral', color: 'text-[var(--text-muted)]' }
 }
 
-const submitReply = async () => {
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Можно ли отвечать (не закрыт и не решён)
+const canReply = computed(() => {
+  if (!ticket.value) return false
+  return !['closed', 'resolved'].includes(ticket.value.status)
+})
+
+// Можно ли закрыть тикет
+const canClose = computed(() => {
+  if (!ticket.value) return false
+  return !['closed', 'resolved'].includes(ticket.value.status)
+})
+
+// =============================================================================
+// METHODS — отправка ответа
+// =============================================================================
+
+// Отправить ответ
+async function submitReply(): Promise<void> {
   if (!replyContent.value.trim() || !ticket.value) return
 
   submitting.value = true
@@ -52,26 +95,18 @@ const submitReply = async () => {
   }
 }
 
-// Можно ли отвечать (не закрыт и не решён)
-const canReply = computed(() => {
-  if (!ticket.value) return false
-  return !['closed', 'resolved'].includes(ticket.value.status)
-})
-
-// Можно ли закрыть тикет
-const canClose = computed(() => {
-  if (!ticket.value) return false
-  return !['closed', 'resolved'].includes(ticket.value.status)
-})
+// =============================================================================
+// METHODS — закрытие заявки
+// =============================================================================
 
 // Открыть модалку закрытия
-const openCloseModal = (status: 'resolved' | 'closed') => {
+function openCloseModal(status: 'resolved' | 'closed'): void {
   closeStatus.value = status
   showCloseModal.value = true
 }
 
-// Закрыть тикет
-const handleClose = async () => {
+// Закрыть заявку
+async function handleClose(): Promise<void> {
   if (!ticket.value || closing.value) return
 
   closing.value = true
@@ -92,7 +127,11 @@ const handleClose = async () => {
   }
 }
 
-// Scroll to bottom on mount
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
+// Скролл к последнему сообщению при загрузке
 onMounted(() => {
   nextTick(() => {
     const messagesContainer = document.getElementById('messages-container')
@@ -102,6 +141,10 @@ onMounted(() => {
   })
 })
 
+// =============================================================================
+// HEAD — динамический title
+// =============================================================================
+
 useHead({
   title: computed(() => ticket.value ? `${ticket.value.number} — Поддержка` : 'Загрузка...')
 })
@@ -109,7 +152,9 @@ useHead({
 
 <template>
   <div class="space-y-6">
-    <!-- Back button -->
+    <!-- =====================================================================
+         BACK BUTTON — возврат к списку заявок
+         ===================================================================== -->
     <button
       @click="router.push('/support?tab=tickets')"
       class="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
@@ -118,7 +163,9 @@ useHead({
       Назад к заявкам
     </button>
 
-    <!-- Loading -->
+    <!-- =====================================================================
+         LOADING — скелетон загрузки
+         ===================================================================== -->
     <div v-if="pending" class="space-y-4">
       <UiCard class="animate-pulse">
         <div class="space-y-4">
@@ -129,7 +176,9 @@ useHead({
       </UiCard>
     </div>
 
-    <!-- Error -->
+    <!-- =====================================================================
+         ERROR — заявка не найдена
+         ===================================================================== -->
     <UiCard v-else-if="error">
       <UiErrorState
         title="Заявка не найдена"
@@ -139,9 +188,11 @@ useHead({
       />
     </UiCard>
 
-    <!-- Ticket Content -->
+    <!-- =====================================================================
+         TICKET CONTENT — основной контент заявки
+         ===================================================================== -->
     <template v-else-if="ticket">
-      <!-- Header Card -->
+      <!-- Шапка заявки (статус, категория, тема) -->
       <UiCard>
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div class="flex items-start gap-4">
@@ -195,7 +246,9 @@ useHead({
         </div>
       </UiCard>
 
-      <!-- Messages -->
+      <!-- =================================================================
+           MESSAGES — история переписки
+           ================================================================= -->
       <UiCard v-if="ticket.comments?.length">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">
           Переписка
@@ -271,7 +324,9 @@ useHead({
         </div>
       </UiCard>
 
-      <!-- No messages yet -->
+      <!-- =================================================================
+           EMPTY — нет сообщений
+           ================================================================= -->
       <UiCard v-else>
         <UiEmptyState
           icon="heroicons:chat-bubble-left-right"
@@ -280,7 +335,9 @@ useHead({
         />
       </UiCard>
 
-      <!-- Reply Form -->
+      <!-- =================================================================
+           REPLY FORM — форма ответа (если заявка открыта)
+           ================================================================= -->
       <UiCard v-if="canReply">
         <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Добавить сообщение</h3>
         <form @submit.prevent="submitReply" class="space-y-4">
@@ -300,7 +357,9 @@ useHead({
         </form>
       </UiCard>
 
-      <!-- Closed ticket notice -->
+      <!-- =================================================================
+           CLOSED NOTICE — уведомление о закрытой заявке
+           ================================================================= -->
       <UiCard v-else class="text-center py-6">
         <Icon name="heroicons:lock-closed" class="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2" />
         <p class="text-[var(--text-muted)]">
@@ -316,7 +375,9 @@ useHead({
       </UiCard>
     </template>
 
-    <!-- Модалка подтверждения закрытия -->
+    <!-- =====================================================================
+         CLOSE MODAL — модалка подтверждения закрытия
+         ===================================================================== -->
     <UiModal v-model="showCloseModal">
       <div class="p-6">
         <div class="text-center mb-6">
