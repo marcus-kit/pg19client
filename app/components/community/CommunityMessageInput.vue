@@ -1,5 +1,18 @@
 <script setup lang="ts">
+/**
+ * CommunityMessageInput — поле ввода сообщения
+ *
+ * Особенности:
+ * - Превью ответа на сообщение
+ * - Загрузка изображений (до 5 МБ)
+ * - Отправка по Enter (Shift+Enter — перенос строки)
+ * - Экспорт метода focus для родителя
+ */
 import type { CommunityMessage } from '~/types/community'
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
 
 const props = defineProps<{
   disabled?: boolean
@@ -13,20 +26,27 @@ const emit = defineEmits<{
   typing: []
 }>()
 
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
 const text = ref('')
 const fileInput = ref<HTMLInputElement>()
 const textInput = ref<HTMLInputElement>()
 
-// Экспонируем метод focus для родителя
-const focus = () => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Метод focus для родителя
+function focus(): void {
   nextTick(() => {
     textInput.value?.focus()
   })
 }
 
-defineExpose({ focus })
-
-const handleSend = () => {
+// Отправить сообщение
+function handleSend(): void {
   if (!text.value.trim() || props.disabled) return
 
   emit('send', text.value, {
@@ -37,14 +57,16 @@ const handleSend = () => {
   emit('cancelReply')
 }
 
-const handleKeydown = (e: KeyboardEvent) => {
+// Обработка нажатия клавиш
+function handleKeydown(e: KeyboardEvent): void {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
     handleSend()
   }
 }
 
-const handleFileSelect = (e: Event) => {
+// Обработка выбора файла
+function handleFileSelect(e: Event): void {
   const input = e.target as HTMLInputElement
   const file = input.files?.[0]
 
@@ -64,6 +86,12 @@ const handleFileSelect = (e: Event) => {
 
   input.value = ''
 }
+
+// =============================================================================
+// EXPOSE
+// =============================================================================
+
+defineExpose({ focus })
 </script>
 
 <template>

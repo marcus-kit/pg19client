@@ -1,5 +1,17 @@
 <script setup lang="ts">
+/**
+ * CommunityReportModal — модалка жалобы на сообщение
+ *
+ * Особенности:
+ * - Выбор причины: спам, оскорбления, мошенничество, другое
+ * - Опциональное описание проблемы
+ * - Валидация выбора причины
+ */
 import type { CommunityReportReason } from '~/types/community'
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
 
 interface Props {
   messageId: number
@@ -12,10 +24,18 @@ const emit = defineEmits<{
   report: [{ messageId: number; reason: CommunityReportReason; details: string }]
 }>()
 
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
 const isSubmitting = ref(false)
 const selectedReason = ref<CommunityReportReason | null>(null)
 const details = ref('')
 const error = ref('')
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
 const reasons: { value: CommunityReportReason; label: string; icon: string }[] = [
   { value: 'spam', label: 'Спам', icon: 'heroicons:envelope' },
@@ -24,7 +44,12 @@ const reasons: { value: CommunityReportReason; label: string; icon: string }[] =
   { value: 'other', label: 'Другое', icon: 'heroicons:question-mark-circle' }
 ]
 
-const handleSubmit = async () => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Отправить жалобу
+async function handleSubmit(): Promise<void> {
   if (!selectedReason.value) {
     error.value = 'Выберите причину жалобы'
     return
@@ -40,13 +65,17 @@ const handleSubmit = async () => {
   })
 }
 
-const handleBackdropClick = (e: MouseEvent) => {
+// Закрытие по клику на backdrop
+function handleBackdropClick(e: MouseEvent): void {
   if (e.target === e.currentTarget) {
     emit('close')
   }
 }
 
-// Закрытие по Escape
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
 onMounted(() => {
   const handleEscape = (e: KeyboardEvent) => {
     if (e.key === 'Escape') emit('close')

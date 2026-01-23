@@ -1,6 +1,19 @@
 <script setup lang="ts">
+/**
+ * DashboardNewsModal — модальное окно детали новости
+ *
+ * Особенности:
+ * - Загрузка новости по ID
+ * - Бейджи категории и закрепления
+ * - Вложения с размером файла
+ * - Закрытие по ESC и клику вне окна
+ */
 import type { NewsCategory } from '~/types/news'
 import { formatDate, formatFileSize } from '~/composables/useFormatters'
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
 
 interface Props {
   newsId: number | null
@@ -11,10 +24,21 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const { fetchNewsById } = useNews()
 
-// Загрузка новости при изменении ID
+// =============================================================================
+// DATA — загрузка новости
+// =============================================================================
+
 const { news, pending, error } = await fetchNewsById(props.newsId!)
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
 // Маппинг категорий для отображения
 const categoryLabels: Record<NewsCategory, string> = {
@@ -24,19 +48,26 @@ const categoryLabels: Record<NewsCategory, string> = {
 }
 
 const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
-  announcement: 'warning',  // Оранжевый (brand color)
-  protocol: 'info',         // Синий
-  notification: 'success'   // Зелёный (accent)
+  announcement: 'warning',
+  protocol: 'info',
+  notification: 'success'
 }
 
+// =============================================================================
+// METHODS
+// =============================================================================
+
 // Закрытие по ESC
-const handleEscape = (e: KeyboardEvent) => {
+function handleEscape(e: KeyboardEvent): void {
   if (e.key === 'Escape') emit('close')
 }
 
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
 onMounted(() => {
   document.addEventListener('keydown', handleEscape)
-  // Блокировка прокрутки body
   document.body.style.overflow = 'hidden'
 })
 

@@ -1,3 +1,10 @@
+/**
+ * Типы тикетов техподдержки
+ *
+ * Ticket, TicketComment, TicketAttachment, TicketDetail — структуры данных
+ * ticketStatusLabels, ticketStatusColors — маппинги для UI
+ * ticketCategoryLabels, ticketCategoryIcons — маппинги категорий
+ */
 export type TicketStatus = 'new' | 'open' | 'pending' | 'resolved' | 'closed'
 export type TicketCategory = 'technical' | 'billing' | 'connection' | 'tariff' | 'equipment' | 'other'
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent'

@@ -1,3 +1,9 @@
+/**
+ * Типы лицевого счёта
+ *
+ * AccountStatus — статус: active, blocked
+ * Account — данные ЛС: баланс, тариф, адрес
+ */
 export type AccountStatus = 'active' | 'blocked'
 
 export interface Account {

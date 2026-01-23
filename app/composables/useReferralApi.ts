@@ -1,3 +1,9 @@
+/**
+ * useReferralApi — API для реферальной программы
+ *
+ * Методы:
+ * - load — загрузить данные программы
+ */
 import type { ReferralProgram } from '~/types'
 
 export function useReferralApi() {

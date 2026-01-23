@@ -1,3 +1,9 @@
+/**
+ * useUserApi — API для обновления данных пользователя
+ *
+ * Методы:
+ * - update — обновить профиль пользователя
+ */
 import type { User } from '~/types'
 
 export function useUserApi() {

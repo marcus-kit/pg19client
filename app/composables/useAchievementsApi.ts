@@ -1,3 +1,9 @@
+/**
+ * useAchievementsApi — API для достижений пользователя
+ *
+ * Методы:
+ * - load — загрузить список достижений
+ */
 import type { Achievement } from '~/types'
 
 export function useAchievementsApi() {

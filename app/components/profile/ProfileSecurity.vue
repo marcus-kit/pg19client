@@ -1,7 +1,23 @@
 <script setup lang="ts">
+/**
+ * ProfileSecurity — настройки безопасности
+ *
+ * Особенности:
+ * - Смена пароля (модальное окно)
+ * - Список активных сессий с возможностью завершения
+ * - Массовое завершение всех сессий
+ */
 import { formatRelativeDate } from '~/composables/useFormatters'
 
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const sessionsStore = useSessionsStore()
+
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
 
 const showPasswordModal = ref(false)
 const passwordForm = ref({
@@ -10,7 +26,12 @@ const passwordForm = ref({
   confirm: ''
 })
 
-const getDeviceIcon = (device: string) => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Получить иконку устройства
+function getDeviceIcon(device: string): string {
   const lower = device.toLowerCase()
   if (lower.includes('iphone') || lower.includes('android') || lower.includes('phone')) {
     return 'heroicons:device-phone-mobile'
@@ -21,8 +42,8 @@ const getDeviceIcon = (device: string) => {
   return 'heroicons:computer-desktop'
 }
 
-const handlePasswordChange = () => {
-  // Validate
+// Обработка смены пароля
+function handlePasswordChange(): void {
   if (passwordForm.value.new !== passwordForm.value.confirm) {
     alert('Пароли не совпадают')
     return
@@ -33,21 +54,21 @@ const handlePasswordChange = () => {
   }
 
   // TODO: Реализовать API для смены пароля
-  // Пока показываем заглушку
   alert('Функция смены пароля в разработке')
   showPasswordModal.value = false
   passwordForm.value = { current: '', new: '', confirm: '' }
 }
 
-const terminateSession = (sessionId: string) => {
+// Завершить одну сессию
+function terminateSession(sessionId: string): void {
   if (confirm('Завершить сессию?')) {
     sessionsStore.remove(sessionId)
   }
 }
 
-const terminateAllSessions = () => {
+// Завершить все сессии кроме текущей
+function terminateAllSessions(): void {
   if (confirm('Завершить все сессии кроме текущей?')) {
-    const currentSessionId = sessionsStore.sessions.find(s => s.current)?.id
     sessionsStore.sessions
       .filter(s => !s.current)
       .forEach(s => sessionsStore.remove(s.id))

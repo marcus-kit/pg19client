@@ -1,13 +1,18 @@
+/**
+ * useInvoices — работа со счетами
+ *
+ * Методы:
+ * - fetchInvoices — список счетов с фильтрацией
+ * - fetchUnpaidInvoices — неоплаченные счета для dashboard
+ */
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 
-export const useInvoices = () => {
-  /**
-   * Получить список счетов
-   */
-  const fetchInvoices = async (options: {
+export function useInvoices() {
+  // Получить список счетов
+  async function fetchInvoices(options: {
     status?: InvoiceStatus
     limit?: number
-  } = {}) => {
+  } = {}) {
     const { status, limit = 50 } = options
 
     const query: Record<string, string | number> = { limit }
@@ -29,10 +34,8 @@ export const useInvoices = () => {
     }
   }
 
-  /**
-   * Получить неоплаченные счета (для dashboard)
-   */
-  const fetchUnpaidInvoices = async () => {
+  // Получить неоплаченные счета (для dashboard)
+  async function fetchUnpaidInvoices() {
     const { data, error, pending, refresh } = await useFetch<{ invoices: Invoice[] }>(
       '/api/invoices/unpaid',
       {

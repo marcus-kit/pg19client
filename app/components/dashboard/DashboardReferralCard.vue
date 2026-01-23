@@ -1,9 +1,29 @@
 <script setup lang="ts">
+/**
+ * DashboardReferralCard — промо-карточка реферальной программы
+ *
+ * Компактная карточка с промокодом и кнопкой копирования.
+ * Ссылка на полную информацию в профиле.
+ */
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const referralStore = useReferralStore()
+
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
 
 const copySuccess = ref(false)
 
-const copyCode = async () => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Копировать промокод
+async function copyCode(): Promise<void> {
   const code = referralStore.referralProgram?.code
   if (!code) return
 
@@ -14,7 +34,7 @@ const copyCode = async () => {
       copySuccess.value = false
     }, 2000)
   } catch {
-    // Fallback for older browsers
+    // Fallback для старых браузеров
     const input = document.createElement('input')
     input.value = code
     document.body.appendChild(input)

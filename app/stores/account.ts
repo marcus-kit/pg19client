@@ -1,3 +1,12 @@
+/**
+ * useAccountStore — лицевой счёт пользователя
+ *
+ * State: account
+ * Getters: balanceRubles, isBlocked, daysRemaining
+ * Actions: setAccount, clear
+ *
+ * Persist: localStorage (pg19_account)
+ */
 import { defineStore } from 'pinia'
 import type { Account } from '~/types'
 

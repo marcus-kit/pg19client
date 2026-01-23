@@ -1,3 +1,12 @@
+/**
+ * Типы услуг и подписок
+ *
+ * Service, ServiceFeature, ServiceEquipment — каталог услуг
+ * Subscription — подписка пользователя на услугу
+ * subscriptionStatusLabels, subscriptionStatusColors — маппинги для UI
+ *
+ * Цены в копейках (priceMonthly, priceConnection, customPrice)
+ */
 export type SubscriptionStatus = 'active' | 'paused' | 'cancelled'
 
 export interface Service {

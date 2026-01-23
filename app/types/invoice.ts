@@ -1,4 +1,12 @@
-// Статусы из billing.invoices
+/**
+ * Типы счетов
+ *
+ * Invoice — счёт с суммой, периодом, статусом
+ * formatInvoicePeriod — форматирование периода ("Январь 2024")
+ * invoiceStatusLabels, invoiceStatusColors — маппинги для UI
+ *
+ * Суммы в копейках (amount)
+ */
 export type InvoiceStatus = 'pending' | 'sent' | 'viewed' | 'paid' | 'cancelled' | 'expired'
 
 export interface Invoice {

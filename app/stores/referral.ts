@@ -1,3 +1,11 @@
+/**
+ * useReferralStore — реферальная программа
+ *
+ * State: referralProgram (промокод, статистика)
+ * Actions: set, clear
+ *
+ * Не persist — загружается при каждом входе
+ */
 import { defineStore } from 'pinia'
 import type { ReferralProgram } from '~/types'
 

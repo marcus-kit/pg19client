@@ -1,3 +1,11 @@
+/**
+ * useChatStore — состояние виджета чата поддержки
+ *
+ * State: isOpen, isMinimized, unreadCount, sessionId
+ * Actions: open, close, minimize, restore, toggle, setSessionId, incrementUnread, clearUnread
+ *
+ * Persist: только sessionId
+ */
 import { defineStore } from 'pinia'
 
 interface ChatState {

@@ -1,7 +1,23 @@
 <script setup lang="ts">
+/**
+ * ProfileContactInfo — карточка контактной информации
+ *
+ * Особенности:
+ * - Редактирование email и VK ID
+ * - Телефон только для чтения (изменение через поддержку)
+ * - Бейджи верификации контактов
+ */
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const userStore = useUserStore()
 
-// Editing state
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
 const isEditing = ref(false)
 const isSaving = ref(false)
 const editData = ref({
@@ -10,34 +26,11 @@ const editData = ref({
   vkId: ''
 })
 
-const startEdit = () => {
-  editData.value = {
-    phone: userStore.user?.phone || '',
-    email: userStore.user?.email || '',
-    vkId: userStore.user?.vkId || ''
-  }
-  isEditing.value = true
-}
+// =============================================================================
+// COMPUTED
+// =============================================================================
 
-const cancelEdit = () => {
-  isEditing.value = false
-}
-
-const saveChanges = async () => {
-  if (!userStore.user?.id) return
-  isSaving.value = true
-  const updatedUser = await useUserApi().update(userStore.user.id, {
-    phone: editData.value.phone,
-    email: editData.value.email,
-    vkId: editData.value.vkId
-  })
-  isSaving.value = false
-  if (updatedUser) {
-    userStore.updateUser(updatedUser)
-    isEditing.value = false
-  }
-}
-
+// Конфигурация полей контактов
 const contacts = computed(() => [
   {
     key: 'phone',
@@ -47,7 +40,7 @@ const contacts = computed(() => [
     verified: true,
     type: 'tel',
     placeholder: '+7 (999) 123-45-67',
-    readonly: true // Нельзя редактировать
+    readonly: true
   },
   {
     key: 'email',
@@ -70,6 +63,41 @@ const contacts = computed(() => [
     readonly: false
   }
 ])
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Начать редактирование
+function startEdit(): void {
+  editData.value = {
+    phone: userStore.user?.phone || '',
+    email: userStore.user?.email || '',
+    vkId: userStore.user?.vkId || ''
+  }
+  isEditing.value = true
+}
+
+// Отменить редактирование
+function cancelEdit(): void {
+  isEditing.value = false
+}
+
+// Сохранить изменения
+async function saveChanges(): Promise<void> {
+  if (!userStore.user?.id) return
+  isSaving.value = true
+  const updatedUser = await useUserApi().update(userStore.user.id, {
+    phone: editData.value.phone,
+    email: editData.value.email,
+    vkId: editData.value.vkId
+  })
+  isSaving.value = false
+  if (updatedUser) {
+    userStore.updateUser(updatedUser)
+    isEditing.value = false
+  }
+}
 </script>
 
 <template>

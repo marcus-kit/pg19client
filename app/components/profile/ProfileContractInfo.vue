@@ -1,5 +1,14 @@
 <script setup lang="ts">
+/**
+ * ProfileContractInfo — информация о договоре
+ *
+ * Отображает номер договора, статус, тариф и дату заключения.
+ */
 import { formatDate } from '~/composables/useFormatters'
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const accountStore = useAccountStore()
 </script>

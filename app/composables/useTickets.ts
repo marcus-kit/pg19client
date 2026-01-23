@@ -1,12 +1,20 @@
+/**
+ * useTickets — работа с тикетами техподдержки
+ *
+ * Методы:
+ * - fetchTickets — список тикетов с фильтрацией
+ * - fetchTicket — тикет с комментариями
+ * - createTicket — создать новый тикет
+ * - addComment — добавить комментарий
+ * - closeTicket — закрыть тикет
+ */
 import type { Ticket, TicketDetail, TicketComment, TicketStatus, TicketCategory } from '~/types/ticket'
 
-export const useTickets = () => {
-  /**
-   * Получить список тикетов
-   */
-  const fetchTickets = async (options: {
+export function useTickets() {
+  // Получить список тикетов
+  async function fetchTickets(options: {
     status?: TicketStatus
-  } = {}) => {
+  } = {}) {
     const { status } = options
 
     const query: Record<string, string> = {}
@@ -28,10 +36,8 @@ export const useTickets = () => {
     }
   }
 
-  /**
-   * Получить тикет с комментариями
-   */
-  const fetchTicket = async (id: string) => {
+  // Получить тикет с комментариями
+  async function fetchTicket(id: string) {
     const { data, error, pending, refresh } = await useFetch<{ ticket: TicketDetail }>(
       `/api/support/tickets/${id}`,
       {
@@ -47,14 +53,12 @@ export const useTickets = () => {
     }
   }
 
-  /**
-   * Создать новый тикет
-   */
-  const createTicket = async (payload: {
+  // Создать новый тикет
+  async function createTicket(payload: {
     subject: string
     description: string
     category: TicketCategory
-  }) => {
+  }) {
     const { data, error } = await useFetch<{ ticket: Ticket }>(
       '/api/support/tickets',
       {
@@ -69,10 +73,8 @@ export const useTickets = () => {
     }
   }
 
-  /**
-   * Добавить комментарий к тикету
-   */
-  const addComment = async (ticketId: string, content: string) => {
+  // Добавить комментарий к тикету
+  async function addComment(ticketId: string, content: string) {
     const { data, error } = await useFetch<{ comment: TicketComment }>(
       `/api/support/tickets/${ticketId}/comment`,
       {
@@ -87,10 +89,8 @@ export const useTickets = () => {
     }
   }
 
-  /**
-   * Закрыть тикет (resolved или closed)
-   */
-  const closeTicket = async (ticketId: string, status: 'resolved' | 'closed') => {
+  // Закрыть тикет (resolved или closed)
+  async function closeTicket(ticketId: string, status: 'resolved' | 'closed') {
     const { data, error } = await useFetch<{ success: boolean; status: string }>(
       `/api/support/tickets/${ticketId}/close`,
       {

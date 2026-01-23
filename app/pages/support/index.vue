@@ -19,35 +19,23 @@ definePageMeta({
   middleware: 'auth'
 })
 
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const route = useRoute()
 const router = useRouter()
+const chatStore = useChatStore()
+const userStore = useUserStore()
 const { fetchTickets, createTicket } = useTickets()
 const { fetchFaq } = useFaq()
 
-// -----------------------------------------------------------------------------
-// Загрузка данных
-// -----------------------------------------------------------------------------
+// =============================================================================
+// DATA — загрузка тикетов и FAQ
+// =============================================================================
 
 const { tickets, pending: ticketsPending, error: ticketsError, refresh: refreshTickets } = await fetchTickets()
 const { faq, pending: faqPending } = await fetchFaq()
-
-// -----------------------------------------------------------------------------
-// Вкладки
-// -----------------------------------------------------------------------------
-
-// Определяем начальную вкладку из query параметра (?tab=tickets)
-const initialTab = (['tickets', 'faq', 'chat'].includes(route.query.tab as string)
-  ? route.query.tab
-  : 'chat') as 'tickets' | 'faq' | 'chat'
-
-const activeTab = ref<'tickets' | 'faq' | 'chat'>(initialTab)
-
-// -----------------------------------------------------------------------------
-// Чат с поддержкой
-// -----------------------------------------------------------------------------
-
-const chatStore = useChatStore()
-const userStore = useUserStore()
 
 // useChat — composable для работы с чатом (session, messages, send, upload)
 const {
@@ -62,36 +50,89 @@ const {
   sendMessage
 } = useChat()
 
-const messageText = ref('')                           // Текст сообщения в поле ввода
-const messagesContainer = ref<HTMLElement | null>(null) // Ref на контейнер сообщений (для скролла)
-const chatInitialized = ref(false)                    // Флаг: чат уже инициализирован
-const isOperatorTyping = ref(false)                   // Показать индикатор "оператор печатает"
+// =============================================================================
+// STATE — локальное состояние страницы
+// =============================================================================
 
-// -----------------------------------------------------------------------------
+// Вкладки — определяем начальную из query параметра (?tab=tickets)
+const initialTab = (['tickets', 'faq', 'chat'].includes(route.query.tab as string)
+  ? route.query.tab
+  : 'chat') as 'tickets' | 'faq' | 'chat'
+const activeTab = ref<'tickets' | 'faq' | 'chat'>(initialTab)
+
+// Чат
+const messageText = ref('')                              // Текст сообщения в поле ввода
+const messagesContainer = ref<HTMLElement | null>(null)  // Ref на контейнер сообщений (для скролла)
+const chatInitialized = ref(false)                       // Флаг: чат уже инициализирован
+const isOperatorTyping = ref(false)                      // Показать индикатор "оператор печатает"
+
 // Вложения в чате
-// -----------------------------------------------------------------------------
+const fileInput = ref<HTMLInputElement | null>(null)     // Скрытый input[type=file]
+const pendingFile = ref<File | null>(null)               // Выбранный файл (до отправки)
+const pendingPreview = ref<string | null>(null)          // Preview URL для изображений
 
-const fileInput = ref<HTMLInputElement | null>(null)  // Скрытый input[type=file]
-const pendingFile = ref<File | null>(null)            // Выбранный файл (до отправки)
-const pendingPreview = ref<string | null>(null)       // Preview URL для изображений
+// FAQ
+const expandedFaq = ref<number | null>(null)             // ID развёрнутого вопроса
 
-const ACCEPT_FILES = 'image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx'
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+// Модалка создания заявки
+const showNewTicketModal = ref(false)
+const submitting = ref(false)
+const newTicket = ref({
+  category: '' as TicketCategory | '',
+  subject: '',
+  description: ''
+})
 
-// -----------------------------------------------------------------------------
-// Логика чата
-// -----------------------------------------------------------------------------
+// =============================================================================
+// COMPUTED
+// =============================================================================
 
 // Отслеживаем последнее сообщение — скрываем typing когда пришёл ответ
 const lastMessage = computed(() => messages.value[messages.value.length - 1])
 
-watch(lastMessage, (newMsg) => {
-  if (!newMsg) return
-  // Скрываем typing когда пришёл ответ от бота/оператора
-  if (newMsg.sender_type === 'bot' || newMsg.sender_type === 'admin') {
-    isOperatorTyping.value = false
-  }
+// Количество активных тикетов (для badge в табе)
+const activeTicketsCount = computed(() => {
+  return tickets.value.filter(t => t.status !== 'closed').length
 })
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+const ACCEPT_FILES = 'image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx'
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+
+// Конфигурация статусов тикетов для UI (цвета и лейблы)
+const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' | 'success' | 'neutral'; color: string }> = {
+  new: { label: 'Новая', variant: 'info', color: 'text-blue-400' },
+  open: { label: 'В работе', variant: 'warning', color: 'text-yellow-400' },
+  pending: { label: 'Ожидает ответа', variant: 'warning', color: 'text-orange-400' },
+  resolved: { label: 'Решена', variant: 'success', color: 'text-accent' },
+  closed: { label: 'Закрыта', variant: 'neutral', color: 'text-[var(--text-muted)]' }
+}
+
+// Категории заявок
+const categories = [
+  { value: 'technical', label: 'Техническая проблема' },
+  { value: 'billing', label: 'Вопрос по оплате' },
+  { value: 'tariff', label: 'Смена тарифа' },
+  { value: 'connection', label: 'Подключение' },
+  { value: 'equipment', label: 'Оборудование' },
+  { value: 'other', label: 'Другое' }
+]
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Скролл к последнему сообщению
+function scrollToBottom() {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
 
 // Ленивая инициализация чата (только при открытии вкладки)
 async function initChatSession() {
@@ -122,41 +163,6 @@ async function initChatSession() {
     }
   }
 }
-
-// Инициализация чата при загрузке страницы (если чат — активная вкладка)
-onMounted(() => {
-  if (activeTab.value === 'chat') {
-    initChatSession()
-  }
-})
-
-// Инициализация чата при переключении на вкладку
-watch(activeTab, async (tab) => {
-  if (tab === 'chat') {
-    initChatSession()
-  }
-})
-
-// Скролл к последнему сообщению
-function scrollToBottom() {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
-}
-
-// Автоскролл при новых сообщениях
-watch(messages, scrollToBottom, { deep: true })
-
-// Автоскролл при появлении typing indicator
-watch(isOperatorTyping, (typing) => {
-  if (typing) scrollToBottom()
-})
-
-// -----------------------------------------------------------------------------
-// Работа с файлами
-// -----------------------------------------------------------------------------
 
 // Открыть диалог выбора файла
 function openFileDialog() {
@@ -190,10 +196,6 @@ function removePendingFile() {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Helpers для отображения сообщений чата
-// -----------------------------------------------------------------------------
-
 // Определение типа отправителя
 const msgIsUser = (msg: ChatMessage) => msg.sender_type === 'user'
 const msgIsOperator = (msg: ChatMessage) => msg.sender_type === 'admin' || msg.sender_type === 'bot'
@@ -217,10 +219,7 @@ function getMsgSenderLabel(msg: ChatMessage): string {
   return 'Вы'
 }
 
-// -----------------------------------------------------------------------------
-// Отправка сообщения
-// -----------------------------------------------------------------------------
-
+// Отправка сообщения в чате
 async function handleSendMessage() {
   // Проверяем что есть текст или файл
   if ((!messageText.value.trim() && !pendingFile.value) || isSending.value || isUploading.value) return
@@ -260,56 +259,10 @@ function handleChatKeydown(e: KeyboardEvent) {
   }
 }
 
-// -----------------------------------------------------------------------------
-// Заявки (тикеты)
-// -----------------------------------------------------------------------------
-
-// Конфигурация статусов для UI (цвета и лейблы)
-const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' | 'success' | 'neutral'; color: string }> = {
-  new: { label: 'Новая', variant: 'info', color: 'text-blue-400' },
-  open: { label: 'В работе', variant: 'warning', color: 'text-yellow-400' },
-  pending: { label: 'Ожидает ответа', variant: 'warning', color: 'text-orange-400' },
-  resolved: { label: 'Решена', variant: 'success', color: 'text-accent' },
-  closed: { label: 'Закрыта', variant: 'neutral', color: 'text-[var(--text-muted)]' }
-}
-
-// Количество активных тикетов (для badge в табе)
-const activeTicketsCount = computed(() => {
-  return tickets.value.filter(t => t.status !== 'closed').length
-})
-
-// -----------------------------------------------------------------------------
-// FAQ (аккордеон)
-// -----------------------------------------------------------------------------
-
-const expandedFaq = ref<number | null>(null) // ID развёрнутого вопроса
-
+// Переключение FAQ аккордеона
 function toggleFaq(id: number) {
   expandedFaq.value = expandedFaq.value === id ? null : id
 }
-
-// -----------------------------------------------------------------------------
-// Модалка создания новой заявки
-// -----------------------------------------------------------------------------
-
-const showNewTicketModal = ref(false)
-const submitting = ref(false)
-
-const newTicket = ref({
-  category: '' as TicketCategory | '',
-  subject: '',
-  description: ''
-})
-
-// Категории заявок
-const categories = [
-  { value: 'technical', label: 'Техническая проблема' },
-  { value: 'billing', label: 'Вопрос по оплате' },
-  { value: 'tariff', label: 'Смена тарифа' },
-  { value: 'connection', label: 'Подключение' },
-  { value: 'equipment', label: 'Оборудование' },
-  { value: 'other', label: 'Другое' }
-]
 
 // Отправка новой заявки
 async function submitTicket() {
@@ -340,6 +293,44 @@ async function submitTicket() {
     submitting.value = false
   }
 }
+
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
+// Инициализация чата при загрузке страницы (если чат — активная вкладка)
+onMounted(() => {
+  if (activeTab.value === 'chat') {
+    initChatSession()
+  }
+})
+
+// =============================================================================
+// WATCHERS
+// =============================================================================
+
+// Скрываем typing когда пришёл ответ от бота/оператора
+watch(lastMessage, (newMsg) => {
+  if (!newMsg) return
+  if (newMsg.sender_type === 'bot' || newMsg.sender_type === 'admin') {
+    isOperatorTyping.value = false
+  }
+})
+
+// Инициализация чата при переключении на вкладку
+watch(activeTab, async (tab) => {
+  if (tab === 'chat') {
+    initChatSession()
+  }
+})
+
+// Автоскролл при новых сообщениях
+watch(messages, scrollToBottom, { deep: true })
+
+// Автоскролл при появлении typing indicator
+watch(isOperatorTyping, (typing) => {
+  if (typing) scrollToBottom()
+})
 </script>
 
 <template>

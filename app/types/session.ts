@@ -1,3 +1,8 @@
+/**
+ * Типы сессий входа
+ *
+ * LoginSession — информация о сессии: устройство, браузер, IP, геолокация
+ */
 export interface LoginSession {
   id: string
   device: string

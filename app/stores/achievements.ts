@@ -1,3 +1,11 @@
+/**
+ * useAchievementsStore — достижения пользователя
+ *
+ * State: achievements (список достижений)
+ * Actions: set, clear
+ *
+ * Не persist — загружается при каждом входе
+ */
 import { defineStore } from 'pinia'
 import type { Achievement } from '~/types'
 

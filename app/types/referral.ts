@@ -1,3 +1,9 @@
+/**
+ * Типы реферальной программы
+ *
+ * Referral — приглашённый пользователь
+ * ReferralProgram — данные программы: код, статистика, список рефералов
+ */
 export interface Referral {
   id: string
   name: string

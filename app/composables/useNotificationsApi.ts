@@ -1,3 +1,10 @@
+/**
+ * useNotificationsApi — API для настроек уведомлений
+ *
+ * Методы:
+ * - load — загрузить настройки
+ * - update — обновить настройки
+ */
 import type { NotificationSettings } from '~/types'
 import { defaultNotificationSettings } from '~/types'
 

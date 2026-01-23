@@ -14,17 +14,17 @@ definePageMeta({
 })
 
 // =============================================================================
-// STORES
+// STORES & COMPOSABLES
 // =============================================================================
 
 const userStore = useUserStore()
 const accountStore = useAccountStore()
+const { fetchNews } = useNews()
 
 // =============================================================================
 // DATA — загрузка новостей
 // =============================================================================
 
-const { fetchNews } = useNews()
 const { news, pending, error } = await fetchNews({ limit: 3, active: true })
 
 // =============================================================================
@@ -32,20 +32,6 @@ const { news, pending, error } = await fetchNews({ limit: 3, active: true })
 // =============================================================================
 
 const selectedNewsId = ref<number | null>(null)
-
-// =============================================================================
-// METHODS
-// =============================================================================
-
-// Открыть модалку с новостью
-function openNewsModal(id: number): void {
-  selectedNewsId.value = id
-}
-
-// Закрыть модалку
-function closeNewsModal(): void {
-  selectedNewsId.value = null
-}
 
 // =============================================================================
 // CONSTANTS — маппинг категорий новостей
@@ -61,6 +47,20 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
   announcement: 'warning',
   protocol: 'info',
   notification: 'success'
+}
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Открыть модалку с новостью
+function openNewsModal(id: number): void {
+  selectedNewsId.value = id
+}
+
+// Закрыть модалку
+function closeNewsModal(): void {
+  selectedNewsId.value = null
 }
 </script>
 

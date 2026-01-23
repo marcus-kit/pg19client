@@ -1,10 +1,32 @@
 <script setup lang="ts">
+/**
+ * ProfileAvatar — карточка аватара пользователя
+ *
+ * Особенности:
+ * - Загрузка изображения через API (Supabase Storage)
+ * - Удаление аватара
+ * - Fallback на инициалы с градиентом
+ * - Валидация: только изображения до 5 МБ
+ */
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const userStore = useUserStore()
 
-const updateAvatar = (avatar: string | null) => {
-  userStore.updateUser({ avatar })
-}
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
 
+const fileInput = ref<HTMLInputElement | null>(null)
+const isUploading = ref(false)
+
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Инициалы для fallback аватара
 const initials = computed(() => {
   if (!userStore.user) return ''
   const first = userStore.user.firstName?.charAt(0) || ''
@@ -12,8 +34,8 @@ const initials = computed(() => {
   return `${first}${last}`.toUpperCase()
 })
 
+// Градиент для fallback аватара (консистентный по user id)
 const avatarGradient = computed(() => {
-  // Generate consistent gradient based on user id
   const gradients = [
     'from-primary to-secondary',
     'from-blue-500 to-purple-600',
@@ -25,25 +47,34 @@ const avatarGradient = computed(() => {
   return gradients[index]
 })
 
-const fileInput = ref<HTMLInputElement | null>(null)
-const isUploading = ref(false)
+// =============================================================================
+// METHODS
+// =============================================================================
 
-const handleAvatarClick = () => {
+// Обновить аватар в store
+function updateAvatar(avatar: string | null): void {
+  userStore.updateUser({ avatar })
+}
+
+// Открыть диалог выбора файла
+function handleAvatarClick(): void {
   fileInput.value?.click()
 }
 
-const handleFileChange = async (event: Event) => {
+// Обработка выбора файла
+async function handleFileChange(event: Event): Promise<void> {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
 
   if (!file) return
 
-  // Validate file
+  // Валидация типа файла
   if (!file.type.startsWith('image/')) {
     alert('Пожалуйста, выберите изображение')
     return
   }
 
+  // Валидация размера
   if (file.size > 5 * 1024 * 1024) {
     alert('Размер файла не должен превышать 5 МБ')
     return
@@ -52,7 +83,6 @@ const handleFileChange = async (event: Event) => {
   isUploading.value = true
 
   try {
-    // Upload to Supabase Storage via API
     const formData = new FormData()
     formData.append('file', file)
 
@@ -72,7 +102,8 @@ const handleFileChange = async (event: Event) => {
   }
 }
 
-const removeAvatar = async () => {
+// Удалить аватар
+async function removeAvatar(): Promise<void> {
   isUploading.value = true
   try {
     const response = await $fetch<{ success: boolean }>('/api/user/avatar', {

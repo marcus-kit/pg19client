@@ -1,5 +1,18 @@
 <script setup lang="ts">
+/**
+ * CommunityMessage — сообщение в IRC-стиле
+ *
+ * Особенности:
+ * - Формат: [HH:MM] <Nickname> Текст
+ * - Поддержка изображений, ответов, удалённых сообщений
+ * - Статусы отправки: sending, failed, retry
+ * - Контекстное меню по ПКМ
+ */
 import type { CommunityMessage } from '~/types/community'
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
 
 const props = defineProps<{
   message: CommunityMessage
@@ -18,6 +31,10 @@ const emit = defineEmits<{
   contextmenu: [event: MouseEvent, message: CommunityMessage]
 }>()
 
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
 // IRC-style time format: [HH:MM]
 const formattedTime = computed(() => {
   const date = new Date(props.message.createdAt)
@@ -30,8 +47,12 @@ const displayName = computed(() => {
   return props.message.user.nickname || props.message.user.firstName || 'Аноним'
 })
 
-// Context menu handler
-const handleContextMenu = (event: MouseEvent) => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Обработчик контекстного меню
+function handleContextMenu(event: MouseEvent): void {
   emit('contextmenu', event, props.message)
 }
 </script>

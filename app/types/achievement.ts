@@ -1,3 +1,8 @@
+/**
+ * Типы достижений
+ *
+ * Achievement — достижение с прогрессом разблокировки
+ */
 export interface Achievement {
   id: string
   title: string

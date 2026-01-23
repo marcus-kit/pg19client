@@ -1,4 +1,17 @@
 <script setup lang="ts">
+/**
+ * CommunityMuteModal — модалка мута пользователя
+ *
+ * Особенности:
+ * - Выбор длительности: 15 мин, 1 час, 24 часа, 7 дней
+ * - Опциональная причина мута
+ * - Закрытие по Escape и клику вне окна
+ */
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
+
 interface Props {
   userId: number
   userName: string
@@ -11,9 +24,17 @@ const emit = defineEmits<{
   mute: [{ userId: number; duration: number; reason: string }]
 }>()
 
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
 const isSubmitting = ref(false)
-const selectedDuration = ref(15) // минуты
+const selectedDuration = ref(15)
 const reason = ref('')
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
 const durations = [
   { value: 15, label: '15 минут' },
@@ -22,7 +43,12 @@ const durations = [
   { value: 10080, label: '7 дней' }
 ]
 
-const handleSubmit = async () => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Отправить запрос на мут
+async function handleSubmit(): Promise<void> {
   isSubmitting.value = true
   emit('mute', {
     userId: props.userId,
@@ -31,13 +57,17 @@ const handleSubmit = async () => {
   })
 }
 
-const handleBackdropClick = (e: MouseEvent) => {
+// Закрытие по клику на backdrop
+function handleBackdropClick(e: MouseEvent): void {
   if (e.target === e.currentTarget) {
     emit('close')
   }
 }
 
-// Закрытие по Escape
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
 onMounted(() => {
   const handleEscape = (e: KeyboardEvent) => {
     if (e.key === 'Escape') emit('close')

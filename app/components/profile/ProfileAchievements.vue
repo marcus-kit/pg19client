@@ -1,15 +1,38 @@
 <script setup lang="ts">
+/**
+ * ProfileAchievements — карточка достижений
+ *
+ * Особенности:
+ * - Прогресс-бар общего выполнения
+ * - Сетка достижений с иконками
+ * - Прогресс для незавершённых достижений
+ */
 import { formatDateShort } from '~/composables/useFormatters'
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const achievementsStore = useAchievementsStore()
 
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Количество разблокированных достижений
 const unlockedCount = computed(() =>
   achievementsStore.achievements.filter(a => a.unlockedAt).length
 )
 
+// Общее количество достижений
 const totalCount = computed(() => achievementsStore.achievements.length)
 
-const getProgressPercent = (achievement: { progress?: number; maxProgress?: number }) => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Получить процент прогресса достижения
+function getProgressPercent(achievement: { progress?: number; maxProgress?: number }): number {
   if (!achievement.progress || !achievement.maxProgress) return 0
   return Math.round((achievement.progress / achievement.maxProgress) * 100)
 }

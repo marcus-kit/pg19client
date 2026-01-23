@@ -1,16 +1,53 @@
 <script setup lang="ts">
+/**
+ * ProfileReferral — реферальная программа
+ *
+ * Особенности:
+ * - Промокод с кнопкой копирования
+ * - Статистика: приглашённые, заработано
+ * - Шеринг в соцсети (Telegram, WhatsApp, VK)
+ * - Список приглашённых друзей
+ */
 import { formatDate } from '~/composables/useFormatters'
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const referralStore = useReferralStore()
 
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
+const copySuccess = ref(false)
+
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Реферальная ссылка
 const referralLink = computed(() => {
   const code = referralStore.referralProgram?.code || ''
   return `https://pg19.ru/ref/${code}`
 })
 
-const copySuccess = ref(false)
+// =============================================================================
+// CONSTANTS
+// =============================================================================
 
-const copyCode = async () => {
+const shareOptions = [
+  { icon: 'simple-icons:telegram', label: 'Telegram', color: 'bg-[#26A5E4]' },
+  { icon: 'simple-icons:whatsapp', label: 'WhatsApp', color: 'bg-[#25D366]' },
+  { icon: 'simple-icons:vk', label: 'VK', color: 'bg-[#0077FF]' }
+]
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Копировать промокод
+async function copyCode(): Promise<void> {
   const code = referralStore.referralProgram?.code
   if (!code) return
 
@@ -21,7 +58,7 @@ const copyCode = async () => {
       copySuccess.value = false
     }, 2000)
   } catch {
-    // Fallback for older browsers
+    // Fallback для старых браузеров
     const input = document.createElement('input')
     input.value = code
     document.body.appendChild(input)
@@ -35,7 +72,8 @@ const copyCode = async () => {
   }
 }
 
-const copyLink = async () => {
+// Копировать реферальную ссылку
+async function copyLink(): Promise<void> {
   try {
     await navigator.clipboard.writeText(referralLink.value)
     copySuccess.value = true
@@ -46,12 +84,6 @@ const copyLink = async () => {
     // Fallback
   }
 }
-
-const shareOptions = [
-  { icon: 'simple-icons:telegram', label: 'Telegram', color: 'bg-[#26A5E4]' },
-  { icon: 'simple-icons:whatsapp', label: 'WhatsApp', color: 'bg-[#25D366]' },
-  { icon: 'simple-icons:vk', label: 'VK', color: 'bg-[#0077FF]' }
-]
 </script>
 
 <template>

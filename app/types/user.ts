@@ -1,3 +1,9 @@
+/**
+ * Типы пользователя
+ *
+ * UserRole — роль: user, admin, moderator
+ * User — профиль пользователя с контактами и настройками
+ */
 export type UserRole = 'user' | 'admin' | 'moderator'
 
 export interface User {

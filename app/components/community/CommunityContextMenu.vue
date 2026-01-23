@@ -1,4 +1,18 @@
 <script setup lang="ts">
+/**
+ * CommunityContextMenu — контекстное меню сообщения
+ *
+ * Особенности:
+ * - Позиционирование по координатам клика
+ * - Действия: ответить, пожаловаться
+ * - Модераторские действия: закрепить, замутить, удалить
+ * - Закрытие по клику вне или Escape
+ */
+
+// =============================================================================
+// PROPS & EMIT
+// =============================================================================
+
 interface Props {
   show: boolean
   x: number
@@ -19,17 +33,51 @@ const emit = defineEmits<{
   delete: []
 }>()
 
+// =============================================================================
+// METHODS
+// =============================================================================
+
 // Закрыть при клике вне меню
-function handleClickOutside() {
+function handleClickOutside(): void {
   emit('close')
 }
 
 // Закрыть при Escape
-function handleKeydown(e: KeyboardEvent) {
+function handleKeydown(e: KeyboardEvent): void {
   if (e.key === 'Escape') {
     emit('close')
   }
 }
+
+// Обработчики с автозакрытием
+function handleReply(): void {
+  emit('reply')
+  emit('close')
+}
+
+function handleReport(): void {
+  emit('report')
+  emit('close')
+}
+
+function handlePin(): void {
+  emit('pin')
+  emit('close')
+}
+
+function handleMute(): void {
+  emit('mute')
+  emit('close')
+}
+
+function handleDelete(): void {
+  emit('delete')
+  emit('close')
+}
+
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
@@ -40,32 +88,6 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   document.removeEventListener('keydown', handleKeydown)
 })
-
-// Обработчики с автозакрытием
-function handleReply() {
-  emit('reply')
-  emit('close')
-}
-
-function handleReport() {
-  emit('report')
-  emit('close')
-}
-
-function handlePin() {
-  emit('pin')
-  emit('close')
-}
-
-function handleMute() {
-  emit('mute')
-  emit('close')
-}
-
-function handleDelete() {
-  emit('delete')
-  emit('close')
-}
 </script>
 
 <template>

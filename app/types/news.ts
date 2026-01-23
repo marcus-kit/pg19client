@@ -1,3 +1,9 @@
+/**
+ * Типы новостей
+ *
+ * NewsCategory — категории: announcement, protocol, notification
+ * News, NewsAttachment, NewsDetail — структуры данных
+ */
 export type NewsCategory = 'announcement' | 'protocol' | 'notification'
 export type NewsStatus = 'draft' | 'published' | 'archived'
 

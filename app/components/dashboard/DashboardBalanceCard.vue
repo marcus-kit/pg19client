@@ -1,23 +1,35 @@
 <script setup lang="ts">
-const accountStore = useAccountStore()
+/**
+ * DashboardBalanceCard — карточка статуса услуги и оплаты
+ *
+ * Особенности:
+ * - Индикатор статуса (активен/заблокирован)
+ * - Кнопка оплаты (открывает счёт или попап "все оплачено")
+ * - Расчёт следующей даты оплаты
+ */
 
-// Получаем неоплаченные счета
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
+const accountStore = useAccountStore()
 const { fetchUnpaidInvoices } = useInvoices()
+
+// =============================================================================
+// DATA — загрузка неоплаченных счетов
+// =============================================================================
+
 const { invoices: unpaidInvoices } = await fetchUnpaidInvoices()
 
-// Попап "Все счета оплачены"
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
 const showAllPaidModal = ref(false)
 
-// Обработчик клика на кнопку оплаты
-const handlePayClick = () => {
-  if (unpaidInvoices.value.length > 0) {
-    // Открываем первый неоплаченный счёт
-    window.open(`https://invoice.doka.team/invoice/${unpaidInvoices.value[0].id}`, '_blank')
-  } else {
-    // Показываем попап
-    showAllPaidModal.value = true
-  }
-}
+// =============================================================================
+// COMPUTED
+// =============================================================================
 
 // Расчёт следующей даты оплаты (конец текущего месяца)
 const nextPaymentDate = computed(() => {
@@ -29,7 +41,7 @@ const nextPaymentDate = computed(() => {
   })
 })
 
-// Статус аккаунта
+// Конфигурация статуса аккаунта
 const statusConfig = computed(() => {
   if (accountStore.isBlocked) {
     return {
@@ -46,6 +58,19 @@ const statusConfig = computed(() => {
     iconColor: 'text-accent'
   }
 })
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Обработчик клика на кнопку оплаты
+function handlePayClick(): void {
+  if (unpaidInvoices.value.length > 0) {
+    window.open(`https://invoice.doka.team/invoice/${unpaidInvoices.value[0].id}`, '_blank')
+  } else {
+    showAllPaidModal.value = true
+  }
+}
 </script>
 
 <template>

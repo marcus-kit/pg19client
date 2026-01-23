@@ -1,8 +1,16 @@
 <script setup lang="ts">
 /**
- * Компонент привязки Telegram к аккаунту
- * Использует deeplink авторизацию (purpose: 'link')
+ * ProfileTelegramLink — привязка Telegram к аккаунту
+ *
+ * Особенности:
+ * - Deeplink авторизация (purpose: 'link')
+ * - Таймер ожидания подтверждения
+ * - Автообновление store после привязки
  */
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const userStore = useUserStore()
 
@@ -18,17 +26,36 @@ const {
   reset
 } = useTelegramDeeplink()
 
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
 const isLinked = computed(() => !!userStore.user?.telegramId)
 const telegramUsername = computed(() => userStore.user?.telegram || '')
+
+// =============================================================================
+// METHODS
+// =============================================================================
 
 // Запуск привязки Telegram
 async function startLink(): Promise<void> {
   if (!userStore.user?.id) return
-
   await requestAuth('link', userStore.user.id)
 }
 
-// Watch для обновления store после успешной привязки
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
+onUnmounted(() => {
+  reset()
+})
+
+// =============================================================================
+// WATCHERS
+// =============================================================================
+
+// Обновление store после успешной привязки
 watch(status, (newStatus) => {
   if (newStatus === 'verified' && verifiedData.value) {
     const data = verifiedData.value as any
@@ -39,10 +66,6 @@ watch(status, (newStatus) => {
       })
     }
   }
-})
-
-onUnmounted(() => {
-  reset()
 })
 </script>
 

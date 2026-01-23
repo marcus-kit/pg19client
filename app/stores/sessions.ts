@@ -1,3 +1,11 @@
+/**
+ * useSessionsStore — активные сессии входа
+ *
+ * State: sessions (список активных сессий)
+ * Actions: set, remove, clear
+ *
+ * Не persist — загружается при каждом входе
+ */
 import { defineStore } from 'pinia'
 import type { LoginSession } from '~/types'
 

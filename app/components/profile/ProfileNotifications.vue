@@ -1,14 +1,25 @@
 <script setup lang="ts">
+/**
+ * ProfileNotifications — настройки уведомлений
+ *
+ * Особенности:
+ * - Каналы доставки: email, SMS, push, Telegram
+ * - Типы уведомлений: оплата, техработы, акции, новости
+ * - Мгновенное сохранение изменений
+ */
 import type { NotificationSettings } from '~/types'
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
 
 const notificationsStore = useNotificationsStore()
 
-// Update notifications in store and API
-const updateNotifications = (settings: Partial<NotificationSettings>) => {
-  notificationsStore.update(settings)
-  useNotificationsApi().update(settings)
-}
+// =============================================================================
+// COMPUTED
+// =============================================================================
 
+// Каналы доставки уведомлений
 const channels = computed(() => [
   {
     key: 'email' as const,
@@ -40,6 +51,7 @@ const channels = computed(() => [
   }
 ])
 
+// Типы уведомлений
 const notificationTypes = computed(() => [
   {
     key: 'payments' as const,
@@ -67,13 +79,25 @@ const notificationTypes = computed(() => [
   }
 ])
 
-const toggleChannel = (key: 'email' | 'sms' | 'push' | 'telegram') => {
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Обновить настройки в store и API
+function updateNotifications(settings: Partial<NotificationSettings>): void {
+  notificationsStore.update(settings)
+  useNotificationsApi().update(settings)
+}
+
+// Переключить канал уведомлений
+function toggleChannel(key: 'email' | 'sms' | 'push' | 'telegram'): void {
   updateNotifications({
     [key]: !notificationsStore.notifications[key]
   })
 }
 
-const toggleType = (key: 'payments' | 'maintenance' | 'promotions' | 'news') => {
+// Переключить тип уведомлений
+function toggleType(key: 'payments' | 'maintenance' | 'promotions' | 'news'): void {
   updateNotifications({
     types: {
       ...notificationsStore.notifications.types,

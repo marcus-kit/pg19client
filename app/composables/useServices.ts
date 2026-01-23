@@ -1,10 +1,15 @@
+/**
+ * useServices — работа с каталогом услуг
+ *
+ * Методы:
+ * - fetchServices — список доступных услуг
+ * - fetchSubscriptions — подключенные услуги пользователя
+ */
 import type { Service, Subscription } from '~/types/service'
 
-export const useServices = () => {
-  /**
-   * Получить список доступных услуг
-   */
-  const fetchServices = async () => {
+export function useServices() {
+  // Получить список доступных услуг
+  async function fetchServices() {
     const { data, error, pending, refresh } = await useFetch<{ services: Service[] }>(
       '/api/services',
       {
@@ -20,10 +25,8 @@ export const useServices = () => {
     }
   }
 
-  /**
-   * Получить подписки (подключенные услуги) пользователя
-   */
-  const fetchSubscriptions = async () => {
+  // Получить подписки (подключенные услуги) пользователя
+  async function fetchSubscriptions() {
     const { data, error, pending, refresh } = await useFetch<{ subscriptions: Subscription[] }>(
       '/api/account/subscriptions',
       {

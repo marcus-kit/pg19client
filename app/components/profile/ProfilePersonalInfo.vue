@@ -1,7 +1,24 @@
 <script setup lang="ts">
+/**
+ * ProfilePersonalInfo — карточка персональных данных
+ *
+ * Особенности:
+ * - Редактирование даты рождения (ФИО только через поддержку)
+ * - Редактирование никнейма для чата
+ * - Вычисление возраста с правильным склонением
+ */
+
+// =============================================================================
+// STORES & COMPOSABLES
+// =============================================================================
+
 const userStore = useUserStore()
 
-// Editing state
+// =============================================================================
+// STATE — реактивное состояние
+// =============================================================================
+
+// Редактирование персональных данных
 const isEditing = ref(false)
 const isSaving = ref(false)
 const editData = ref({
@@ -11,7 +28,56 @@ const editData = ref({
   birthDate: ''
 })
 
-const startEdit = () => {
+// Редактирование никнейма
+const isEditingNickname = ref(false)
+const isSavingNickname = ref(false)
+const nicknameInput = ref('')
+const nicknameError = ref('')
+
+// =============================================================================
+// COMPUTED
+// =============================================================================
+
+// Форматированная дата рождения
+const formattedBirthDate = computed(() => {
+  if (!userStore.user?.birthDate) return null
+  return new Date(userStore.user.birthDate).toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+})
+
+// Возраст в годах
+const age = computed(() => {
+  if (!userStore.user?.birthDate) return null
+  const birthDate = new Date(userStore.user.birthDate)
+  const today = new Date()
+  let years = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    years--
+  }
+  return years
+})
+
+// Склонение слова "год"
+const ageLabel = computed(() => {
+  if (!age.value) return ''
+  const lastDigit = age.value % 10
+  const lastTwoDigits = age.value % 100
+  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) return 'лет'
+  if (lastDigit === 1) return 'год'
+  if (lastDigit >= 2 && lastDigit <= 4) return 'года'
+  return 'лет'
+})
+
+// =============================================================================
+// METHODS
+// =============================================================================
+
+// Начать редактирование персональных данных
+function startEdit(): void {
   editData.value = {
     lastName: userStore.user?.lastName || '',
     firstName: userStore.user?.firstName || '',
@@ -21,11 +87,13 @@ const startEdit = () => {
   isEditing.value = true
 }
 
-const cancelEdit = () => {
+// Отменить редактирование
+function cancelEdit(): void {
   isEditing.value = false
 }
 
-const saveChanges = async () => {
+// Сохранить изменения
+async function saveChanges(): Promise<void> {
   if (!userStore.user?.id) return
   isSaving.value = true
   const updatedUser = await useUserApi().update(userStore.user.id, {
@@ -41,55 +109,21 @@ const saveChanges = async () => {
   }
 }
 
-const formattedBirthDate = computed(() => {
-  if (!userStore.user?.birthDate) return null
-  return new Date(userStore.user.birthDate).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
-})
-
-const age = computed(() => {
-  if (!userStore.user?.birthDate) return null
-  const birthDate = new Date(userStore.user.birthDate)
-  const today = new Date()
-  let years = today.getFullYear() - birthDate.getFullYear()
-  const monthDiff = today.getMonth() - birthDate.getMonth()
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-    years--
-  }
-  return years
-})
-
-const ageLabel = computed(() => {
-  if (!age.value) return ''
-  const lastDigit = age.value % 10
-  const lastTwoDigits = age.value % 100
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) return 'лет'
-  if (lastDigit === 1) return 'год'
-  if (lastDigit >= 2 && lastDigit <= 4) return 'года'
-  return 'лет'
-})
-
-// Nickname editing
-const isEditingNickname = ref(false)
-const isSavingNickname = ref(false)
-const nicknameInput = ref('')
-const nicknameError = ref('')
-
-const startEditNickname = () => {
+// Начать редактирование никнейма
+function startEditNickname(): void {
   nicknameInput.value = userStore.user?.nickname || ''
   nicknameError.value = ''
   isEditingNickname.value = true
 }
 
-const cancelEditNickname = () => {
+// Отменить редактирование никнейма
+function cancelEditNickname(): void {
   isEditingNickname.value = false
   nicknameError.value = ''
 }
 
-const saveNickname = async () => {
+// Сохранить никнейм
+async function saveNickname(): Promise<void> {
   const nickname = nicknameInput.value.trim() || null
 
   // Валидация

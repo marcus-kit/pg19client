@@ -1,3 +1,12 @@
+/**
+ * useUserStore — состояние авторизованного пользователя
+ *
+ * State: isAuthenticated, user
+ * Getters: fullName, shortName, isAdmin, isModerator, hasAdminAccess
+ * Actions: setUser, updateUser, logout
+ *
+ * Persist: localStorage (pg19_user)
+ */
 import { defineStore } from 'pinia'
 import type { User } from '~/types'
 

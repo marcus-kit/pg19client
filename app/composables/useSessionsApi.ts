@@ -1,3 +1,10 @@
+/**
+ * useSessionsApi — API для управления сессиями входа
+ *
+ * Методы:
+ * - load — загрузить список сессий
+ * - terminate — завершить сессию
+ */
 import type { LoginSession } from '~/types'
 
 export function useSessionsApi() {

@@ -1,3 +1,9 @@
+/**
+ * Barrel-файл экспорта типов
+ *
+ * Реэкспортирует все типы из отдельных файлов.
+ * Использование: import type { User, Account } from '~/types'
+ */
 export * from './user'
 export * from './account'
 export * from './notifications'

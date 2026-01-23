@@ -1,4 +1,12 @@
-// Community Chat Types
+/**
+ * Типы соседского чата (Community Chat)
+ *
+ * Комнаты: CommunityRoom, CommunityRoomLevel (city/district/building)
+ * Сообщения: CommunityMessage, CommunityMessagePreview, MessageStatus
+ * Участники: CommunityMember, CommunityMemberRole, CommunityModerator
+ * Модерация: CommunityBan, CommunityMute, CommunityReport
+ * API: Request/Response интерфейсы для всех эндпоинтов
+ */
 
 // Уровни комнат (district заменил street в v2)
 export type CommunityRoomLevel = 'city' | 'district' | 'building'

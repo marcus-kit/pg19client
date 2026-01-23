@@ -1,3 +1,10 @@
+/**
+ * Типы настроек уведомлений
+ *
+ * NotificationTypes — категории: payments, maintenance, promotions, news
+ * NotificationSettings — каналы (email, sms, push, telegram) + категории
+ * defaultNotificationSettings — значения по умолчанию
+ */
 export interface NotificationTypes {
   payments: boolean
   maintenance: boolean

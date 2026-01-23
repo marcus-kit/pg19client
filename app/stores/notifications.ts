@@ -1,3 +1,11 @@
+/**
+ * useNotificationsStore — настройки уведомлений
+ *
+ * State: notifications (каналы и типы)
+ * Actions: set, update, reset
+ *
+ * Persist: localStorage (pg19_notifications)
+ */
 import { defineStore } from 'pinia'
 import type { NotificationSettings } from '~/types'
 import { defaultNotificationSettings } from '~/types'

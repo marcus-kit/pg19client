@@ -1,17 +1,24 @@
+/**
+ * useNews — работа с новостями
+ *
+ * Методы:
+ * - fetchNews — список новостей с фильтрацией
+ * - fetchNewsById — полная новость с вложениями
+ */
 import type { News, NewsDetail } from '~/types/news'
 
-export const useNews = () => {
+export function useNews() {
   /**
    * Получить список новостей
    * @param limit - количество новостей (по умолчанию 3)
    * @param category - фильтр по категории
    * @param active - только активные (не истёкшие)
    */
-  const fetchNews = async (options: {
+  async function fetchNews(options: {
     limit?: number
     category?: string
     active?: boolean
-  } = {}) => {
+  } = {}) {
     const { limit = 3, category, active = true } = options
 
     const query: Record<string, string> = {}
@@ -40,10 +47,8 @@ export const useNews = () => {
     }
   }
 
-  /**
-   * Получить полную новость с вложениями
-   */
-  const fetchNewsById = async (id: string) => {
+  // Получить полную новость с вложениями
+  async function fetchNewsById(id: string) {
     const { data, error, pending } = await useFetch<{ news: NewsDetail }>(
       `/api/news/${id}`,
       {
