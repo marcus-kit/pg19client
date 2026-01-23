@@ -112,7 +112,7 @@ onUnmounted(() => {
         <div class="flex items-center justify-between h-16">
 
           <!-- Логотип -->
-          <NuxtLink to="/" class="flex items-center gap-3">
+          <NuxtLink to="/dashboard" class="flex items-center gap-3">
             <img src="/logo.png" alt="ПЖ19" class="h-8" />
           </NuxtLink>
 

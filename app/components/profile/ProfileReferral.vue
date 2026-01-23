@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatDate } from '~/composables/useFormatters'
+
 const referralStore = useReferralStore()
 
 const referralLink = computed(() => {
@@ -43,14 +45,6 @@ const copyLink = async () => {
   } catch {
     // Fallback
   }
-}
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
 }
 
 const shareOptions = [

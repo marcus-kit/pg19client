@@ -1,4 +1,20 @@
 <script setup lang="ts">
+/**
+ * UiButton — базовая кнопка с вариантами стилей
+ *
+ * Варианты (variant):
+ * - primary  — градиент оранжевый→розовый, основное действие
+ * - secondary — прозрачная с рамкой
+ * - ghost    — прозрачная без рамки
+ * - danger   — красная, деструктивное действие
+ * - success  — зелёная, подтверждение
+ *
+ * Размеры (size): sm, md, lg
+ * Модификаторы: block (100% ширина), loading (спиннер), disabled
+ *
+ * Стили в глобальном CSS (не scoped) — для возможности переопределения извне
+ */
+
 interface Props {
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'success'
   size?: 'sm' | 'md' | 'lg'
@@ -7,7 +23,7 @@ interface Props {
   block?: boolean
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   variant: 'primary',
   size: 'md',
   disabled: false,
@@ -27,11 +43,13 @@ const props = withDefaults(defineProps<Props>(), {
     ]"
     :disabled="disabled || loading"
   >
+    <!-- Спиннер при загрузке -->
     <Icon v-if="loading" name="heroicons:arrow-path" class="w-4 h-4 animate-spin" />
     <slot />
   </button>
 </template>
 
+<!-- Глобальные стили (без scoped) для возможности переопределения через !important -->
 <style>
 .u-btn {
   display: inline-flex;

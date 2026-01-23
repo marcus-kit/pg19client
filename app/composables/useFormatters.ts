@@ -116,7 +116,7 @@ export function formatPhone(phone: string | null | undefined): string {
 }
 
 /**
- * Format balance from kopeks to rubles
+ * Format balance from kopeks to rubles (with currency symbol)
  * Input: 150050 (kopeks)
  * Output: "1 500,50 ₽"
  */
@@ -130,7 +130,22 @@ export function formatBalance(kopeks: number | null | undefined): string {
 }
 
 /**
- * Format price (already in rubles)
+ * Format kopeks to rubles (without currency symbol)
+ * Input: 150050 (kopeks)
+ * Output: "1 500,50"
+ * Use for displaying amounts where ₽ is shown separately
+ */
+export function formatKopeks(kopeks: number | null | undefined): string {
+  if (kopeks === null || kopeks === undefined) return '—'
+
+  return (kopeks / 100).toLocaleString('ru-RU', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  })
+}
+
+/**
+ * Format price (already in rubles, with currency symbol)
  */
 export function formatPrice(rubles: number | null | undefined): string {
   if (rubles === null || rubles === undefined) return '—'
@@ -183,6 +198,7 @@ export function useFormatters() {
     formatDateShort,
     formatPhone,
     formatBalance,
+    formatKopeks,
     formatPrice,
     formatFileSize,
     truncateText,

@@ -1,13 +1,7 @@
 <script setup lang="ts">
-const accountStore = useAccountStore()
+import { formatDate } from '~/composables/useFormatters'
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
-}
+const accountStore = useAccountStore()
 </script>
 
 <template>

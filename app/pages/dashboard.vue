@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NewsCategory } from '~/types/news'
+import { formatDateShort } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -21,13 +22,6 @@ const openNewsModal = (id: number) => {
 
 const closeNewsModal = () => {
   selectedNewsId.value = null
-}
-
-// Форматирование даты (короткий формат)
-const formatShortDate = (dateStr: string) => {
-  const date = new Date(dateStr)
-  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
-  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()}`
 }
 
 // Маппинг категорий
@@ -129,7 +123,7 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
         >
           <div class="flex items-center gap-2 mb-2">
             <p class="text-xs text-[var(--text-muted)]">
-              {{ formatShortDate(item.publishedAt) }}
+              {{ formatDateShort(item.publishedAt) }}
             </p>
             <UiBadge :variant="categoryVariants[item.category]" size="sm">
               {{ categoryLabels[item.category] }}

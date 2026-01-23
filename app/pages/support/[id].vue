@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { TicketDetail, TicketComment } from '~/types/ticket'
 import { ticketStatusLabels, ticketStatusColors, ticketCategoryLabels, ticketCategoryIcons } from '~/types/ticket'
+import { formatDateTime, formatRelativeDate } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -29,38 +30,6 @@ const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' 
   pending: { label: 'Ожидает ответа', variant: 'warning', color: 'text-orange-400' },
   resolved: { label: 'Решён', variant: 'success', color: 'text-accent' },
   closed: { label: 'Закрыт', variant: 'neutral', color: 'text-[var(--text-muted)]' }
-}
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-const formatRelativeDate = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'только что'
-  if (diffMins < 60) return `${diffMins} мин. назад`
-  if (diffHours < 24) return `${diffHours} ч. назад`
-  if (diffDays < 7) return `${diffDays} дн. назад`
-
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const submitReply = async () => {
@@ -161,13 +130,13 @@ useHead({
     </div>
 
     <!-- Error -->
-    <UiCard v-else-if="error" class="border-red-500/30">
-      <div class="text-center py-8">
-        <Icon name="heroicons:exclamation-triangle" class="w-16 h-16 text-red-400 mx-auto mb-4" />
-        <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Заявка не найдена</h3>
-        <p class="text-[var(--text-muted)] mb-4">Возможно, она была удалена или у вас нет доступа</p>
-        <UiButton @click="router.push('/support')">Вернуться к заявкам</UiButton>
-      </div>
+    <UiCard v-else-if="error">
+      <UiErrorState
+        title="Заявка не найдена"
+        description="Возможно, она была удалена или у вас нет доступа"
+        retry-text="Вернуться к заявкам"
+        @retry="router.push('/support')"
+      />
     </UiCard>
 
     <!-- Ticket Content -->
@@ -194,7 +163,7 @@ useHead({
               </div>
               <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ ticket.subject }}</h1>
               <p class="text-sm text-[var(--text-muted)] mt-1">
-                Создана {{ formatDate(ticket.createdAt) }}
+                Создана {{ formatDateTime(ticket.createdAt) }}
               </p>
             </div>
           </div>
@@ -303,21 +272,21 @@ useHead({
       </UiCard>
 
       <!-- No messages yet -->
-      <UiCard v-else class="text-center py-8">
-        <Icon name="heroicons:chat-bubble-left-right" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-        <p class="text-[var(--text-muted)]">Пока нет ответов от поддержки</p>
-        <p class="text-sm text-[var(--text-muted)] mt-1">Мы ответим в ближайшее время</p>
+      <UiCard v-else>
+        <UiEmptyState
+          icon="heroicons:chat-bubble-left-right"
+          title="Пока нет ответов от поддержки"
+          description="Мы ответим в ближайшее время"
+        />
       </UiCard>
 
       <!-- Reply Form -->
       <UiCard v-if="canReply">
         <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Добавить сообщение</h3>
         <form @submit.prevent="submitReply" class="space-y-4">
-          <textarea
+          <UiTextarea
             v-model="replyContent"
-            rows="4"
-            class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 resize-none"
-            style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+            :rows="4"
             placeholder="Напишите сообщение..."
             required
           />
@@ -348,64 +317,50 @@ useHead({
     </template>
 
     <!-- Модалка подтверждения закрытия -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-200"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showCloseModal"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style="background-color: var(--modal-backdrop);"
-          @click.self="showCloseModal = false"
-        >
-          <div class="w-full max-w-md rounded-2xl p-6" style="background: var(--bg-surface); border: 1px solid var(--glass-border);">
-            <div class="text-center mb-6">
-              <div
-                class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                :class="closeStatus === 'resolved' ? 'bg-accent/20' : 'bg-[var(--glass-bg)]'"
-              >
-                <Icon
-                  :name="closeStatus === 'resolved' ? 'heroicons:check-circle' : 'heroicons:x-circle'"
-                  class="w-8 h-8"
-                  :class="closeStatus === 'resolved' ? 'text-accent' : 'text-[var(--text-muted)]'"
-                />
-              </div>
-              <h3 class="text-lg font-semibold text-[var(--text-primary)]">
-                {{ closeStatus === 'resolved' ? 'Отметить как решённую?' : 'Закрыть заявку?' }}
-              </h3>
-              <p class="text-sm text-[var(--text-muted)] mt-2">
-                {{ closeStatus === 'resolved'
-                  ? 'Подтвердите, что ваша проблема была решена. После этого вы не сможете добавлять сообщения.'
-                  : 'Заявка будет закрыта. Если у вас появятся вопросы, создайте новую заявку.'
-                }}
-              </p>
-            </div>
-
-            <div class="flex gap-3">
-              <UiButton
-                variant="secondary"
-                class="flex-1"
-                @click="showCloseModal = false"
-                :disabled="closing"
-              >
-                Отмена
-              </UiButton>
-              <UiButton
-                :variant="closeStatus === 'resolved' ? 'success' : 'primary'"
-                class="flex-1"
-                @click="handleClose"
-                :disabled="closing"
-              >
-                <Icon v-if="closing" name="heroicons:arrow-path" class="w-4 h-4 mr-2 animate-spin" />
-                {{ closing ? 'Закрытие...' : (closeStatus === 'resolved' ? 'Решено' : 'Закрыть') }}
-              </UiButton>
-            </div>
+    <UiModal v-model="showCloseModal">
+      <div class="p-6">
+        <div class="text-center mb-6">
+          <div
+            class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+            :class="closeStatus === 'resolved' ? 'bg-accent/20' : 'bg-[var(--glass-bg)]'"
+          >
+            <Icon
+              :name="closeStatus === 'resolved' ? 'heroicons:check-circle' : 'heroicons:x-circle'"
+              class="w-8 h-8"
+              :class="closeStatus === 'resolved' ? 'text-accent' : 'text-[var(--text-muted)]'"
+            />
           </div>
+          <h3 class="text-lg font-semibold text-[var(--text-primary)]">
+            {{ closeStatus === 'resolved' ? 'Отметить как решённую?' : 'Закрыть заявку?' }}
+          </h3>
+          <p class="text-sm text-[var(--text-muted)] mt-2">
+            {{ closeStatus === 'resolved'
+              ? 'Подтвердите, что ваша проблема была решена. После этого вы не сможете добавлять сообщения.'
+              : 'Заявка будет закрыта. Если у вас появятся вопросы, создайте новую заявку.'
+            }}
+          </p>
         </div>
-      </Transition>
-    </Teleport>
+
+        <div class="flex gap-3">
+          <UiButton
+            variant="secondary"
+            class="flex-1"
+            @click="showCloseModal = false"
+            :disabled="closing"
+          >
+            Отмена
+          </UiButton>
+          <UiButton
+            :variant="closeStatus === 'resolved' ? 'success' : 'primary'"
+            class="flex-1"
+            @click="handleClose"
+            :disabled="closing"
+          >
+            <Icon v-if="closing" name="heroicons:arrow-path" class="w-4 h-4 mr-2 animate-spin" />
+            {{ closing ? 'Закрытие...' : (closeStatus === 'resolved' ? 'Решено' : 'Закрыть') }}
+          </UiButton>
+        </div>
+      </div>
+    </UiModal>
   </div>
 </template>

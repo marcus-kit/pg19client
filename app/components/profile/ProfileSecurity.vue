@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatRelativeDate } from '~/composables/useFormatters'
+
 const sessionsStore = useSessionsStore()
 
 const showPasswordModal = ref(false)
@@ -7,25 +9,6 @@ const passwordForm = ref({
   new: '',
   confirm: ''
 })
-
-const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffMins = Math.floor(diffMs / 60000)
-  const diffHours = Math.floor(diffMs / 3600000)
-  const diffDays = Math.floor(diffMs / 86400000)
-
-  if (diffMins < 1) return 'Сейчас'
-  if (diffMins < 60) return `${diffMins} мин. назад`
-  if (diffHours < 24) return `${diffHours} ч. назад`
-  if (diffDays < 7) return `${diffDays} дн. назад`
-
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short'
-  })
-}
 
 const getDeviceIcon = (device: string) => {
   const lower = device.toLowerCase()
@@ -144,7 +127,7 @@ const terminateAllSessions = () => {
               </div>
             </div>
             <div class="text-right">
-              <p class="text-xs text-[var(--text-muted)] mb-2">{{ formatDate(session.lastActive) }}</p>
+              <p class="text-xs text-[var(--text-muted)] mb-2">{{ formatRelativeDate(session.lastActive) }}</p>
               <button
                 v-if="!session.current"
                 class="text-xs text-red-400 hover:text-red-300 transition-colors"

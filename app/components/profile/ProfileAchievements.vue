@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { formatDateShort } from '~/composables/useFormatters'
+
 const achievementsStore = useAchievementsStore()
 
 const unlockedCount = computed(() =>
@@ -6,14 +8,6 @@ const unlockedCount = computed(() =>
 )
 
 const totalCount = computed(() => achievementsStore.achievements.length)
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric'
-  })
-}
 
 const getProgressPercent = (achievement: { progress?: number; maxProgress?: number }) => {
   if (!achievement.progress || !achievement.maxProgress) return 0
@@ -100,7 +94,7 @@ const getProgressPercent = (achievement: { progress?: number; maxProgress?: numb
 
             <!-- Unlocked date -->
             <p v-if="achievement.unlockedAt" class="text-xs text-accent mt-2">
-              {{ formatDate(achievement.unlockedAt) }}
+              {{ formatDateShort(achievement.unlockedAt) }}
             </p>
           </div>
         </div>

@@ -1,15 +1,27 @@
 <script setup lang="ts">
+/**
+ * UiCard — карточка с glass-эффектом
+ *
+ * Использует CSS класс .glass-card из main.css для:
+ * - Полупрозрачный фон с blur
+ * - Тонкая рамка
+ * - Hover-эффект (если hover=true)
+ *
+ * Padding: none (0), sm (16px), md (24px), lg (32px)
+ */
+
 interface Props {
-  hover?: boolean
+  hover?: boolean                      // Добавить hover-эффект (pointer + подсветка)
   padding?: 'none' | 'sm' | 'md' | 'lg'
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   hover: false,
   padding: 'md'
 })
 
-const paddingClasses = {
+// Маппинг padding на Tailwind классы
+const paddingClasses: Record<string, string> = {
   none: '',
   sm: 'p-4',
   md: 'p-6',

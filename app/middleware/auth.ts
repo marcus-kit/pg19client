@@ -14,7 +14,7 @@ export default defineNuxtRouteMiddleware((to) => {
   const userStore = useUserStore()
 
   // Публичные роуты, не требующие авторизации
-  const publicRoutes = ['/login', '/']
+  const publicRoutes = ['/login']
   const isPublicRoute = publicRoutes.includes(to.path)
 
   // Не авторизован + защищённый роут → на логин
@@ -22,7 +22,7 @@ export default defineNuxtRouteMiddleware((to) => {
     return navigateTo('/login')
   }
 
-  // Авторизован + публичный роут (/, /login) → на дашборд
+  // Авторизован + публичный роут (/login) → на дашборд
   if (userStore.isAuthenticated && isPublicRoute) {
     return navigateTo('/dashboard')
   }

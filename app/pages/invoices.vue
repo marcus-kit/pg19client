@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import type { Invoice, InvoiceStatus } from '~/types/invoice'
+import type { InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
+import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -31,17 +32,6 @@ const filters = [
   { value: 'unpaid', label: 'К оплате' },
   { value: 'paid', label: 'Оплаченные' }
 ]
-
-// Форматирование суммы
-const formatAmount = (kopeks: number) => {
-  return (kopeks / 100).toLocaleString('ru-RU')
-}
-
-// Форматирование даты
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleDateString('ru-RU')
-}
 
 // Открыть счёт в новой вкладке
 const openInvoice = (invoiceId: string) => {
@@ -101,12 +91,12 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
     </div>
 
     <!-- Error State -->
-    <UiCard v-else-if="error" class="border-red-500/30">
-      <div class="text-center py-4">
-        <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <p class="text-red-400 mb-4">Ошибка загрузки счетов</p>
-        <UiButton @click="refresh">Повторить</UiButton>
-      </div>
+    <UiCard v-else-if="error">
+      <UiErrorState
+        title="Ошибка загрузки"
+        description="Не удалось загрузить счета"
+        @retry="refresh"
+      />
     </UiCard>
 
     <!-- Invoices List -->
@@ -136,15 +126,15 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
               </div>
               <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
               <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
-                <span v-if="invoice.issuedAt">Выставлен: {{ formatDate(invoice.issuedAt) }}</span>
-                <span v-if="invoice.paidAt">Оплачен: {{ formatDate(invoice.paidAt) }}</span>
-                <span v-else-if="invoice.dueDate">Срок: {{ formatDate(invoice.dueDate) }}</span>
+                <span v-if="invoice.issuedAt">Выставлен: {{ formatDateShort(invoice.issuedAt) }}</span>
+                <span v-if="invoice.paidAt">Оплачен: {{ formatDateShort(invoice.paidAt) }}</span>
+                <span v-else-if="invoice.dueDate">Срок: {{ formatDateShort(invoice.dueDate) }}</span>
               </div>
             </div>
           </div>
           <div class="flex items-center gap-4">
             <span class="text-lg font-bold text-[var(--text-primary)]">
-              {{ formatAmount(invoice.amount) }}
+              {{ formatKopeks(invoice.amount) }}
               <span class="text-sm font-normal text-[var(--text-muted)]">₽</span>
             </span>
             <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
@@ -154,10 +144,10 @@ const getStatusBadgeClass = (status: InvoiceStatus) => {
 
       <!-- Empty State -->
       <UiCard v-if="filteredInvoices.length === 0" padding="lg">
-        <div class="text-center py-8">
-          <Icon name="heroicons:document-text" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-          <p class="text-[var(--text-muted)]">Счетов не найдено</p>
-        </div>
+        <UiEmptyState
+          icon="heroicons:document-text"
+          title="Счетов не найдено"
+        />
       </UiCard>
     </div>
   </div>

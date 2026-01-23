@@ -1,11 +1,17 @@
 <script setup lang="ts">
 /**
- * RelativeTime - client-only component for relative time display
- * Prevents hydration mismatch by rendering only on client
+ * UiRelativeTime — отображение относительного времени ("5 мин. назад", "вчера")
+ *
+ * Особенности:
+ * - Client-only рендеринг — предотвращает hydration mismatch (сервер и клиент
+ *   могут показать разное время)
+ * - Автообновление каждую минуту — для актуальности "X мин. назад"
+ * - Реактивность на изменение props.date
  */
+
 interface Props {
-  date: string | null | undefined
-  fallback?: string
+  date: string | null | undefined  // ISO дата или null
+  fallback?: string                // Fallback при отсутствии даты
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -14,21 +20,27 @@ const props = withDefaults(defineProps<Props>(), {
 
 const { formatRelativeDate } = useFormatters()
 
-// Render placeholder on server, actual value on client
-const displayValue = ref(props.fallback)
-const mounted = ref(false)
+// =============================================================================
+// STATE
+// =============================================================================
+
+const displayValue = ref(props.fallback)  // Текст для отображения
+const mounted = ref(false)                 // Флаг клиентского рендера
+let interval: ReturnType<typeof setInterval> | null = null
+
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
 
 onMounted(() => {
   mounted.value = true
+
+  // Первичное вычисление относительного времени
   if (props.date) {
     displayValue.value = formatRelativeDate(props.date)
   }
-})
 
-// Update every minute for "X мин. назад" accuracy
-let interval: ReturnType<typeof setInterval> | null = null
-
-onMounted(() => {
+  // Автообновление каждую минуту (60000 мс)
   interval = setInterval(() => {
     if (props.date) {
       displayValue.value = formatRelativeDate(props.date)
@@ -40,7 +52,11 @@ onUnmounted(() => {
   if (interval) clearInterval(interval)
 })
 
-// React to prop changes
+// =============================================================================
+// WATCHERS
+// =============================================================================
+
+// Реакция на изменение даты извне
 watch(() => props.date, (newDate) => {
   if (mounted.value && newDate) {
     displayValue.value = formatRelativeDate(newDate)

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { NewsCategory } from '~/types/news'
+import { formatDate, formatFileSize } from '~/composables/useFormatters'
 
 interface Props {
   newsId: number | null
@@ -26,24 +27,6 @@ const categoryVariants: Record<NewsCategory, 'warning' | 'info' | 'success'> = {
   announcement: 'warning',  // Оранжевый (brand color)
   protocol: 'info',         // Синий
   notification: 'success'   // Зелёный (accent)
-}
-
-// Форматирование даты
-const formatDate = (dateStr: string) => {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric'
-  })
-}
-
-// Форматирование размера файла
-const formatFileSize = (bytes: number | null) => {
-  if (!bytes) return 'Неизвестно'
-  if (bytes < 1024) return `${bytes} Б`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} КБ`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} МБ`
 }
 
 // Закрытие по ESC

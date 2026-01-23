@@ -1,4 +1,19 @@
 <script setup lang="ts">
+/**
+ * UiSelect — кастомный селект с поддержкой темы
+ *
+ * Особенности:
+ * - v-model для двусторонней привязки
+ * - Три размера: sm, md, lg
+ * - Кастомная стрелка (заменяет системную)
+ * - Поддержка disabled опций
+ * - Валидация с отображением ошибки
+ */
+
+// -----------------------------------------------------------------------------
+// Типы
+// -----------------------------------------------------------------------------
+
 interface Option {
   value: string | number
   label: string
@@ -15,6 +30,10 @@ interface Props {
   size?: 'sm' | 'md' | 'lg'
 }
 
+// -----------------------------------------------------------------------------
+// Props & Emits
+// -----------------------------------------------------------------------------
+
 const props = withDefaults(defineProps<Props>(), {
   modelValue: null,
   placeholder: 'Выберите...',
@@ -25,40 +44,53 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | number | null]
 }>()
 
+// -----------------------------------------------------------------------------
+// Computed
+// -----------------------------------------------------------------------------
+
+// Двусторонняя привязка для v-model
 const selectValue = computed({
   get: () => props.modelValue,
   set: (value) => emit('update:modelValue', value)
 })
 
+// Классы размеров для select элемента
 const sizeClasses = computed(() => {
   switch (props.size) {
-    case 'sm':
-      return 'px-3 py-2 text-sm pr-9'
-    case 'lg':
-      return 'px-5 py-4 text-lg pr-12'
-    default:
-      return 'px-4 py-3 pr-10'
+    case 'sm': return 'px-3 py-2 text-sm pr-9'
+    case 'lg': return 'px-5 py-4 text-lg pr-12'
+    default:   return 'px-4 py-3 pr-10'
   }
 })
 
-const iconSizeClasses = computed(() => {
+// Размер иконки стрелки
+const iconSize = computed(() => {
   switch (props.size) {
-    case 'sm':
-      return 'w-4 h-4 right-2.5'
-    case 'lg':
-      return 'w-6 h-6 right-4'
-    default:
-      return 'w-5 h-5 right-3'
+    case 'sm': return 'w-4 h-4'
+    case 'lg': return 'w-6 h-6'
+    default:   return 'w-5 h-5'
+  }
+})
+
+// Позиция иконки стрелки (right offset)
+const iconPosition = computed(() => {
+  switch (props.size) {
+    case 'sm': return 'right-2.5'
+    case 'lg': return 'right-4'
+    default:   return 'right-3'
   }
 })
 </script>
 
 <template>
   <div class="w-full">
+    <!-- Лейбл -->
     <label v-if="label" class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
       {{ label }}
     </label>
+
     <div class="relative">
+      <!-- Select элемент -->
       <select
         v-model="selectValue"
         :disabled="disabled"
@@ -68,9 +100,12 @@ const iconSizeClasses = computed(() => {
           { 'border-red-500 focus:border-red-500 focus:ring-red-500/20': error }
         ]"
       >
+        <!-- Placeholder опция -->
         <option v-if="placeholder" value="" disabled :selected="!modelValue" class="text-[var(--text-muted)]">
           {{ placeholder }}
         </option>
+
+        <!-- Опции -->
         <option
           v-for="option in options"
           :key="option.value"
@@ -81,15 +116,20 @@ const iconSizeClasses = computed(() => {
         </option>
       </select>
 
-      <!-- Custom dropdown arrow -->
-      <div class="pointer-events-none absolute inset-y-0 flex items-center" :class="iconSizeClasses.split(' ').slice(2).join(' ')">
+      <!-- Кастомная стрелка (заменяет системную, скрытую через appearance-none) -->
+      <div
+        class="pointer-events-none absolute inset-y-0 flex items-center"
+        :class="iconPosition"
+      >
         <Icon
           name="heroicons:chevron-down"
           class="text-[var(--text-muted)] transition-colors"
-          :class="iconSizeClasses.split(' ').slice(0, 2).join(' ')"
+          :class="iconSize"
         />
       </div>
     </div>
+
+    <!-- Сообщение об ошибке -->
     <p v-if="error" class="mt-1.5 text-sm text-red-400">{{ error }}</p>
   </div>
 </template>

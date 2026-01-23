@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Subscription, Service } from '~/types/service'
 import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
+import { formatKopeks } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -34,11 +35,6 @@ const subscribedServiceIds = computed(() => {
 const availableServices = computed(() => {
   return services.value.filter(s => !subscribedServiceIds.value.has(s.id))
 })
-
-// Форматирование цены
-const formatPrice = (kopeks: number) => {
-  return (kopeks / 100).toLocaleString('ru-RU')
-}
 
 // Получить цену подписки (custom или стандартная)
 const getSubscriptionPrice = (sub: Subscription) => {
@@ -113,11 +109,12 @@ const requestConnection = async (service: Service) => {
     </div>
 
     <!-- Error State -->
-    <UiCard v-else-if="error" class="border-red-500/30">
-      <div class="text-center py-4">
-        <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <p class="text-red-400 mb-4">Ошибка загрузки услуг</p>
-      </div>
+    <UiCard v-else-if="error">
+      <UiErrorState
+        title="Ошибка загрузки"
+        description="Не удалось загрузить услуги"
+        @retry="() => window.location.reload()"
+      />
     </UiCard>
 
     <template v-else>
@@ -142,7 +139,7 @@ const requestConnection = async (service: Service) => {
                 </div>
                 <div class="flex items-center justify-between mt-4">
                   <span class="text-lg font-bold text-[var(--text-primary)]">
-                    {{ formatPrice(getSubscriptionPrice(sub)) }}
+                    {{ formatKopeks(getSubscriptionPrice(sub)) }}
                     <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
                   </span>
                   <button class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
@@ -154,10 +151,11 @@ const requestConnection = async (service: Service) => {
           </UiCard>
         </div>
         <UiCard v-else padding="lg">
-          <div class="text-center py-4">
-            <Icon name="heroicons:cube" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-4" />
-            <p class="text-[var(--text-muted)]">Нет подключенных услуг</p>
-          </div>
+          <UiEmptyState
+            icon="heroicons:cube"
+            title="Нет подключенных услуг"
+            description="Выберите услугу из списка ниже для подключения"
+          />
         </UiCard>
       </section>
 
@@ -182,7 +180,7 @@ const requestConnection = async (service: Service) => {
               </div>
               <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
                 <span class="font-semibold text-[var(--text-primary)]">
-                  {{ formatPrice(service.priceMonthly) }}
+                  {{ formatKopeks(service.priceMonthly) }}
                   <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
                 </span>
                 <UiButton
