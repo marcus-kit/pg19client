@@ -1,7 +1,16 @@
 <script setup lang="ts">
 /**
  * Default Layout — основной layout личного кабинета
- * Включает: шапку, контент, мобильную навигацию
+ *
+ * Структура:
+ * - Фиксированная шапка (desktop: навигация + профиль, mobile: логотип + иконки)
+ * - Основной контент (<slot />)
+ * - Мобильная нижняя навигация (4 пункта + "Ещё")
+ *
+ * Особенности:
+ * - Шапка меняет стиль при скролле (blur эффект)
+ * - Heartbeat для онлайн-статуса пользователя
+ * - Адаптивная навигация (md: breakpoint)
  */
 
 const userStore = useUserStore()
@@ -10,14 +19,14 @@ const { logout } = useAuthInit()
 const route = useRoute()
 const colorMode = useColorMode()
 
-// Heartbeat для онлайн-статуса пользователя
+// Heartbeat — отправляет пинг на сервер каждые N секунд для онлайн-статуса
 const { startHeartbeat, stopHeartbeat } = usePresenceHeartbeat()
 
 // -----------------------------------------------------------------------------
 // Навигация
 // -----------------------------------------------------------------------------
 
-// Полная навигация (desktop header)
+// Desktop навигация — все пункты в шапке
 const navigation = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
   { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
@@ -27,7 +36,7 @@ const navigation = [
   { name: 'Профиль', href: '/profile', icon: 'heroicons:user' }
 ]
 
-// Основные пункты мобильной навигации (4 + кнопка "Ещё")
+// Mobile навигация — 4 основных пункта в нижней панели
 const mobileMainNav = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
   { name: 'Услуги', href: '/services', icon: 'heroicons:squares-2x2' },
@@ -35,30 +44,32 @@ const mobileMainNav = [
   { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' }
 ]
 
-// Дополнительные пункты в меню "Ещё"
+// Mobile меню "Ещё" — дополнительные пункты
 const mobileMoreNav = [
   { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' },
   { name: 'Профиль', href: '/profile', icon: 'heroicons:user' }
 ]
 
-// Проверка активного пункта меню
+// Проверка активного пункта (точное совпадение или вложенный путь)
 const isActive = (href: string) => route.path === href || route.path.startsWith(href + '/')
+
+// Подсветка кнопки "Ещё" если активен один из её пунктов
 const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.href)))
 
 // -----------------------------------------------------------------------------
 // Состояние UI
 // -----------------------------------------------------------------------------
 
-const isScrolled = ref(false)        // Шапка при скролле
-const showMoreMenu = ref(false)      // Мобильное меню "Ещё"
+const isScrolled = ref(false)    // true когда страница прокручена > 20px
+const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
 
-// Переключение темы
-const toggleTheme = () => {
+// Переключение темы light/dark
+function toggleTheme(): void {
   colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
 }
 
 // Выход из аккаунта
-const handleLogout = () => {
+function handleLogout(): void {
   showMoreMenu.value = false
   logout()
   navigateTo('/login')
@@ -69,9 +80,10 @@ const handleLogout = () => {
 // -----------------------------------------------------------------------------
 
 onMounted(() => {
+  // Запуск heartbeat для онлайн-статуса
   startHeartbeat()
 
-  // Отслеживание скролла для эффекта шапки
+  // Отслеживание скролла — добавляет blur эффект шапке
   const handleScroll = () => {
     isScrolled.value = window.scrollY > 20
   }
@@ -87,9 +99,11 @@ onUnmounted(() => {
 <template>
   <div class="min-h-screen flex flex-col" style="background-color: var(--bg-base);">
 
-    <!-- ===================================================================
-         HEADER (Desktop + Mobile top bar)
-         =================================================================== -->
+    <!-- =====================================================================
+         HEADER — фиксированная шапка
+         - Desktop: логотип + навигация + профиль + выход
+         - Mobile: логотип + тема + профиль
+         ===================================================================== -->
     <header
       class="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       :class="isScrolled ? 'header-blur shadow-lg' : 'header-transparent'"
@@ -102,7 +116,7 @@ onUnmounted(() => {
             <img src="/logo.png" alt="ПЖ19" class="h-8" />
           </NuxtLink>
 
-          <!-- Desktop навигация -->
+          <!-- Desktop навигация (скрыта на mobile) -->
           <nav class="hidden md:flex items-center gap-1">
             <NuxtLink
               v-for="item in navigation"
@@ -116,7 +130,7 @@ onUnmounted(() => {
             </NuxtLink>
           </nav>
 
-          <!-- Desktop: инфо пользователя и действия -->
+          <!-- Desktop: профиль и действия -->
           <div class="hidden md:flex items-center gap-3">
             <!-- Переключатель темы -->
             <button
@@ -130,7 +144,7 @@ onUnmounted(() => {
               />
             </button>
 
-            <!-- Имя и договор -->
+            <!-- Имя пользователя и номер договора -->
             <div class="text-right">
               <p class="text-sm font-medium text-[var(--text-primary)]">{{ userStore.shortName }}</p>
               <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber }}</p>
@@ -146,8 +160,9 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- Mobile: действия в шапке -->
+          <!-- Mobile: иконки в шапке -->
           <div class="flex md:hidden items-center gap-2">
+            <!-- Переключатель темы -->
             <button
               @click="toggleTheme"
               class="p-2 text-[var(--text-muted)] hover:text-primary rounded-lg transition-colors"
@@ -157,6 +172,7 @@ onUnmounted(() => {
                 class="w-5 h-5"
               />
             </button>
+            <!-- Ссылка на профиль -->
             <NuxtLink
               to="/profile"
               class="p-2 text-[var(--text-muted)] hover:text-primary rounded-lg transition-colors"
@@ -168,18 +184,21 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <!-- ===================================================================
-         CONTENT
-         =================================================================== -->
+    <!-- =====================================================================
+         CONTENT — основной контент страницы
+         pt-16 — отступ под фиксированную шапку (64px)
+         pb-20 — отступ под мобильную навигацию (80px), убирается на desktop
+         ===================================================================== -->
     <main class="flex-1 pt-16 pb-20 md:pb-0">
       <div class="container mx-auto px-4 py-6">
         <slot />
       </div>
     </main>
 
-    <!-- ===================================================================
-         MOBILE BOTTOM NAVIGATION
-         =================================================================== -->
+    <!-- =====================================================================
+         MOBILE BOTTOM NAVIGATION — нижняя панель (только mobile)
+         4 основных пункта + кнопка "Ещё" с выпадающим меню
+         ===================================================================== -->
     <div class="md:hidden">
       <!-- Нижняя панель навигации -->
       <nav
@@ -187,7 +206,7 @@ onUnmounted(() => {
         style="background: var(--header-blur-bg); border-color: var(--glass-border);"
       >
         <div class="flex items-center justify-around h-16 px-2">
-          <!-- Основные пункты -->
+          <!-- Основные пункты навигации -->
           <NuxtLink
             v-for="item in mobileMainNav"
             :key="item.href"
@@ -200,7 +219,7 @@ onUnmounted(() => {
             <span class="text-xs font-medium">{{ item.name }}</span>
           </NuxtLink>
 
-          <!-- Кнопка "Ещё" -->
+          <!-- Кнопка "Ещё" — открывает дополнительное меню -->
           <button
             @click="showMoreMenu = !showMoreMenu"
             class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors"
@@ -212,7 +231,7 @@ onUnmounted(() => {
         </div>
       </nav>
 
-      <!-- Меню "Ещё" -->
+      <!-- Выпадающее меню "Ещё" -->
       <Transition
         enter-active-class="transition-all duration-200 ease-out"
         leave-active-class="transition-all duration-150 ease-in"
@@ -225,6 +244,7 @@ onUnmounted(() => {
           style="background: var(--bg-surface); border-top: 1px solid var(--glass-border);"
         >
           <div class="flex flex-col gap-1">
+            <!-- Дополнительные пункты навигации -->
             <NuxtLink
               v-for="item in mobileMoreNav"
               :key="item.href"
@@ -237,6 +257,7 @@ onUnmounted(() => {
               <span class="font-medium">{{ item.name }}</span>
             </NuxtLink>
 
+            <!-- Разделитель -->
             <div class="my-2 h-px" style="background: var(--glass-border);" />
 
             <!-- Кнопка выхода -->
@@ -251,7 +272,7 @@ onUnmounted(() => {
         </div>
       </Transition>
 
-      <!-- Backdrop для меню "Ещё" -->
+      <!-- Backdrop — затемнение при открытом меню "Ещё" -->
       <Transition
         enter-active-class="transition-opacity duration-200"
         leave-active-class="transition-opacity duration-150"
@@ -270,7 +291,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* Safe area для iPhone с notch */
+/* Safe area — отступ для iPhone с notch/Dynamic Island */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }

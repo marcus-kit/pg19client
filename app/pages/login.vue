@@ -9,7 +9,7 @@ import { useCallVerification } from '~/composables/useCallVerification'
 import IMask from 'imask'
 
 definePageMeta({
-  layout: 'guest'
+  layout: false  // Без layout — всё инлайн
 })
 
 const { init: authInit } = useAuthInit()
@@ -204,7 +204,19 @@ async function handleContractSubmit(): Promise<void> {
 </script>
 
 <template>
-  <div class="w-full max-w-md">
+  <div class="min-h-screen mesh-gradient-hero flex flex-col">
+    <!-- Header -->
+    <header class="py-6">
+      <div class="container mx-auto px-4">
+        <NuxtLink to="/" class="flex items-center gap-3 w-fit">
+          <img src="/logo.png" alt="PG19" class="h-10" />
+        </NuxtLink>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-1 flex items-center justify-center px-4 py-8">
+      <div class="w-full max-w-md">
     <UiCard padding="lg">
       <!-- Header -->
       <div class="text-center mb-6">
@@ -477,5 +489,12 @@ async function handleContractSubmit(): Promise<void> {
         </a>
       </div>
     </UiCard>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-gray-500 text-sm">
+      <p>&copy; {{ new Date().getFullYear() }} ПЖ19. Все права защищены.</p>
+    </footer>
   </div>
 </template>

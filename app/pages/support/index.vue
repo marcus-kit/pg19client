@@ -1,7 +1,18 @@
 <script setup lang="ts">
+/**
+ * Страница поддержки — три вкладки:
+ * 1. Чат — realtime чат с оператором/ботом (useChat composable)
+ * 2. Заявки — список тикетов пользователя
+ * 3. FAQ — частые вопросы (accordion)
+ *
+ * Особенности:
+ * - Чат инициализируется лениво (только при открытии вкладки)
+ * - Поддержка вложений в чате (изображения, документы)
+ * - Модалка создания новой заявки
+ */
+
 import type { Ticket, TicketCategory } from '~/types/ticket'
-import { ticketStatusLabels, ticketStatusColors, ticketCategoryLabels } from '~/types/ticket'
-import type { FaqItem } from '~/server/api/support/faq.get'
+import type { ChatMessage } from '~/types/chat'
 import { formatFileSize, formatRelativeDate } from '~/composables/useFormatters'
 
 definePageMeta({
@@ -13,35 +24,65 @@ const router = useRouter()
 const { fetchTickets, createTicket } = useTickets()
 const { fetchFaq } = useFaq()
 
-// Загружаем данные
+// -----------------------------------------------------------------------------
+// Загрузка данных
+// -----------------------------------------------------------------------------
+
 const { tickets, pending: ticketsPending, error: ticketsError, refresh: refreshTickets } = await fetchTickets()
 const { faq, pending: faqPending } = await fetchFaq()
 
-// Определяем начальную вкладку из query параметра
+// -----------------------------------------------------------------------------
+// Вкладки
+// -----------------------------------------------------------------------------
+
+// Определяем начальную вкладку из query параметра (?tab=tickets)
 const initialTab = (['tickets', 'faq', 'chat'].includes(route.query.tab as string)
   ? route.query.tab
   : 'chat') as 'tickets' | 'faq' | 'chat'
 
 const activeTab = ref<'tickets' | 'faq' | 'chat'>(initialTab)
 
-// Chat
+// -----------------------------------------------------------------------------
+// Чат с поддержкой
+// -----------------------------------------------------------------------------
+
 const chatStore = useChatStore()
 const userStore = useUserStore()
-const { session, messages, isLoading: chatLoading, isSending, isUploading, error: chatError, initSession, uploadFile, sendMessage } = useChat()
 
-const messageText = ref('')
-const messagesContainer = ref<HTMLElement | null>(null)
-const chatInitialized = ref(false)
-const isOperatorTyping = ref(false)
+// useChat — composable для работы с чатом (session, messages, send, upload)
+const {
+  session,
+  messages,
+  isLoading: chatLoading,
+  isSending,
+  isUploading,
+  error: chatError,
+  initSession,
+  uploadFile,
+  sendMessage
+} = useChat()
 
-// Вложения
-const fileInput = ref<HTMLInputElement | null>(null)
-const pendingFile = ref<File | null>(null)
-const pendingPreview = ref<string | null>(null)
+const messageText = ref('')                           // Текст сообщения в поле ввода
+const messagesContainer = ref<HTMLElement | null>(null) // Ref на контейнер сообщений (для скролла)
+const chatInitialized = ref(false)                    // Флаг: чат уже инициализирован
+const isOperatorTyping = ref(false)                   // Показать индикатор "оператор печатает"
+
+// -----------------------------------------------------------------------------
+// Вложения в чате
+// -----------------------------------------------------------------------------
+
+const fileInput = ref<HTMLInputElement | null>(null)  // Скрытый input[type=file]
+const pendingFile = ref<File | null>(null)            // Выбранный файл (до отправки)
+const pendingPreview = ref<string | null>(null)       // Preview URL для изображений
+
 const ACCEPT_FILES = 'image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx'
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
-// Отслеживаем последнее сообщение для скрытия typing
+// -----------------------------------------------------------------------------
+// Логика чата
+// -----------------------------------------------------------------------------
+
+// Отслеживаем последнее сообщение — скрываем typing когда пришёл ответ
 const lastMessage = computed(() => messages.value[messages.value.length - 1])
 
 watch(lastMessage, (newMsg) => {
@@ -52,11 +93,12 @@ watch(lastMessage, (newMsg) => {
   }
 })
 
-// Функция инициализации чата
+// Ленивая инициализация чата (только при открытии вкладки)
 async function initChatSession() {
   if (chatInitialized.value) return
   chatInitialized.value = true
 
+  // Пробуем восстановить существующую сессию из store
   const savedSessionId = chatStore.sessionId
   if (savedSessionId) {
     try {
@@ -66,9 +108,12 @@ async function initChatSession() {
         scrollToBottom()
       }
     } catch {
+      // Сессия не найдена — сбрасываем
       chatStore.sessionId = null
     }
   }
+
+  // Создаём новую сессию если нет существующей
   if (!savedSessionId && !session.value && userStore.isAuthenticated) {
     await initSession({ userId: userStore.user?.id })
     if (session.value) {
@@ -78,7 +123,7 @@ async function initChatSession() {
   }
 }
 
-// Инициализация чата при загрузке страницы (чат — первая вкладка)
+// Инициализация чата при загрузке страницы (если чат — активная вкладка)
 onMounted(() => {
   if (activeTab.value === 'chat') {
     initChatSession()
@@ -92,7 +137,7 @@ watch(activeTab, async (tab) => {
   }
 })
 
-// Функция скролла к последнему сообщению
+// Скролл к последнему сообщению
 function scrollToBottom() {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -109,6 +154,10 @@ watch(isOperatorTyping, (typing) => {
   if (typing) scrollToBottom()
 })
 
+// -----------------------------------------------------------------------------
+// Работа с файлами
+// -----------------------------------------------------------------------------
+
 // Открыть диалог выбора файла
 function openFileDialog() {
   fileInput.value?.click()
@@ -119,38 +168,38 @@ function handleFileSelect(event: Event) {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  input.value = ''
+  input.value = '' // Сброс input для повторного выбора того же файла
 
+  // Проверка размера
   if (file.size > MAX_FILE_SIZE) {
     alert('Размер файла не должен превышать 10 МБ')
     return
   }
 
   pendingFile.value = file
+  // Создаём preview только для изображений
   pendingPreview.value = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
 }
 
-// Удалить pending file
+// Удалить выбранный файл
 function removePendingFile() {
   pendingFile.value = null
   if (pendingPreview.value) {
-    URL.revokeObjectURL(pendingPreview.value)
+    URL.revokeObjectURL(pendingPreview.value) // Освобождаем память
     pendingPreview.value = null
   }
 }
 
-
 // -----------------------------------------------------------------------------
-// Helpers для отображения сообщений чата (инлайн из ChatMessage.vue)
+// Helpers для отображения сообщений чата
 // -----------------------------------------------------------------------------
-import type { ChatMessage } from '~/types/chat'
 
 // Определение типа отправителя
 const msgIsUser = (msg: ChatMessage) => msg.sender_type === 'user'
 const msgIsOperator = (msg: ChatMessage) => msg.sender_type === 'admin' || msg.sender_type === 'bot'
 const msgIsSystem = (msg: ChatMessage) => msg.sender_type === 'system'
 
-// Вложения
+// Проверка типа вложения
 const msgIsImage = (msg: ChatMessage) => msg.content_type === 'image'
 const msgIsFile = (msg: ChatMessage) => msg.content_type === 'file'
 const msgHasAttachment = (msg: ChatMessage) => !!msg.attachment_url
@@ -168,13 +217,18 @@ function getMsgSenderLabel(msg: ChatMessage): string {
   return 'Вы'
 }
 
+// -----------------------------------------------------------------------------
 // Отправка сообщения
+// -----------------------------------------------------------------------------
+
 async function handleSendMessage() {
+  // Проверяем что есть текст или файл
   if ((!messageText.value.trim() && !pendingFile.value) || isSending.value || isUploading.value) return
 
   const text = messageText.value
   const file = pendingFile.value
 
+  // Очищаем поля сразу (optimistic UI)
   messageText.value = ''
   removePendingFile()
 
@@ -187,15 +241,18 @@ async function handleSendMessage() {
 
     await sendMessage(text, attachment)
     chatStore.clearUnread()
-    // Показываем typing с небольшой задержкой
+
+    // Показываем typing с небольшой задержкой (имитация ответа)
     setTimeout(() => {
       isOperatorTyping.value = true
     }, 300)
   } catch {
+    // При ошибке восстанавливаем текст
     messageText.value = text
   }
 }
 
+// Отправка по Enter (Shift+Enter — перенос строки)
 function handleChatKeydown(e: KeyboardEvent) {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault()
@@ -203,7 +260,11 @@ function handleChatKeydown(e: KeyboardEvent) {
   }
 }
 
-// Статусы для UI
+// -----------------------------------------------------------------------------
+// Заявки (тикеты)
+// -----------------------------------------------------------------------------
+
+// Конфигурация статусов для UI (цвета и лейблы)
 const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' | 'success' | 'neutral'; color: string }> = {
   new: { label: 'Новая', variant: 'info', color: 'text-blue-400' },
   open: { label: 'В работе', variant: 'warning', color: 'text-yellow-400' },
@@ -212,27 +273,35 @@ const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' 
   closed: { label: 'Закрыта', variant: 'neutral', color: 'text-[var(--text-muted)]' }
 }
 
-const expandedFaq = ref<number | null>(null)
-
-const toggleFaq = (id: number) => {
-  expandedFaq.value = expandedFaq.value === id ? null : id
-}
-
-
-// Количество активных тикетов
+// Количество активных тикетов (для badge в табе)
 const activeTicketsCount = computed(() => {
   return tickets.value.filter(t => t.status !== 'closed').length
 })
 
-// New ticket modal
+// -----------------------------------------------------------------------------
+// FAQ (аккордеон)
+// -----------------------------------------------------------------------------
+
+const expandedFaq = ref<number | null>(null) // ID развёрнутого вопроса
+
+function toggleFaq(id: number) {
+  expandedFaq.value = expandedFaq.value === id ? null : id
+}
+
+// -----------------------------------------------------------------------------
+// Модалка создания новой заявки
+// -----------------------------------------------------------------------------
+
 const showNewTicketModal = ref(false)
 const submitting = ref(false)
+
 const newTicket = ref({
   category: '' as TicketCategory | '',
   subject: '',
   description: ''
 })
 
+// Категории заявок
 const categories = [
   { value: 'technical', label: 'Техническая проблема' },
   { value: 'billing', label: 'Вопрос по оплате' },
@@ -242,7 +311,8 @@ const categories = [
   { value: 'other', label: 'Другое' }
 ]
 
-const submitTicket = async () => {
+// Отправка новой заявки
+async function submitTicket() {
   if (!newTicket.value.subject.trim() || !newTicket.value.description.trim()) return
 
   submitting.value = true
@@ -274,7 +344,9 @@ const submitTicket = async () => {
 
 <template>
   <div class="space-y-6">
-    <!-- Page Header -->
+    <!-- =====================================================================
+         Page Header
+         ===================================================================== -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-[var(--text-primary)]">Поддержка</h1>
@@ -286,8 +358,11 @@ const submitTicket = async () => {
       </UiButton>
     </div>
 
-    <!-- Tabs -->
+    <!-- =====================================================================
+         Tabs — переключение между чатом, заявками и FAQ
+         ===================================================================== -->
     <div class="flex gap-2">
+      <!-- Чат -->
       <button
         @click="activeTab = 'chat'"
         class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -298,10 +373,13 @@ const submitTicket = async () => {
       >
         <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 mr-2 inline-block" />
         Чат с поддержкой
+        <!-- Badge непрочитанных сообщений -->
         <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
           {{ chatStore.unreadCount }}
         </span>
       </button>
+
+      <!-- Заявки -->
       <button
         @click="activeTab = 'tickets'"
         class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -312,10 +390,13 @@ const submitTicket = async () => {
       >
         <Icon name="heroicons:ticket" class="w-4 h-4 mr-2 inline-block" />
         Мои заявки
+        <!-- Badge активных заявок -->
         <span v-if="activeTicketsCount" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-white/20">
           {{ activeTicketsCount }}
         </span>
       </button>
+
+      <!-- FAQ -->
       <button
         @click="activeTab = 'faq'"
         class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -329,9 +410,11 @@ const submitTicket = async () => {
       </button>
     </div>
 
-    <!-- Tickets Tab -->
+    <!-- =====================================================================
+         Tickets Tab — список заявок пользователя
+         ===================================================================== -->
     <div v-if="activeTab === 'tickets'" class="space-y-4">
-      <!-- Loading -->
+      <!-- Loading skeleton -->
       <div v-if="ticketsPending" class="space-y-3">
         <UiCard v-for="i in 3" :key="i" class="animate-pulse">
           <div class="flex items-center gap-4">
@@ -344,7 +427,7 @@ const submitTicket = async () => {
         </UiCard>
       </div>
 
-      <!-- Error -->
+      <!-- Error state -->
       <UiCard v-else-if="ticketsError" class="border-red-500/30">
         <div class="text-center py-4">
           <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
@@ -364,6 +447,7 @@ const submitTicket = async () => {
         >
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div class="flex items-start gap-4">
+              <!-- Иконка статуса -->
               <div class="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
                 <Icon
                   :name="ticket.status === 'resolved' ? 'heroicons:check-circle' : 'heroicons:chat-bubble-left-right'"
@@ -372,13 +456,16 @@ const submitTicket = async () => {
                 />
               </div>
               <div>
+                <!-- Номер и статус -->
                 <div class="flex items-center gap-2 mb-1">
                   <span class="text-xs text-[var(--text-muted)]">{{ ticket.number }}</span>
                   <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
                     {{ statusConfig[ticket.status]?.label || ticket.status }}
                   </UiBadge>
                 </div>
+                <!-- Тема -->
                 <p class="font-medium text-[var(--text-primary)]">{{ ticket.subject }}</p>
+                <!-- Мета-информация -->
                 <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
                   <span class="flex items-center gap-1">
                     <Icon name="heroicons:clock" class="w-3.5 h-3.5" />
@@ -412,9 +499,11 @@ const submitTicket = async () => {
       </UiCard>
     </div>
 
-    <!-- FAQ Tab -->
+    <!-- =====================================================================
+         FAQ Tab — частые вопросы (аккордеон)
+         ===================================================================== -->
     <div v-if="activeTab === 'faq'" class="space-y-3">
-      <!-- Loading -->
+      <!-- Loading skeleton -->
       <div v-if="faqPending" class="space-y-3">
         <UiCard v-for="i in 5" :key="i" class="animate-pulse p-5">
           <div class="h-5 bg-[var(--glass-bg)] rounded w-3/4"></div>
@@ -430,6 +519,7 @@ const submitTicket = async () => {
           @click="toggleFaq(item.id)"
         >
           <div class="p-5">
+            <!-- Вопрос -->
             <div class="flex items-center justify-between gap-4">
               <h3 class="font-medium text-[var(--text-primary)]">{{ item.question }}</h3>
               <Icon
@@ -438,6 +528,7 @@ const submitTicket = async () => {
                 :class="{ 'rotate-180': expandedFaq === item.id }"
               />
             </div>
+            <!-- Ответ (раскрывается при клике) -->
             <div
               v-show="expandedFaq === item.id"
               class="mt-3 pt-3"
@@ -448,7 +539,7 @@ const submitTicket = async () => {
           </div>
         </UiCard>
 
-        <!-- Still have questions -->
+        <!-- CTA — не нашли ответ -->
         <UiCard class="p-6 mt-6">
           <div class="text-center">
             <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-4">
@@ -465,7 +556,9 @@ const submitTicket = async () => {
       </template>
     </div>
 
-    <!-- Chat Tab -->
+    <!-- =====================================================================
+         Chat Tab — realtime чат с поддержкой
+         ===================================================================== -->
     <div v-if="activeTab === 'chat'" class="space-y-4">
       <UiCard class="overflow-hidden">
         <!-- Chat Header -->
@@ -493,7 +586,7 @@ const submitTicket = async () => {
             ref="messagesContainer"
             class="h-[400px] overflow-y-auto py-4 space-y-3"
           >
-            <!-- Welcome message -->
+            <!-- Welcome message (если нет сообщений) -->
             <div v-if="messages.length === 0" class="text-center py-12">
               <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
                 <Icon name="heroicons:sparkles" class="w-8 h-8 text-primary" />
@@ -504,7 +597,7 @@ const submitTicket = async () => {
               </p>
             </div>
 
-            <!-- Messages (инлайн из ChatMessage.vue) -->
+            <!-- Messages -->
             <div
               v-for="msg in messages"
               :key="msg.id"
@@ -612,6 +705,7 @@ const submitTicket = async () => {
 
           <!-- Input Area -->
           <div class="pt-4 border-t border-[var(--glass-border)]">
+            <!-- Error message -->
             <div v-if="chatError" class="text-red-400 text-sm mb-2">{{ chatError }}</div>
 
             <!-- Pending file preview -->
@@ -645,6 +739,7 @@ const submitTicket = async () => {
               @change="handleFileSelect"
             />
 
+            <!-- Input row -->
             <div class="flex items-end gap-2">
               <!-- Attach button -->
               <button
@@ -657,6 +752,7 @@ const submitTicket = async () => {
                 <Icon name="heroicons:paper-clip" class="w-5 h-5 text-[var(--text-muted)]" />
               </button>
 
+              <!-- Text input -->
               <textarea
                 v-model="messageText"
                 @keydown="handleChatKeydown"
@@ -667,6 +763,7 @@ const submitTicket = async () => {
                 :disabled="isSending || isUploading"
               ></textarea>
 
+              <!-- Send button -->
               <button
                 @click="handleSendMessage"
                 :disabled="(!messageText.trim() && !pendingFile) || isSending || isUploading"
@@ -684,7 +781,9 @@ const submitTicket = async () => {
       </UiCard>
     </div>
 
-    <!-- New Ticket Modal -->
+    <!-- =====================================================================
+         New Ticket Modal — модалка создания заявки
+         ===================================================================== -->
     <Teleport to="body">
       <Transition
         enter-active-class="transition-opacity duration-200"
@@ -699,6 +798,7 @@ const submitTicket = async () => {
           @click.self="showNewTicketModal = false"
         >
           <div class="w-full max-w-lg rounded-2xl p-6" style="background: var(--bg-surface); border: 1px solid var(--glass-border);">
+            <!-- Header -->
             <div class="flex items-center justify-between mb-6">
               <h3 class="text-lg font-semibold text-[var(--text-primary)]">Новая заявка</h3>
               <button
@@ -709,7 +809,9 @@ const submitTicket = async () => {
               </button>
             </div>
 
+            <!-- Form -->
             <form class="space-y-4" @submit.prevent="submitTicket">
+              <!-- Категория -->
               <UiSelect
                 v-model="newTicket.category"
                 :options="categories"
@@ -717,6 +819,7 @@ const submitTicket = async () => {
                 placeholder="Выберите категорию"
               />
 
+              <!-- Тема -->
               <div>
                 <label class="block text-sm text-[var(--text-muted)] mb-2">Тема</label>
                 <input
@@ -729,6 +832,7 @@ const submitTicket = async () => {
                 />
               </div>
 
+              <!-- Описание -->
               <div>
                 <label class="block text-sm text-[var(--text-muted)] mb-2">Сообщение</label>
                 <textarea
@@ -741,6 +845,7 @@ const submitTicket = async () => {
                 />
               </div>
 
+              <!-- Actions -->
               <div class="flex gap-3 pt-2">
                 <UiButton
                   type="button"
