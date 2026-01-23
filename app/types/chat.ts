@@ -1,12 +1,9 @@
 /**
- * Типы для системы чата
+ * Типы для системы чата поддержки
  */
 
 // Типы отправителей
 export type SenderType = 'user' | 'admin' | 'system' | 'bot'
-
-// Статусы чата
-export type ChatStatus = 'active' | 'waiting' | 'processing' | 'closed' | 'resolved'
 
 // Типы контента сообщения
 export type ContentType = 'text' | 'image' | 'file'
@@ -19,7 +16,7 @@ export interface Chat {
   guest_name: string | null
   guest_contact: string | null
   session_token: string | null
-  status: ChatStatus
+  status: 'active' | 'waiting' | 'processing' | 'closed' | 'resolved'
   assigned_to: string | null
   last_message_at: string | null
   unread_admin_count: number
@@ -62,26 +59,6 @@ export interface SessionRequest {
   guestContact?: string
 }
 
-// Ответ API создания сессии
-export interface SessionResponse {
-  session: Chat
-  isNew: boolean
-}
-
-// Запрос на отправку сообщения
-export interface SendMessageRequest {
-  chatId: string
-  message: string
-  senderType?: SenderType
-  senderId?: string
-  senderName?: string
-  // Вложения
-  contentType?: ContentType
-  attachmentUrl?: string
-  attachmentName?: string
-  attachmentSize?: number
-}
-
 // Информация о загруженном файле
 export interface UploadedFile {
   url: string
@@ -89,15 +66,4 @@ export interface UploadedFile {
   size: number
   type: string
   isImage: boolean
-}
-
-// Ответ API отправки сообщения
-export interface SendMessageResponse {
-  message: ChatMessage
-}
-
-// Ответ API загрузки сообщений
-export interface MessagesResponse {
-  messages: ChatMessage[]
-  total: number
 }

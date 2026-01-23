@@ -6,25 +6,11 @@
  */
 
 import type { AIBotSettings, RAGSource } from '~/server/utils/openai'
+import type { Chat } from '~/types/chat'
 
 interface RespondRequest {
   chatId: string
   messageId: string
-}
-
-interface ChatMessage {
-  id: string
-  sender_type: string
-  sender_name: string | null
-  content: string
-  created_at: string
-}
-
-interface Chat {
-  id: string
-  is_bot_active: boolean
-  bot_message_count: number
-  status: string
 }
 
 export default defineEventHandler(async (event) => {

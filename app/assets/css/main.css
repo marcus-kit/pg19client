@@ -6,6 +6,49 @@
    ============================================================================= */
 
 /* -----------------------------------------------------------------------------
+   Шрифт Outfit (self-hosted, без внешних запросов)
+   ----------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-700.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-800.woff2') format('woff2');
+}
+
+/* -----------------------------------------------------------------------------
    CSS-переменные: Светлая тема (по умолчанию)
    ----------------------------------------------------------------------------- */
 :root {

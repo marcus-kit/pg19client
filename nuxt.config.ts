@@ -43,7 +43,7 @@ export default defineNuxtConfig({
   modules: [
     '@nuxtjs/tailwindcss',              // CSS-фреймворк
     '@nuxt/icon',                       // Иконки (Heroicons, Simple Icons)
-    '@nuxtjs/google-fonts',             // Шрифт Outfit
+    // Шрифт Outfit — self-hosted в public/fonts/, @font-face в main.css
     '@nuxtjs/color-mode',               // Переключение dark/light темы
     '@pinia/nuxt',                      // State management
     'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage (для кастомной авторизации!)
@@ -87,17 +87,6 @@ export default defineNuxtConfig({
     classSuffix: '',     // Без суффикса: класс "dark", а не "dark-mode"
     preference: 'dark',  // По умолчанию тёмная тема
     fallback: 'dark'     // Fallback если preference не определён
-  },
-
-  // ---------------------------------------------------------------------------
-  // Google Fonts
-  // ---------------------------------------------------------------------------
-  googleFonts: {
-    families: {
-      Outfit: [400, 500, 600, 700, 800]  // Основной шрифт приложения
-    },
-    display: 'swap',   // Показывать fallback шрифт пока грузится
-    preload: true      // Предзагрузка для быстрого отображения
   },
 
   // ---------------------------------------------------------------------------

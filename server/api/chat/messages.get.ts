@@ -1,18 +1,7 @@
 import { getCookie } from 'h3'
+import type { ChatMessage } from '~/types/chat'
 
 const CHAT_SESSION_COOKIE = 'pg19_chat_session'
-
-interface ChatMessage {
-  id: string
-  chat_id: string
-  sender_type: 'user' | 'admin' | 'system'
-  sender_id: string | null
-  sender_name: string | null
-  content: string
-  content_type: string
-  is_read: boolean
-  created_at: string
-}
 
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
