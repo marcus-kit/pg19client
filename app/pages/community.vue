@@ -89,6 +89,61 @@ const searchStats = computed(() => {
   return `${filteredMessages.value.length} из ${messages.value.length}`
 })
 
+// Разделители по датам (UI-only)
+type ChatListItem =
+  | { type: 'day'; key: string; label: string }
+  | { type: 'msg'; key: string; msg: CommunityMessage }
+
+function dayKey(dateStr: string): string {
+  const d = new Date(dateStr)
+  // YYYY-MM-DD
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function dayLabel(dateStr: string): string {
+  const d = new Date(dateStr)
+  const now = new Date()
+
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const y = new Date(now)
+  y.setDate(y.getDate() - 1)
+  const yesterdayKey = `${y.getFullYear()}-${String(y.getMonth() + 1).padStart(2, '0')}-${String(y.getDate()).padStart(2, '0')}`
+
+  const key = dayKey(dateStr)
+  if (key === todayKey) return 'Сегодня'
+  if (key === yesterdayKey) return 'Вчера'
+
+  return d.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  })
+}
+
+const chatListItems = computed<ChatListItem[]>(() => {
+  const items: ChatListItem[] = []
+  let prevDay: string | null = null
+
+  for (const msg of filteredMessages.value) {
+    const currentDay = dayKey(msg.createdAt)
+    if (currentDay !== prevDay) {
+      items.push({
+        type: 'day',
+        key: `day-${currentDay}`,
+        label: dayLabel(msg.createdAt)
+      })
+      prevDay = currentDay
+    }
+    items.push({
+      type: 'msg',
+      key: `msg-${msg.id}`,
+      msg
+    })
+  }
+
+  return items
+})
+
 // Ответ на сообщение
 const replyTo = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
@@ -509,17 +564,29 @@ watch(showMobileSearch, (open) => {
           </div>
 
           <!-- Messages list (IRC style) -->
-          <CommunityMessage
-            v-for="msg in filteredMessages"
-            :key="msg.id"
-            :message="msg"
-            :is-own="msg.userId === userStore.user?.id"
-            :show-moderation="showModeration"
-            :is-user-moderator="isUserModerator(msg.userId)"
-            :highlight="isSearching ? searchQueryTrimmed : ''"
-            @contextmenu="handleContextMenu"
-            @retry="handleRetry"
-          />
+          <template v-for="item in chatListItems" :key="item.key">
+            <div
+              v-if="item.type === 'day'"
+              class="py-2 flex items-center justify-center"
+            >
+              <span
+                class="text-[11px] px-3 py-1 rounded-full border"
+                style="background: var(--glass-bg); border-color: var(--glass-border); color: var(--text-muted);"
+              >
+                {{ item.label }}
+              </span>
+            </div>
+            <CommunityMessage
+              v-else
+              :message="item.msg"
+              :is-own="item.msg.userId === userStore.user?.id"
+              :show-moderation="showModeration"
+              :is-user-moderator="isUserModerator(item.msg.userId)"
+              :highlight="isSearching ? searchQueryTrimmed : ''"
+              @contextmenu="handleContextMenu"
+              @retry="handleRetry"
+            />
+          </template>
         </div>
 
         <!-- Typing indicator -->
