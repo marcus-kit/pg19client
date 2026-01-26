@@ -189,6 +189,11 @@ export const RATE_LIMIT_CONFIGS = {
   telegramDeeplink: createRateLimiter('auth:telegram-deeplink', {
     windowMs: 5 * 60 * 1000,
     maxRequests: 5
+  }),
+  /** QR авторизация: 5 запросов за 5 минут */
+  qrAuth: createRateLimiter('auth:qr', {
+    windowMs: 5 * 60 * 1000,
+    maxRequests: 5
   })
 }
 

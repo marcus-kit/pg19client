@@ -47,8 +47,21 @@ export default defineNuxtConfig({
     '@nuxtjs/color-mode',               // Переключение dark/light темы
     '@pinia/nuxt',                      // State management
     'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage (для кастомной авторизации!)
-    '@nuxtjs/supabase'                  // Supabase клиент (только БД + Realtime, НЕ Auth)
+    '@nuxtjs/supabase',                 // Supabase клиент (только БД + Realtime, НЕ Auth)
+    'nuxt-qrcode'                       // Генерация QR-кодов для авторизации
   ],
+
+  // ---------------------------------------------------------------------------
+  // QR-код — настройки по умолчанию для компонента <Qrcode />
+  // ---------------------------------------------------------------------------
+  qrcode: {
+    options: {
+      variant: 'rounded',            // Закруглённые пиксели
+      radius: 0.8,                   // Степень закругления (0-1)
+      blackColor: 'currentColor',    // Цвет из CSS (адаптируется к теме)
+      whiteColor: 'transparent'      // Прозрачный фон
+    }
+  },
 
   // ---------------------------------------------------------------------------
   // Supabase

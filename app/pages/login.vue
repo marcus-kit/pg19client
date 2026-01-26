@@ -1,13 +1,15 @@
 <script setup lang="ts">
 /**
- * Страница авторизации — три метода входа:
+ * Страница авторизации — четыре метода входа:
  * 1. Telegram — через deeplink (открывает Telegram → /start → Realtime подписка)
  * 2. Договор — по номеру договора + ФИО (синхронный API запрос)
  * 3. Звонок — верификация по входящему звонку (Realtime подписка)
+ * 4. QR-код — сканирование в TG Web App (Realtime подписка)
  *
  * layout: false — страница без обёртки, header/footer инлайн
  */
 import { useCallVerification } from '~/composables/useCallVerification'
+import { useQrAuth } from '~/composables/useQrAuth'
 import IMask from 'imask'
 
 definePageMeta({
@@ -45,12 +47,24 @@ const {
   reset: resetCall
 } = useCallVerification()
 
+// QR Auth — показывает QR-код, слушает Realtime, подтверждает из TG App
+const {
+  isLoading: qrLoading,
+  error: qrError,
+  status: qrStatus,               // 'idle' | 'waiting' | 'scanned' | 'confirmed' | 'verified' | 'expired'
+  qrUrl,                          // URL для кодирования в QR
+  remainingSeconds: qrRemainingSeconds,
+  verifiedData: qrVerifiedData,
+  requestAuth: requestQrAuth,
+  reset: resetQr
+} = useQrAuth()
+
 // =============================================================================
 // STATE — локальное состояние страницы
 // =============================================================================
 
 // Текущий метод авторизации (таб)
-const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
+const authMethod = ref<'telegram' | 'contract' | 'call' | 'qr'>('telegram')
 
 // Форма авторизации по договору
 const form = reactive({
@@ -86,17 +100,19 @@ function formatTimer(seconds: number): string {
 
 const telegramTimer = computed(() => formatTimer(telegramRemainingSeconds.value))
 const callTimer = computed(() => formatTimer(remainingSeconds.value))
+const qrTimer = computed(() => formatTimer(qrRemainingSeconds.value))
 
 // =============================================================================
 // METHODS — обработчики событий
 // =============================================================================
 
 // Переключение метода авторизации (сбрасывает состояние других методов)
-function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
+function setAuthMethod(method: 'telegram' | 'contract' | 'call' | 'qr'): void {
   authMethod.value = method
   error.value = ''
   if (method !== 'call') resetCall()
   if (method !== 'telegram') resetTelegram()
+  if (method !== 'qr') resetQr()
 }
 
 // Запуск Telegram авторизации — создаёт токен и показывает deeplink
@@ -110,6 +126,12 @@ async function startCallVerification(): Promise<void> {
   if (!callPhoneValid.value) return
   error.value = ''
   await requestVerification(callPhone.value)
+}
+
+// Запуск QR авторизации — создаёт токен и показывает QR-код
+async function startQrAuth(): Promise<void> {
+  error.value = ''
+  await requestQrAuth()
 }
 
 // Обработка формы авторизации по договору
@@ -194,6 +216,18 @@ watch(telegramStatus, async (newStatus) => {
   }
 })
 
+// Автоматический вход при успешной QR авторизации
+watch(qrStatus, async (newStatus) => {
+  if (newStatus === 'verified' && qrVerifiedData.value) {
+    const data = qrVerifiedData.value as any
+    if (data.user && data.account) {
+      await authInit(data.user, data.account)
+      await nextTick()
+      await navigateTo('/dashboard')
+    }
+  }
+})
+
 // Синхронизация маски при программном изменении callPhone
 watch(callPhone, (newValue) => {
   if (phoneMask && phoneMask.unmaskedValue !== newValue) {
@@ -215,6 +249,7 @@ watch(authMethod, async (method) => {
 
 onUnmounted(() => {
   resetTelegram()
+  resetQr()
   phoneMask?.destroy()
 })
 </script>
@@ -279,6 +314,16 @@ onUnmounted(() => {
             >
               <Icon name="heroicons:phone" class="w-4 h-4" />
               Звонок
+            </button>
+            <button
+              @click="setAuthMethod('qr')"
+              class="flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              :class="authMethod === 'qr'
+                ? 'bg-purple-500 text-white shadow-md'
+                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            >
+              <Icon name="heroicons:qr-code" class="w-4 h-4" />
+              QR
             </button>
           </div>
 
@@ -514,9 +559,134 @@ onUnmounted(() => {
             </template>
           </div>
 
+          <!-- -----------------------------------------------------------------
+               QR-КОД — авторизация через сканирование в TG Web App
+               Состояния: idle → waiting → scanned → confirmed → verified/expired
+               ----------------------------------------------------------------- -->
+          <div v-else-if="authMethod === 'qr'" class="space-y-4">
+
+            <!-- Шаг 1: Начальный экран — кнопка показа QR -->
+            <template v-if="qrStatus === 'idle'">
+              <p class="text-sm text-[var(--text-muted)] text-center">
+                Покажите QR-код и отсканируйте его в Telegram Mini App
+              </p>
+
+              <UiButton
+                variant="primary"
+                block
+                :loading="qrLoading"
+                class="!bg-purple-500 hover:!bg-purple-600"
+                @click="startQrAuth"
+              >
+                <Icon name="heroicons:qr-code" class="w-5 h-5 mr-2" />
+                Показать QR-код
+              </UiButton>
+
+              <!-- Подсказка -->
+              <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
+                <p class="text-[var(--text-muted)]">
+                  <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
+                  Откройте наше приложение в Telegram и отсканируйте QR-код для мгновенного входа.
+                </p>
+              </div>
+            </template>
+
+            <!-- Шаг 2: Ожидание сканирования — показываем QR-код -->
+            <template v-else-if="qrStatus === 'waiting'">
+              <div class="text-center">
+                <p class="text-[var(--text-muted)] mb-4">
+                  Отсканируйте QR-код в Telegram Mini App
+                </p>
+
+                <!-- QR-код -->
+                <div class="bg-white p-4 rounded-2xl inline-block mb-4">
+                  <Qrcode
+                    :value="qrUrl || ''"
+                    :width="200"
+                    variant="rounded"
+                    black-color="#000"
+                    white-color="#fff"
+                  />
+                </div>
+
+                <!-- Таймер обратного отсчёта -->
+                <div class="flex items-center justify-center gap-2 text-[var(--text-muted)] mb-6">
+                  <Icon name="heroicons:clock" class="w-5 h-5" />
+                  <span class="font-mono">{{ qrTimer }}</span>
+                </div>
+
+                <!-- Анимация ожидания (спиннер) -->
+                <div class="relative w-16 h-16 mx-auto mb-6">
+                  <div class="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+                  <div class="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
+                  <Icon name="heroicons:qr-code" class="absolute inset-0 m-auto w-6 h-6 text-purple-500" />
+                </div>
+
+                <button
+                  @click="resetQr"
+                  class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  Отмена
+                </button>
+              </div>
+            </template>
+
+            <!-- Шаг 3: QR отсканирован — ожидание подтверждения -->
+            <template v-else-if="qrStatus === 'scanned'">
+              <div class="text-center py-4">
+                <div class="relative w-20 h-20 mx-auto mb-4">
+                  <div class="absolute inset-0 rounded-full border-4 border-purple-500/20"></div>
+                  <div class="absolute inset-0 rounded-full border-4 border-purple-500 border-t-transparent animate-spin"></div>
+                  <Icon name="heroicons:device-phone-mobile" class="absolute inset-0 m-auto w-8 h-8 text-purple-500" />
+                </div>
+                <p class="text-lg font-medium text-[var(--text-primary)]">QR-код отсканирован!</p>
+                <p class="text-sm text-[var(--text-muted)]">Подтвердите вход в Telegram приложении...</p>
+
+                <!-- Таймер -->
+                <div class="flex items-center justify-center gap-2 text-[var(--text-muted)] mt-4">
+                  <Icon name="heroicons:clock" class="w-5 h-5" />
+                  <span class="font-mono">{{ qrTimer }}</span>
+                </div>
+              </div>
+            </template>
+
+            <!-- Шаг 4: Подтверждено — загрузка данных -->
+            <template v-else-if="qrStatus === 'confirmed'">
+              <div class="text-center py-4">
+                <div class="relative w-20 h-20 mx-auto mb-4">
+                  <div class="absolute inset-0 rounded-full border-4 border-accent/20"></div>
+                  <div class="absolute inset-0 rounded-full border-4 border-accent border-t-transparent animate-spin"></div>
+                  <Icon name="heroicons:check" class="absolute inset-0 m-auto w-8 h-8 text-accent" />
+                </div>
+                <p class="text-lg font-medium text-[var(--text-primary)]">Вход подтверждён!</p>
+                <p class="text-sm text-[var(--text-muted)]">Загружаем данные...</p>
+              </div>
+            </template>
+
+            <!-- Шаг 5: Успешная авторизация — редирект на дашборд -->
+            <template v-else-if="qrStatus === 'verified'">
+              <div class="text-center py-4">
+                <Icon name="heroicons:check-circle" class="w-16 h-16 text-accent mx-auto mb-4" />
+                <p class="text-lg font-medium text-[var(--text-primary)]">Авторизация успешна!</p>
+                <p class="text-sm text-[var(--text-muted)]">Перенаправляем в личный кабинет...</p>
+              </div>
+            </template>
+
+            <!-- Шаг 6: Время истекло — предложение повторить -->
+            <template v-else-if="qrStatus === 'expired'">
+              <div class="text-center py-4">
+                <Icon name="heroicons:x-circle" class="w-16 h-16 text-red-500 mx-auto mb-4" />
+                <p class="text-lg font-medium text-[var(--text-primary)] mb-4">Время истекло</p>
+                <UiButton variant="primary" @click="resetQr">
+                  Попробовать снова
+                </UiButton>
+              </div>
+            </template>
+          </div>
+
           <!-- Общая ошибка (от любого метода авторизации) -->
-          <p v-if="error || telegramError || callError" class="mt-4 text-sm text-red-400 text-center">
-            {{ error || telegramError || callError }}
+          <p v-if="error || telegramError || callError || qrError" class="mt-4 text-sm text-red-400 text-center">
+            {{ error || telegramError || callError || qrError }}
           </p>
 
           <!-- Ссылка на главную страницу сайта -->
