@@ -63,6 +63,8 @@ const messagesContainer = ref<HTMLElement>()
 const searchQuery = ref('')
 const searchQueryTrimmed = computed(() => searchQuery.value.trim())
 const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
+const showMobileSearch = ref(false)
+const mobileSearchInput = ref<HTMLInputElement | null>(null)
 
 const filteredMessages = computed(() => {
   if (!isSearching.value) return messages.value
@@ -300,6 +302,8 @@ onMounted(async () => {
 // Автоскролл при новых сообщениях
 watch(messages, () => {
   nextTick(() => {
+    // Не авто-скроллим, когда пользователь в режиме поиска
+    if (isSearching.value) return
     if (messagesContainer.value) {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
     }
@@ -309,6 +313,14 @@ watch(messages, () => {
 // Сброс поиска при смене комнаты
 watch(currentRoom, () => {
   searchQuery.value = ''
+  showMobileSearch.value = false
+})
+
+watch(showMobileSearch, (open) => {
+  if (!open) return
+  nextTick(() => {
+    mobileSearchInput.value?.focus()
+  })
 })
 </script>
 
@@ -327,6 +339,16 @@ watch(currentRoom, () => {
       <div class="flex items-center justify-between px-4 py-2">
         <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
         <div class="flex items-center gap-3">
+          <!-- Mobile search button -->
+          <button
+            class="md:hidden p-2 rounded-lg text-[var(--text-muted)] active:bg-white/10"
+            @click="showMobileSearch = !showMobileSearch"
+            :aria-label="showMobileSearch ? 'Закрыть поиск' : 'Открыть поиск'"
+            :title="showMobileSearch ? 'Закрыть поиск' : 'Поиск'"
+          >
+            <Icon :name="showMobileSearch ? 'heroicons:x-mark' : 'heroicons:magnifying-glass'" class="w-5 h-5" />
+          </button>
+
           <!-- Desktop search -->
           <div class="hidden md:block relative">
             <Icon name="heroicons:magnifying-glass" class="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
@@ -354,6 +376,42 @@ watch(currentRoom, () => {
           </p>
         </div>
       </div>
+
+      <!-- Mobile search panel (top-sheet) -->
+      <Transition
+        enter-active-class="transition-all duration-200 ease-out"
+        leave-active-class="transition-all duration-150 ease-in"
+        enter-from-class="opacity-0 -translate-y-2"
+        leave-to-class="opacity-0 -translate-y-2"
+      >
+        <div v-if="showMobileSearch" class="md:hidden px-4 pb-3">
+          <div class="relative">
+            <Icon name="heroicons:magnifying-glass" class="w-5 h-5 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              ref="mobileSearchInput"
+              v-model="searchQuery"
+              type="text"
+              inputmode="search"
+              placeholder="Поиск по загруженным"
+              class="w-full pl-10 pr-10 py-3 rounded-2xl text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/30"
+              style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+            />
+            <button
+              v-if="searchQuery"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-xl text-[var(--text-muted)] active:bg-white/10"
+              @click="searchQuery = ''"
+              aria-label="Очистить поиск"
+              title="Очистить"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5" />
+            </button>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-xs text-[var(--text-muted)]">
+            <span>Поиск по загруженным сообщениям</span>
+            <span v-if="isSearching">{{ searchStats }}</span>
+          </div>
+        </div>
+      </Transition>
 
       <!-- Loading -->
       <div v-if="isLoadingRooms" class="flex items-center justify-center py-3">
@@ -405,6 +463,9 @@ watch(currentRoom, () => {
             <span>Поиск по загруженным: {{ searchStats }}</span>
             <span class="text-[10px] text-[var(--text-muted)]">(только по загруженным сообщениям)</span>
           </div>
+        </div>
+        <div v-if="isSearching" class="md:hidden px-4 py-1 text-xs text-[var(--text-muted)]">
+          Поиск по загруженным: {{ searchStats }}
         </div>
 
         <!-- Pinned messages -->
