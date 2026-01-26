@@ -48,6 +48,16 @@ const displayName = computed(() => {
   return props.message.user.nickname || props.message.user.firstName || 'Аноним'
 })
 
+const avatarUrl = computed(() => props.message.user?.avatar || null)
+
+const initials = computed(() => {
+  const name = (displayName.value || '').trim()
+  if (!name) return '?'
+  const parts = name.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[1][0]).toUpperCase()
+})
+
 type HighlightPart = { text: string; isMatch: boolean }
 
 const highlightQuery = computed(() => (props.highlight || '').trim())
@@ -140,6 +150,14 @@ function handleContextMenu(event: MouseEvent): void {
         <!-- Meta row -->
         <div class="flex items-center gap-3 mb-1" :class="isOwn ? 'justify-end' : 'justify-between'">
           <div v-if="!isOwn" class="flex items-center gap-2 min-w-0">
+            <div
+              class="w-6 h-6 rounded-full overflow-hidden flex items-center justify-center flex-shrink-0"
+              style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+              aria-hidden="true"
+            >
+              <img v-if="avatarUrl" :src="avatarUrl" alt="" class="w-full h-full object-cover" />
+              <span v-else class="text-[10px] font-bold text-[var(--text-muted)]">{{ initials }}</span>
+            </div>
             <span class="text-xs font-semibold truncate text-[var(--text-secondary)]">
               <template v-if="displayNameParts">
                 <template v-for="(part, idx) in displayNameParts" :key="idx">
