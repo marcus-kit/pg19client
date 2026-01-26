@@ -7,7 +7,7 @@
  * Подключение создаёт тикет в категории 'connection'
  */
 import type { Subscription, Service } from '~/types/service'
-import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
+import { subscriptionStatusColors } from '~/types/service'
 import { formatKopeks } from '~/composables/useFormatters'
 
 definePageMeta({
@@ -78,6 +78,12 @@ function getStatusColor(status: string): string {
     gray: 'bg-gray-600/20 text-gray-400'
   }
   return colorMap[subscriptionStatusColors[status as keyof typeof subscriptionStatusColors]] || colorMap.gray
+}
+
+function getSubscriptionStatusBadge(status: Subscription['status']): { label: string; variant: 'success' | 'warning' | 'neutral' } {
+  if (status === 'active') return { label: 'Подключено', variant: 'success' }
+  if (status === 'paused') return { label: 'Приостановлено', variant: 'warning' }
+  return { label: 'Архив', variant: 'neutral' }
 }
 
 // Получить иконку услуги
@@ -168,17 +174,29 @@ async function requestConnection(service: Service): Promise<void> {
                 <div class="flex items-start justify-between gap-4">
                   <div>
                     <h3 class="font-semibold text-[var(--text-primary)]">{{ sub.service?.name || 'Услуга' }}</h3>
-                    <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ sub.service?.description || '' }}</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                      <UiBadge :variant="getSubscriptionStatusBadge(sub.status).variant" size="sm">
+                        {{ getSubscriptionStatusBadge(sub.status).label }}
+                      </UiBadge>
+                    </div>
+                    <p class="text-sm text-[var(--text-muted)] mt-2 line-clamp-2">
+                      {{ sub.service?.description || 'Описание отсутствует' }}
+                    </p>
                   </div>
-                  <UiBadge :class="getStatusColor(sub.status)">
-                    {{ subscriptionStatusLabels[sub.status] }}
-                  </UiBadge>
+                  <!-- legacy color map kept for consistency with existing palette -->
+                  <span class="hidden">{{ getStatusColor(sub.status) }}</span>
                 </div>
                 <div class="flex items-center justify-between mt-4">
-                  <span class="text-lg font-bold text-[var(--text-primary)]">
-                    {{ formatKopeks(getSubscriptionPrice(sub)) }}
-                    <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
-                  </span>
+                  <div>
+                    <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
+                      {{ formatKopeks(getSubscriptionPrice(sub)) }}
+                      <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
+                    </div>
+                    <p v-if="sub.service?.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
+                      Подключение: <span class="text-[var(--text-secondary)] font-medium">{{ formatKopeks(sub.service.priceConnection) }} ₽</span>
+                      <span class="ml-1">разово</span>
+                    </p>
+                  </div>
                   <button class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                     Подробнее
                   </button>
@@ -214,14 +232,26 @@ async function requestConnection(service: Service): Promise<void> {
                 </div>
                 <div class="flex-1">
                   <h3 class="font-medium text-[var(--text-primary)]">{{ service.name }}</h3>
-                  <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ service.description }}</p>
+                  <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <UiBadge v-if="!service.isActive" variant="neutral" size="sm">Архив</UiBadge>
+                    <UiBadge v-else-if="connectingServiceId === service.id" variant="warning" size="sm">В работе</UiBadge>
+                  </div>
+                  <p class="text-sm text-[var(--text-muted)] mt-2 line-clamp-2">
+                    {{ service.description || 'Описание отсутствует' }}
+                  </p>
                 </div>
               </div>
               <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
-                <span class="font-semibold text-[var(--text-primary)]">
-                  {{ formatKopeks(service.priceMonthly) }}
-                  <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
-                </span>
+                <div>
+                  <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
+                    {{ formatKopeks(service.priceMonthly) }}
+                    <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
+                  </div>
+                  <p v-if="service.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
+                    Подключение: <span class="text-[var(--text-secondary)] font-medium">{{ formatKopeks(service.priceConnection) }} ₽</span>
+                    <span class="ml-1">разово</span>
+                  </p>
+                </div>
                 <UiButton
                   size="sm"
                   variant="secondary"
