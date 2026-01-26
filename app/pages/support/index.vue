@@ -637,13 +637,22 @@ watch(isOperatorTyping, (typing) => {
               />
             </div>
             <!-- Ответ (раскрывается при клике) -->
-            <div
-              v-show="expandedFaq === item.id"
-              class="mt-3 pt-3"
-              style="border-top: 1px solid var(--glass-border);"
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out"
+              enter-from-class="opacity-0 -translate-y-1 max-h-0"
+              enter-to-class="opacity-100 translate-y-0 max-h-[320px]"
+              leave-active-class="transition-all duration-150 ease-in"
+              leave-from-class="opacity-100 translate-y-0 max-h-[320px]"
+              leave-to-class="opacity-0 -translate-y-1 max-h-0"
             >
-              <p class="text-[var(--text-secondary)]">{{ item.answer }}</p>
-            </div>
+              <div
+                v-if="expandedFaq === item.id"
+                class="mt-3 pt-3 overflow-hidden"
+                style="border-top: 1px solid var(--glass-border);"
+              >
+                <p class="text-[var(--text-secondary)]">{{ item.answer }}</p>
+              </div>
+            </Transition>
           </div>
         </UiCard>
 
