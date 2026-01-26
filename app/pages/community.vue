@@ -59,6 +59,34 @@ const {
 // Контейнер сообщений (для автоскролла)
 const messagesContainer = ref<HTMLElement>()
 
+// Поиск по загруженным сообщениям (UI-only, desktop-first)
+const searchQuery = ref('')
+const searchQueryTrimmed = computed(() => searchQuery.value.trim())
+const isSearching = computed(() => searchQueryTrimmed.value.length >= 2)
+
+const filteredMessages = computed(() => {
+  if (!isSearching.value) return messages.value
+  const q = searchQueryTrimmed.value.toLowerCase()
+  return messages.value.filter(m => {
+    if (m.isDeleted) return false
+
+    const content = (m.content || '').toLowerCase()
+    if (content.includes(q)) return true
+
+    const nickname = (m.user?.nickname || '').toLowerCase()
+    const firstName = (m.user?.firstName || '').toLowerCase()
+    const lastName = (m.user?.lastName || '').toLowerCase()
+    const fullName = `${firstName} ${lastName}`.trim()
+
+    return nickname.includes(q) || firstName.includes(q) || lastName.includes(q) || fullName.includes(q)
+  })
+})
+
+const searchStats = computed(() => {
+  if (!isSearching.value) return null
+  return `${filteredMessages.value.length} из ${messages.value.length}`
+})
+
 // Ответ на сообщение
 const replyTo = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
@@ -277,6 +305,11 @@ watch(messages, () => {
     }
   })
 }, { deep: true })
+
+// Сброс поиска при смене комнаты
+watch(currentRoom, () => {
+  searchQuery.value = ''
+})
 </script>
 
 <template>
@@ -293,10 +326,33 @@ watch(messages, () => {
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
         <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
-        <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          {{ onlineCount }} онлайн
-        </p>
+        <div class="flex items-center gap-3">
+          <!-- Desktop search -->
+          <div class="hidden md:block relative">
+            <Icon name="heroicons:magnifying-glass" class="w-4 h-4 text-[var(--text-muted)] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="Поиск по сообщениям"
+              class="w-[320px] pl-9 pr-9 py-2 rounded-xl text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-primary/30"
+              style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+            />
+            <button
+              v-if="searchQuery"
+              class="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+              @click="searchQuery = ''"
+              aria-label="Очистить поиск"
+              title="Очистить"
+            >
+              <Icon name="heroicons:x-mark" class="w-4 h-4" />
+            </button>
+          </div>
+
+          <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            {{ onlineCount }} онлайн
+          </p>
+        </div>
       </div>
 
       <!-- Loading -->
@@ -343,8 +399,12 @@ watch(messages, () => {
     <main class="flex-1 flex flex-col min-w-0 overflow-hidden">
       <template v-if="currentRoom">
         <!-- Room info bar -->
-        <div class="flex items-center gap-2 px-4 py-2 bg-white/5 text-xs text-[var(--text-muted)]">
+        <div class="flex items-center justify-between gap-3 px-4 py-2 bg-white/5 text-xs text-[var(--text-muted)]">
           <span>{{ currentRoom.membersCount }} участников</span>
+          <div v-if="isSearching" class="hidden md:flex items-center gap-2">
+            <span>Поиск по загруженным: {{ searchStats }}</span>
+            <span class="text-[10px] text-[var(--text-muted)]">(только по загруженным сообщениям)</span>
+          </div>
         </div>
 
         <!-- Pinned messages -->
@@ -370,14 +430,32 @@ watch(messages, () => {
             <p class="text-sm text-[var(--text-muted)] mt-1">Напишите первое!</p>
           </div>
 
+          <!-- Search empty state -->
+          <div
+            v-else-if="!isLoadingMessages && isSearching && filteredMessages.length === 0"
+            class="text-center py-12"
+          >
+            <p class="text-[var(--text-muted)]">Ничего не найдено</p>
+            <p class="text-sm text-[var(--text-muted)] mt-1">
+              Поиск работает только по загруженным сообщениям
+            </p>
+            <button
+              class="mt-3 text-sm text-primary hover:underline"
+              @click="searchQuery = ''"
+            >
+              Сбросить поиск
+            </button>
+          </div>
+
           <!-- Messages list (IRC style) -->
           <CommunityMessage
-            v-for="msg in messages"
+            v-for="msg in filteredMessages"
             :key="msg.id"
             :message="msg"
             :is-own="msg.userId === userStore.user?.id"
             :show-moderation="showModeration"
             :is-user-moderator="isUserModerator(msg.userId)"
+            :highlight="isSearching ? searchQueryTrimmed : ''"
             @contextmenu="handleContextMenu"
             @retry="handleRetry"
           />

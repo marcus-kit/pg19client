@@ -19,6 +19,7 @@ const props = defineProps<{
   isOwn: boolean
   showModeration?: boolean
   isUserModerator?: boolean
+  highlight?: string
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +46,65 @@ const formattedTime = computed(() => {
 const displayName = computed(() => {
   if (!props.message.user) return 'Аноним'
   return props.message.user.nickname || props.message.user.firstName || 'Аноним'
+})
+
+type HighlightPart = { text: string; isMatch: boolean }
+
+const highlightQuery = computed(() => (props.highlight || '').trim())
+const canHighlight = computed(() => highlightQuery.value.length >= 2 && !props.message.isDeleted)
+
+const displayNameParts = computed<HighlightPart[] | null>(() => {
+  if (!canHighlight.value) return null
+  const text = displayName.value || ''
+  const query = highlightQuery.value
+  if (!text || !query) return null
+
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const res: HighlightPart[] = []
+
+  let idx = 0
+  while (idx < text.length) {
+    const found = lowerText.indexOf(lowerQuery, idx)
+    if (found === -1) {
+      res.push({ text: text.slice(idx), isMatch: false })
+      break
+    }
+    if (found > idx) {
+      res.push({ text: text.slice(idx, found), isMatch: false })
+    }
+    res.push({ text: text.slice(found, found + query.length), isMatch: true })
+    idx = found + query.length
+  }
+
+  return res.some(p => p.isMatch) ? res : null
+})
+
+const contentParts = computed<HighlightPart[] | null>(() => {
+  if (!canHighlight.value) return null
+  const text = props.message.content || ''
+  const query = highlightQuery.value
+  if (!text || !query) return null
+
+  const lowerText = text.toLowerCase()
+  const lowerQuery = query.toLowerCase()
+  const res: HighlightPart[] = []
+
+  let idx = 0
+  while (idx < text.length) {
+    const found = lowerText.indexOf(lowerQuery, idx)
+    if (found === -1) {
+      res.push({ text: text.slice(idx), isMatch: false })
+      break
+    }
+    if (found > idx) {
+      res.push({ text: text.slice(idx, found), isMatch: false })
+    }
+    res.push({ text: text.slice(found, found + query.length), isMatch: true })
+    idx = found + query.length
+  }
+
+  return res.some(p => p.isMatch) ? res : null
 })
 
 // =============================================================================
@@ -78,7 +138,17 @@ function handleContextMenu(event: MouseEvent): void {
         'font-medium flex-shrink-0',
         isOwn ? 'text-primary' : 'text-secondary'
       ]"
-    >&lt;{{ displayName }}&gt;</span>
+    >
+      &lt;<template v-if="displayNameParts">
+        <template v-for="(part, idx) in displayNameParts" :key="idx">
+          <mark
+            v-if="part.isMatch"
+            class="bg-yellow-400/30 text-[var(--text-primary)] rounded px-0.5"
+          >{{ part.text }}</mark>
+          <span v-else>{{ part.text }}</span>
+        </template>
+      </template><template v-else>{{ displayName }}</template>&gt;
+    </span>
 
     <!-- Message content -->
     <span class="flex-1 break-words text-[var(--text-primary)]">
@@ -97,10 +167,32 @@ function handleContextMenu(event: MouseEvent): void {
           <a :href="message.imageUrl" target="_blank" class="text-primary hover:underline">
             [изображение]
           </a>
-          <span v-if="message.content" class="ml-1">{{ message.content }}</span>
+          <span v-if="message.content" class="ml-1 whitespace-pre-wrap">
+            <template v-if="contentParts">
+              <template v-for="(part, idx) in contentParts" :key="idx">
+                <mark
+                  v-if="part.isMatch"
+                  class="bg-yellow-400/30 text-[var(--text-primary)] rounded px-0.5"
+                >{{ part.text }}</mark>
+                <span v-else>{{ part.text }}</span>
+              </template>
+            </template>
+            <template v-else>{{ message.content }}</template>
+          </span>
         </template>
         <!-- Text only -->
-        <span v-else class="whitespace-pre-wrap">{{ message.content }}</span>
+        <span v-else class="whitespace-pre-wrap">
+          <template v-if="contentParts">
+            <template v-for="(part, idx) in contentParts" :key="idx">
+              <mark
+                v-if="part.isMatch"
+                class="bg-yellow-400/30 text-[var(--text-primary)] rounded px-0.5"
+              >{{ part.text }}</mark>
+              <span v-else>{{ part.text }}</span>
+            </template>
+          </template>
+          <template v-else>{{ message.content }}</template>
+        </span>
       </template>
 
       <!-- Pinned badge -->
