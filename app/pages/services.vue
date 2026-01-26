@@ -61,6 +61,10 @@ const availableServices = computed(() => {
   return services.value.filter(s => !subscribedServiceIds.value.has(s.id))
 })
 
+type ServicesTab = 'my' | 'catalog'
+
+const activeTab = ref<ServicesTab>(subscriptions.value.length ? 'my' : 'catalog')
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -160,9 +164,62 @@ async function requestConnection(service: Service): Promise<void> {
 
     <template v-else>
       <!-- =================================================================
+           TABS — мои услуги / каталог
+           ================================================================= -->
+      <div class="flex flex-col gap-2">
+        <div
+          class="inline-flex w-fit rounded-xl border px-1 py-1"
+          style="background: var(--glass-bg); border-color: var(--glass-border);"
+          role="tablist"
+          aria-label="Вкладки услуг"
+        >
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === 'my'"
+            :tabindex="activeTab === 'my' ? 0 : -1"
+            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+            :class="activeTab === 'my' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            @click="activeTab = 'my'"
+          >
+            Мои услуги
+            <span
+              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
+              :class="activeTab === 'my' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
+              style="border: 1px solid var(--glass-border);"
+            >
+              {{ subscriptions.length }}
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === 'catalog'"
+            :tabindex="activeTab === 'catalog' ? 0 : -1"
+            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+            :class="activeTab === 'catalog' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            @click="activeTab = 'catalog'"
+          >
+            Каталог услуг
+            <span
+              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
+              :class="activeTab === 'catalog' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
+              style="border: 1px solid var(--glass-border);"
+            >
+              {{ availableServices.length }}
+            </span>
+          </button>
+        </div>
+        <p class="text-sm text-[var(--text-muted)]">
+          <span v-if="activeTab === 'my'">Подключённые услуги и их текущий статус.</span>
+          <span v-else>Услуги, которые ещё не подключены (можно отправить заявку).</span>
+        </p>
+      </div>
+
+      <!-- =================================================================
            SUBSCRIPTIONS — подключенные услуги
            ================================================================= -->
-      <section>
+      <section v-if="activeTab === 'my'">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
         <div v-if="subscriptions.length" class="grid gap-4">
           <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
@@ -210,16 +267,20 @@ async function requestConnection(service: Service): Promise<void> {
             icon="heroicons:cube"
             title="Нет подключенных услуг"
             description="Выберите услугу из списка ниже для подключения"
-          />
+          >
+            <UiButton variant="secondary" @click="activeTab = 'catalog'">
+              Перейти в каталог
+            </UiButton>
+          </UiEmptyState>
         </UiCard>
       </section>
 
       <!-- =================================================================
            AVAILABLE SERVICES — доступные для подключения
            ================================================================= -->
-      <section v-if="availableServices.length">
+      <section v-else>
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
-        <div class="grid md:grid-cols-2 gap-4">
+        <div v-if="availableServices.length" class="grid md:grid-cols-2 gap-4">
           <UiCard
             v-for="service in availableServices"
             :key="service.id"
@@ -264,6 +325,13 @@ async function requestConnection(service: Service): Promise<void> {
             </div>
           </UiCard>
         </div>
+        <UiCard v-else padding="lg">
+          <UiEmptyState
+            icon="heroicons:check-badge"
+            title="Все услуги уже подключены"
+            description="В каталоге нет доступных услуг для подключения"
+          />
+        </UiCard>
       </section>
     </template>
   </div>
