@@ -258,14 +258,14 @@ async function handleUpload(file: File): Promise<void> {
 }
 
 // Закрепить/открепить сообщение
-async function handlePin(messageId: number): Promise<void> {
-  await togglePin(messageId)
+async function handlePin(messageId: string | number): Promise<void> {
+  await togglePin(typeof messageId === 'string' ? Number(messageId) : messageId)
 }
 
 // Удалить сообщение (с подтверждением)
-async function handleDelete(messageId: number): Promise<void> {
+async function handleDelete(messageId: string | number): Promise<void> {
   if (confirm('Удалить это сообщение?')) {
-    await deleteMessage(messageId)
+    await deleteMessage(typeof messageId === 'string' ? Number(messageId) : messageId)
   }
 }
 
@@ -311,14 +311,14 @@ function handleContextReply(): void {
 // Закрепить из контекстного меню
 function handleContextPin(): void {
   if (contextMenu.value.message) {
-    handlePin(contextMenu.value.message.id as number)
+    handlePin(contextMenu.value.message.id)
   }
 }
 
 // Удалить из контекстного меню
 function handleContextDelete(): void {
   if (contextMenu.value.message) {
-    handleDelete(contextMenu.value.message.id as number)
+    handleDelete(contextMenu.value.message.id)
   }
 }
 
@@ -327,10 +327,11 @@ function handleContextDelete(): void {
 // =============================================================================
 
 // Открыть модалку блокировки
-function handleMuteClick(userId: number): void {
-  const msg = messages.value.find(m => m.userId === userId)
+function handleMuteClick(userId: string | number): void {
+  const userIdStr = String(userId)
+  const msg = messages.value.find(m => String(m.userId) === userIdStr)
   muteTargetUserName.value = msg?.user?.nickname || msg?.user?.firstName || 'Пользователь'
-  muteTargetUserId.value = userId
+  muteTargetUserId.value = typeof userId === 'string' ? Number(userId) : userId
   showMuteModal.value = true
 }
 
@@ -350,8 +351,8 @@ async function handleMuteSubmit(data: { userId: number; duration: number; reason
 // =============================================================================
 
 // Открыть модалку жалобы
-function handleReportClick(messageId: number): void {
-  reportTargetMessageId.value = messageId
+function handleReportClick(messageId: string | number): void {
+  reportTargetMessageId.value = typeof messageId === 'string' ? Number(messageId) : messageId
   showReportModal.value = true
 }
 
@@ -399,15 +400,19 @@ onMounted(async () => {
   // Автовыбор комнаты дома (или первой доступной)
   if (rooms.value.length > 0) {
     const buildingRoom = rooms.value.find(r => r.level === 'building')
-    await selectRoom(buildingRoom || rooms.value[0])
+    const roomToSelect = buildingRoom || rooms.value[0]
+    if (roomToSelect) {
+      await selectRoom(roomToSelect)
+    }
   }
 
   // Настраиваем observer для отслеживания видимых дат
   nextTick(() => {
     setupDateObserver()
     // Устанавливаем начальную дату (последнее сообщение)
-    if (messages.value.length > 0) {
-      visibleDate.value = getMessageDate(messages.value[messages.value.length - 1])
+    const lastMessage = messages.value[messages.value.length - 1]
+    if (lastMessage) {
+      visibleDate.value = getMessageDate(lastMessage)
     }
   })
 })
@@ -433,8 +438,9 @@ watch(messages, () => {
     // Настраиваем observer при изменении сообщений
     setupDateObserver()
     // Обновляем видимую дату (последнее сообщение)
-    if (messages.value.length > 0) {
-      visibleDate.value = getMessageDate(messages.value[messages.value.length - 1])
+    const lastMessage = messages.value[messages.value.length - 1]
+    if (lastMessage) {
+      visibleDate.value = getMessageDate(lastMessage)
     }
   })
 }, { deep: true })
@@ -453,11 +459,6 @@ watch(messages, () => {
     <header class="flex-shrink-0 border-b border-white/10">
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
-        <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
-        <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          {{ onlineCount }} онлайн
-        </p>
       </div>
 
       <!-- Loading -->
@@ -506,6 +507,10 @@ watch(messages, () => {
         <!-- Room info bar -->
         <div class="flex items-center gap-2 px-4 py-2 bg-white/5 text-xs text-[var(--text-muted)]">
           <span>{{ currentRoom.membersCount }} участников</span>
+          <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
+          {{ onlineCount }} онлайн
+        </p>
         </div>
 
         <!-- Pinned messages -->
@@ -560,7 +565,7 @@ watch(messages, () => {
                 :message="msg"
                 :is-own="msg.userId === userStore.user?.id"
                 :show-moderation="showModeration"
-                :is-user-moderator="isUserModerator(msg.userId)"
+                :is-user-moderator="isUserModerator(typeof msg.userId === 'string' ? Number(msg.userId) : msg.userId)"
                 @contextmenu="handleContextMenu"
                 @retry="handleRetry"
               />
@@ -608,7 +613,7 @@ watch(messages, () => {
       :show-moderation="showModeration"
       @close="closeContextMenu"
       @reply="handleContextReply"
-      @report="contextMenu.message && handleReportClick(contextMenu.message.id as number)"
+      @report="contextMenu.message && handleReportClick(contextMenu.message.id)"
       @pin="handleContextPin"
       @mute="contextMenu.message && handleMuteClick(contextMenu.message.userId)"
       @delete="handleContextDelete"

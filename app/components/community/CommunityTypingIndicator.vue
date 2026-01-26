@@ -11,7 +11,7 @@
 // =============================================================================
 
 const props = defineProps<{
-  typingUsers: Map<number, { name: string; timestamp: number }>
+  typingUsers: Map<string, { name: string; timestamp: number }>
 }>()
 
 // =============================================================================
