@@ -23,6 +23,7 @@ definePageMeta({
 // =============================================================================
 
 const userStore = useUserStore()
+const communityUiStore = useCommunityUiStore()
 const {
   rooms,
   currentRoom,
@@ -58,6 +59,58 @@ const {
 
 // Контейнер сообщений (для автоскролла)
 const messagesContainer = ref<HTMLElement>()
+const bottomSentinel = ref<HTMLElement | null>(null)
+let bottomObserver: IntersectionObserver | null = null
+
+// UI-only unread (пока пользователь не внизу списка / вкладка не в фокусе)
+const isAtBottom = ref(true)
+const lastSeenMessageId = ref<string | null>(null)
+const initialScrollRoomId = ref<string | null>(null)
+
+function computeIsAtBottom(): boolean {
+  const el = messagesContainer.value
+  if (!el) return true
+  const threshold = 80
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold
+}
+
+function syncAtBottom(): void {
+  isAtBottom.value = computeIsAtBottom()
+  if (isAtBottom.value) {
+    communityUiStore.clear()
+  }
+}
+
+function scrollToBottom(): void {
+  nextTick(() => {
+    bottomSentinel.value?.scrollIntoView({ block: 'end' })
+    syncAtBottom()
+  })
+}
+
+function setupBottomObserver(): void {
+  if (bottomObserver) {
+    bottomObserver.disconnect()
+    bottomObserver = null
+  }
+  if (!messagesContainer.value || !bottomSentinel.value) return
+
+  bottomObserver = new IntersectionObserver(
+    (entries) => {
+      const entry = entries[0]
+      const atBottom = !!entry?.isIntersecting
+      isAtBottom.value = atBottom
+      if (atBottom && !document.hidden && !isSearching.value) {
+        communityUiStore.clear()
+      }
+    },
+    {
+      root: messagesContainer.value,
+      threshold: 0.15
+    }
+  )
+  bottomObserver.observe(bottomSentinel.value)
+}
 
 // Поиск по загруженным сообщениям (UI-only, desktop-first)
 const searchQuery = ref('')
@@ -328,10 +381,21 @@ async function handleReportSubmit(data: { messageId: number; reason: CommunityRe
 // =============================================================================
 
 // Подгрузка истории при скролле вверх
-function handleScroll(e: Event): void {
+async function handleScroll(e: Event): Promise<void> {
   const el = e.target as HTMLElement
+  // unread: если дошли до низа — считаем прочитанным
+  isAtBottom.value = computeIsAtBottom()
+  if (isAtBottom.value) {
+    communityUiStore.clear()
+  }
   if (el.scrollTop < 100 && hasMoreMessages.value && !isLoadingMessages.value) {
-    loadMore()
+    // Сохраняем позицию при подгрузке истории (чтобы не прыгал скролл)
+    const prevHeight = el.scrollHeight
+    const prevTop = el.scrollTop
+    await loadMore()
+    await nextTick()
+    const newHeight = el.scrollHeight
+    el.scrollTop = newHeight - prevHeight + prevTop
   }
 }
 
@@ -348,33 +412,116 @@ onMounted(async () => {
     const buildingRoom = rooms.value.find(r => r.level === 'building')
     await selectRoom(buildingRoom || rooms.value[0])
   }
+
+  nextTick(() => setupBottomObserver())
+
+  // Если вкладка становится активной и мы уже внизу — очищаем индикатор
+  const handleVisibility = () => {
+    if (!document.hidden && (isAtBottom.value || computeIsAtBottom())) {
+      communityUiStore.clear()
+    }
+  }
+  document.addEventListener('visibilitychange', handleVisibility)
+  onUnmounted(() => {
+    document.removeEventListener('visibilitychange', handleVisibility)
+    if (bottomObserver) {
+      bottomObserver.disconnect()
+      bottomObserver = null
+    }
+  })
 })
 
 // =============================================================================
 // WATCHERS
 // =============================================================================
 
-// Автоскролл при новых сообщениях
-watch(messages, () => {
-  nextTick(() => {
-    // Не авто-скроллим, когда пользователь в режиме поиска
-    if (isSearching.value) return
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+// Автоскролл/непрочитанное при новых сообщениях
+watch(
+  () => messages.value.length,
+  () => {
+    const last = messages.value.at(-1)
+    if (!last) return
+
+    // Первичная инициализация (после загрузки комнаты)
+    if (lastSeenMessageId.value === null) {
+      lastSeenMessageId.value = String(last.id)
+      communityUiStore.clear()
+      nextTick(() => syncAtBottom())
+      return
     }
-  })
-}, { deep: true })
+
+    // Если последний id не изменился — ничего
+    if (lastSeenMessageId.value === String(last.id)) return
+    lastSeenMessageId.value = String(last.id)
+
+    // Не считаем свои сообщения
+    if (String(last.userId) === String(userStore.user?.id)) {
+      nextTick(() => syncAtBottom())
+      return
+    }
+
+    nextTick(() => {
+      // Во время поиска не автоскроллим и показываем unread
+      const atBottomNow = computeIsAtBottom()
+      isAtBottom.value = atBottomNow
+
+      if (!atBottomNow || document.hidden || isSearching.value) {
+        communityUiStore.increment(1)
+      } else {
+        communityUiStore.clear()
+        // Если внизу — мягко прилипнуть
+        messagesContainer.value!.scrollTop = messagesContainer.value!.scrollHeight
+      }
+    })
+  }
+)
 
 // Сброс поиска при смене комнаты
 watch(currentRoom, () => {
   searchQuery.value = ''
   showMobileSearch.value = false
+  communityUiStore.clear()
+  lastSeenMessageId.value = null
+  initialScrollRoomId.value = null
+  nextTick(() => {
+    syncAtBottom()
+    setupBottomObserver()
+  })
 })
+
+// При первом открытии комнаты — прокрутка к последним сообщениям
+watch(
+  () => [currentRoom.value?.id, isLoadingMessages.value, messages.value.length] as const,
+  ([roomId, loading, len]) => {
+    if (!roomId) return
+    if (loading) return
+    if (len <= 0) return
+    if (initialScrollRoomId.value === roomId) return
+
+    initialScrollRoomId.value = roomId
+    // Отмечаем последний как виденный и прыгаем вниз
+    const last = messages.value.at(-1)
+    lastSeenMessageId.value = last ? String(last.id) : null
+    communityUiStore.clear()
+    scrollToBottom()
+    nextTick(() => setupBottomObserver())
+  },
+  { immediate: true }
+)
 
 watch(showMobileSearch, (open) => {
   if (!open) return
   nextTick(() => {
     mobileSearchInput.value?.focus()
+  })
+})
+
+// Если поиск выключили — и мы внизу, сбрасываем индикатор
+watch(isSearching, () => {
+  nextTick(() => {
+    if (isAtBottom.value) {
+      communityUiStore.clear()
+    }
   })
 })
 </script>
@@ -392,7 +539,16 @@ watch(showMobileSearch, (open) => {
     <header class="flex-shrink-0 border-b border-white/10">
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
-        <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
+        <div class="flex items-center gap-2">
+          <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
+          <span
+            v-if="communityUiStore.hasUnread"
+            class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-primary text-white text-[10px] font-semibold"
+            title="Новые сообщения"
+          >
+            {{ communityUiStore.unreadCount > 99 ? '99+' : communityUiStore.unreadCount }}
+          </span>
+        </div>
         <div class="flex items-center gap-3">
           <!-- Mobile search button -->
           <button
@@ -587,6 +743,23 @@ watch(showMobileSearch, (open) => {
               @retry="handleRetry"
             />
           </template>
+
+          <!-- Sentinel: когда в зоне видимости — пользователь внизу -->
+          <div ref="bottomSentinel" class="h-px" />
+        </div>
+
+        <!-- New messages pill -->
+        <div
+          v-if="communityUiStore.hasUnread"
+          class="absolute left-0 right-0 bottom-[72px] flex justify-center pointer-events-none"
+        >
+          <button
+            class="pointer-events-auto px-4 py-2 rounded-full text-sm font-semibold bg-primary text-white shadow-lg hover:opacity-90 transition-opacity"
+            @click="scrollToBottom"
+            type="button"
+          >
+            Новые сообщения ({{ communityUiStore.unreadCount > 99 ? '99+' : communityUiStore.unreadCount }}) — вниз
+          </button>
         </div>
 
         <!-- Typing indicator -->

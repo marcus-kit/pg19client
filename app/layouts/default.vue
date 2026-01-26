@@ -15,6 +15,7 @@
 
 const userStore = useUserStore()
 const accountStore = useAccountStore()
+const communityUiStore = useCommunityUiStore()
 const { logout } = useAuthInit()
 const route = useRoute()
 const colorMode = useColorMode()
@@ -62,6 +63,7 @@ const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.hre
 
 const isScrolled = ref(false)    // true когда страница прокручена > 20px
 const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
+const hasCommunityUnread = computed(() => communityUiStore.hasUnread)
 
 // Переключение темы light/dark
 function toggleTheme(): void {
@@ -125,7 +127,14 @@ onUnmounted(() => {
               class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
               :class="isActive(item.href) ? 'text-primary bg-primary/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)]'"
             >
-              <Icon :name="item.icon" class="w-5 h-5" />
+              <span class="relative">
+                <Icon :name="item.icon" class="w-5 h-5" />
+                <span
+                  v-if="item.href === '/community' && hasCommunityUnread"
+                  class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-[var(--header-blur-bg)]"
+                  aria-hidden="true"
+                />
+              </span>
               {{ item.name }}
             </NuxtLink>
           </nav>
@@ -215,7 +224,14 @@ onUnmounted(() => {
             :class="isActive(item.href) ? 'text-primary' : 'text-[var(--text-muted)]'"
             @click="showMoreMenu = false"
           >
-            <Icon :name="item.icon" class="w-6 h-6" />
+            <span class="relative">
+              <Icon :name="item.icon" class="w-6 h-6" />
+              <span
+                v-if="item.href === '/community' && hasCommunityUnread"
+                class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-[var(--header-blur-bg)]"
+                aria-hidden="true"
+              />
+            </span>
             <span class="text-xs font-medium">{{ item.name }}</span>
           </NuxtLink>
 
