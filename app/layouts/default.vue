@@ -29,19 +29,19 @@ const { startHeartbeat, stopHeartbeat } = usePresenceHeartbeat()
 // Desktop навигация — все пункты в шапке
 const navigation = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
-  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
   { name: 'Услуги', href: '/services', icon: 'heroicons:squares-2x2' },
   { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' },
-  { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' },
-  { name: 'Профиль', href: '/profile', icon: 'heroicons:user' }
+  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
+  { name: 'Профиль', href: '/profile', icon: 'heroicons:user' },
+  { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' }
 ]
 
 // Mobile навигация — 4 основных пункта в нижней панели
 const mobileMainNav = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
   { name: 'Услуги', href: '/services', icon: 'heroicons:squares-2x2' },
-  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
-  { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' }
+  { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' },
+  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' }
 ]
 
 // Mobile меню "Ещё" — дополнительные пункты

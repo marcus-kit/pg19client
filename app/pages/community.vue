@@ -104,6 +104,70 @@ const mutedUntilFormatted = computed(() => {
   })
 })
 
+// Проверка, является ли дата сегодняшней
+function isToday(date: Date): boolean {
+  const today = new Date()
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  )
+}
+
+// Форматирование даты с учетом года
+function formatDate(date: Date): string {
+  const today = new Date()
+  const currentYear = today.getFullYear()
+  const messageYear = date.getFullYear()
+
+  // Если год текущий - не показываем год
+  if (messageYear === currentYear) {
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long'
+    })
+  }
+
+  // Если год прошлый или будущий - показываем год
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+// Получить разделитель даты для сообщения
+function getDateSeparator(message: CommunityMessage, index: number): string | null {
+  // Для первого сообщения всегда показывать
+  if (index === 0) {
+    const msgDate = new Date(message.createdAt)
+    if (isToday(msgDate)) {
+      return 'Сегодня'
+    }
+    return formatDate(msgDate)
+  }
+
+  // Для остальных - проверяем, отличается ли дата от предыдущего сообщения
+  const prevMessage = messages.value[index - 1]
+  if (!prevMessage) return null
+
+  const msgDate = new Date(message.createdAt)
+  const prevDate = new Date(prevMessage.createdAt)
+
+  // Проверяем, что даты разные (без учета времени)
+  const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate())
+  const prevDateOnly = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate())
+
+  if (msgDateOnly.getTime() !== prevDateOnly.getTime()) {
+    if (isToday(msgDate)) {
+      return 'Сегодня'
+    }
+    return formatDate(msgDate)
+  }
+
+  return null
+}
+
 // =============================================================================
 // METHODS — обработчики событий
 // =============================================================================
@@ -251,6 +315,16 @@ function handleScroll(e: Event): void {
 }
 
 // =============================================================================
+// HEAD — отключение скролла на body
+// =============================================================================
+
+useHead({
+  bodyAttrs: {
+    class: 'overflow-hidden'
+  }
+})
+
+// =============================================================================
 // LIFECYCLE
 // =============================================================================
 
@@ -263,6 +337,11 @@ onMounted(async () => {
     const buildingRoom = rooms.value.find(r => r.level === 'building')
     await selectRoom(buildingRoom || rooms.value[0])
   }
+})
+
+// Убрать overflow-hidden при размонтировании
+onUnmounted(() => {
+  document.body.classList.remove('overflow-hidden')
 })
 
 // =============================================================================
@@ -282,9 +361,9 @@ watch(messages, () => {
 <template>
   <!-- =========================================================================
        COMMUNITY PAGE — полноэкранный чат сообщества
-       Высота: 100vh минус header и mobile nav
+       Высота: 100vh минус header (64px) и mobile nav (80px), минус отступы layout (48px)
        ========================================================================= -->
-  <div class="h-[calc(100vh-theme(spacing.16)-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
+  <div class="flex flex-col bg-[var(--bg-primary)] -mx-4 -my-6 overflow-hidden h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-4rem)]">
 
     <!-- =====================================================================
          HEADER — табы комнат и счётчик онлайн
@@ -371,16 +450,25 @@ watch(messages, () => {
           </div>
 
           <!-- Messages list (IRC style) -->
-          <CommunityMessage
-            v-for="msg in messages"
-            :key="msg.id"
-            :message="msg"
-            :is-own="msg.userId === userStore.user?.id"
-            :show-moderation="showModeration"
-            :is-user-moderator="isUserModerator(msg.userId)"
-            @contextmenu="handleContextMenu"
-            @retry="handleRetry"
-          />
+          <template v-for="(msg, index) in messages" :key="msg.id">
+            <!-- Date separator -->
+            <div
+              v-if="getDateSeparator(msg, index)"
+              class="flex items-center justify-center py-4"
+            >
+              <div class="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-[var(--text-muted)]">
+                {{ getDateSeparator(msg, index) }}
+              </div>
+            </div>
+            <CommunityMessage
+              :message="msg"
+              :is-own="msg.userId === userStore.user?.id"
+              :show-moderation="showModeration"
+              :is-user-moderator="isUserModerator(msg.userId)"
+              @contextmenu="handleContextMenu"
+              @retry="handleRetry"
+            />
+          </template>
         </div>
 
         <!-- Typing indicator -->

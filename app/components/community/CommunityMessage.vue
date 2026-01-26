@@ -1,14 +1,16 @@
 <script setup lang="ts">
 /**
- * CommunityMessage — сообщение в IRC-стиле
+ * CommunityMessage — сообщение в чате
  *
  * Особенности:
- * - Формат: [HH:MM] <Nickname> Текст
+ * - Свои сообщения справа, чужие слева
+ * - Время под текстом сообщения
  * - Поддержка изображений, ответов, удалённых сообщений
  * - Статусы отправки: sending, failed, retry
  * - Контекстное меню по ПКМ
  */
 import type { CommunityMessage } from '~/types/community'
+import { truncateText } from '~/composables/useFormatters'
 
 // =============================================================================
 // PROPS & EMIT
@@ -48,6 +50,12 @@ const displayName = computed(() => {
 })
 
 // =============================================================================
+// STATE
+// =============================================================================
+
+const showImageModal = ref(false)
+
+// =============================================================================
 // METHODS
 // =============================================================================
 
@@ -55,85 +63,219 @@ const displayName = computed(() => {
 function handleContextMenu(event: MouseEvent): void {
   emit('contextmenu', event, props.message)
 }
+
+// Открыть изображение в модальном окне
+function openImageModal(event: MouseEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+  showImageModal.value = true
+}
+
+// Закрыть модальное окно
+function closeImageModal(): void {
+  showImageModal.value = false
+}
 </script>
 
 <template>
   <div
     :class="[
-      'flex items-start gap-2 px-3 py-0.5 hover:bg-white/5 cursor-default select-text',
+      'flex px-3 py-2',
+      isOwn ? 'justify-end md:justify-start' : 'justify-start',
       message.isDeleted && 'opacity-50',
       message.status === 'sending' && 'opacity-60',
       message.status === 'failed' && 'bg-red-500/10'
     ]"
     @contextmenu.prevent="handleContextMenu"
   >
-    <!-- Time -->
-    <span class="text-xs text-[var(--text-muted)] w-11 flex-shrink-0 font-mono tabular-nums">
-      {{ formattedTime }}
-    </span>
-
-    <!-- Nickname -->
-    <span
+    <div
       :class="[
-        'font-medium flex-shrink-0',
-        isOwn ? 'text-primary' : 'text-secondary'
+        'flex flex-col max-w-[70%]',
+        isOwn ? 'items-end md:items-start' : 'items-start'
       ]"
-    >&lt;{{ displayName }}&gt;</span>
+    >
+      <!-- Message bubble -->
+      <div
+        :class="[
+          'rounded-2xl px-4 py-2 mb-1 break-words relative',
+          isOwn
+            ? 'bg-blue-500 text-white'
+            : 'bg-white/10 text-[var(--text-primary)]'
+        ]"
+      >
+        <!-- Nickname (для чужих на мобильных, для всех на десктопе) -->
+        <div v-if="!isOwn" class="flex items-center gap-2 mb-1">
+          <span class="text-xs font-medium opacity-80">{{ displayName }}</span>
+          <span
+            v-if="isUserModerator"
+            class="text-[10px] text-yellow-400 bg-yellow-400/20 px-1.5 py-0.5 rounded"
+            title="Модератор"
+          >MOD</span>
+        </div>
+        <!-- Nickname для своих сообщений на десктопе -->
+        <div v-if="isOwn" class="hidden md:flex items-center gap-2 mb-1">
+          <span class="text-xs font-medium opacity-80">{{ displayName }}</span>
+          <span
+            v-if="isUserModerator"
+            class="text-[10px] text-yellow-400 bg-yellow-400/20 px-1.5 py-0.5 rounded"
+            title="Модератор"
+          >MOD</span>
+        </div>
 
-    <!-- Message content -->
-    <span class="flex-1 break-words text-[var(--text-primary)]">
-      <!-- Reply quote (inline) -->
-      <span v-if="message.replyTo" class="text-[var(--text-muted)] text-sm mr-1">
-        <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3 inline -mt-0.5" />
-        {{ message.replyTo.user?.firstName }}:
-        {{ truncateText(message.replyTo.content, 25) }} —
-      </span>
+        <!-- Reply quote -->
+        <div v-if="message.replyTo" class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm" :class="isOwn ? 'border-white/30' : 'border-white/20'">
+          <div class="flex items-center gap-1">
+            <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3" />
+            <span class="font-medium">{{ message.replyTo.user?.firstName }}:</span>
+          </div>
+          <div class="text-xs truncate">{{ truncateText(message.replyTo.content, 30) }}</div>
+        </div>
 
-      <!-- Content -->
-      <span v-if="message.isDeleted" class="italic text-[var(--text-muted)]">Сообщение удалено</span>
-      <template v-else>
-        <!-- Image -->
-        <template v-if="message.contentType === 'image' && message.imageUrl">
-          <a :href="message.imageUrl" target="_blank" class="text-primary hover:underline">
-            [изображение]
-          </a>
-          <span v-if="message.content" class="ml-1">{{ message.content }}</span>
-        </template>
-        <!-- Text only -->
-        <span v-else class="whitespace-pre-wrap">{{ message.content }}</span>
-      </template>
+        <!-- Content wrapper with time for own messages -->
+        <div v-if="isOwn" class="relative pb-3">
+          <!-- Content -->
+          <div v-if="message.isDeleted" class="italic opacity-70 pr-12">Сообщение удалено</div>
+          <template v-else>
+            <!-- Image -->
+            <template v-if="message.contentType === 'image' && message.imageUrl">
+              <button @click="openImageModal" class="block mb-1">
+                <img 
+                  :src="message.imageUrl" 
+                  :alt="message.content || 'Изображение'" 
+                  class="max-w-[250px] max-h-[250px] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity" 
+                />
+              </button>
+              <div v-if="message.content" class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+              <div v-else class="pr-12 min-h-[1em]"></div>
+            </template>
+            <!-- Text only -->
+            <div v-else class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+          </template>
+          
+          <!-- Pinned badge -->
+          <div v-if="message.isPinned" class="mt-1 flex items-center gap-1 text-xs opacity-80">
+            <Icon name="heroicons:bookmark-solid" class="w-3 h-3" />
+            <span>Закреплено</span>
+          </div>
 
-      <!-- Pinned badge -->
-      <Icon
-        v-if="message.isPinned"
-        name="heroicons:bookmark-solid"
-        class="inline w-3 h-3 text-yellow-400 ml-1"
-        title="Закреплено"
-      />
+          <!-- Status indicators -->
+          <div v-if="message.status === 'sending'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
+            <Icon name="heroicons:arrow-path" class="w-3 h-3 animate-spin" />
+            <span>Отправка...</span>
+          </div>
+          <div v-if="message.status === 'failed'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
+            <Icon name="heroicons:exclamation-circle" class="w-3 h-3" />
+            <span>не отправлено</span>
+            <button
+              @click.stop="emit('retry', String(message.id))"
+              class="underline hover:no-underline"
+            >
+              повторить
+            </button>
+          </div>
+          
+          <!-- Time inside bubble for own messages - positioned bottom right -->
+          <span class="absolute bottom-0 right-2 text-[10px] text-white/70 font-mono tabular-nums whitespace-nowrap">
+            {{ formattedTime }}
+          </span>
+        </div>
 
-      <!-- Status indicators -->
-      <Icon
-        v-if="message.status === 'sending'"
-        name="heroicons:arrow-path"
-        class="inline w-3 h-3 animate-spin ml-1 text-[var(--text-muted)]"
-      />
-      <span v-if="message.status === 'failed'" class="text-xs text-red-400 ml-2">
-        <Icon name="heroicons:exclamation-circle" class="inline w-3 h-3" />
-        не отправлено
-        <button
-          @click.stop="emit('retry', String(message.id))"
-          class="underline hover:no-underline ml-1"
-        >
-          повторить
-        </button>
-      </span>
-    </span>
+        <!-- Content for other users' messages -->
+        <div v-else class="relative pb-3">
+          <!-- Content -->
+          <div v-if="message.isDeleted" class="italic opacity-70 pr-12">Сообщение удалено</div>
+          <template v-else>
+            <!-- Image -->
+            <template v-if="message.contentType === 'image' && message.imageUrl">
+              <button @click="openImageModal" class="block mb-1">
+                <img 
+                  :src="message.imageUrl" 
+                  :alt="message.content || 'Изображение'" 
+                  class="max-w-[250px] max-h-[250px] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity" 
+                />
+              </button>
+              <div v-if="message.content" class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+              <div v-else class="pr-12 min-h-[1em]"></div>
+            </template>
+            <!-- Text only -->
+            <div v-else class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+          </template>
 
-    <!-- Moderator badge -->
-    <span
-      v-if="isUserModerator"
-      class="text-[10px] text-yellow-400 bg-yellow-400/10 px-1 rounded flex-shrink-0"
-      title="Модератор"
-    >MOD</span>
+          <!-- Pinned badge -->
+          <div v-if="message.isPinned" class="mt-1 flex items-center gap-1 text-xs opacity-80">
+            <Icon name="heroicons:bookmark-solid" class="w-3 h-3" />
+            <span>Закреплено</span>
+          </div>
+
+          <!-- Status indicators -->
+          <div v-if="message.status === 'sending'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
+            <Icon name="heroicons:arrow-path" class="w-3 h-3 animate-spin" />
+            <span>Отправка...</span>
+          </div>
+          <div v-if="message.status === 'failed'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
+            <Icon name="heroicons:exclamation-circle" class="w-3 h-3" />
+            <span>не отправлено</span>
+            <button
+              @click.stop="emit('retry', String(message.id))"
+              class="underline hover:no-underline"
+            >
+              повторить
+            </button>
+          </div>
+
+          <!-- Time inside bubble for other users' messages - positioned bottom right -->
+          <span class="absolute bottom-0 right-2 text-[10px] text-[var(--text-muted)] font-mono tabular-nums whitespace-nowrap opacity-70">
+            {{ formattedTime }}
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- Image Modal -->
+  <Teleport to="body">
+    <Transition name="modal">
+      <div
+        v-if="showImageModal && message.imageUrl"
+        class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+        @click="closeImageModal"
+      >
+        <button
+          @click="closeImageModal"
+          class="absolute top-4 right-4 p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+        >
+          <Icon name="heroicons:x-mark" class="w-6 h-6 text-white" />
+        </button>
+        <img
+          :src="message.imageUrl"
+          :alt="message.content || 'Изображение'"
+          class="max-w-full max-h-[90vh] object-contain rounded-lg"
+          @click.stop
+        />
+      </div>
+    </Transition>
+  </Teleport>
 </template>
+
+<style scoped>
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active img,
+.modal-leave-active img {
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.modal-enter-from img,
+.modal-leave-to img {
+  transform: scale(0.9);
+  opacity: 0;
+}
+</style>
