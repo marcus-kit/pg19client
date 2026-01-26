@@ -73,20 +73,22 @@ function closeNewsModal(): void {
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">
         Добро пожаловать, {{ userStore.user?.firstName }}!
       </h1>
-      <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p>
+      <!-- <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p> -->
     </div>
 
     <!-- =====================================================================
          MAIN CARDS — баланс и состояние подключения
          ===================================================================== -->
     <div class="grid md:grid-cols-2 gap-4">
+      <DashboardConnectionProfile />
       <DashboardBalanceCard />
-      <DashboardConnectionCard />
+      <!-- <DashboardConnectionCard /> -->
     </div>
 
     <!-- =====================================================================
          REFERRAL PROMO — карточка реферальной программы
          ===================================================================== -->
+    <DashboardConnectedServices />
     <DashboardReferralCard />
 
     <!-- =====================================================================

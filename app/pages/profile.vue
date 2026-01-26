@@ -25,8 +25,13 @@ const userStore = useUserStore()
 // STATE
 // =============================================================================
 
+const route = useRoute()
+
 // Активная вкладка
 const activeTab = ref<'profile' | 'personal' | 'contract' | 'notifications' | 'security'>('profile')
+
+// Подсветка блока прогресса
+const highlightProgress = ref(false)
 
 // Конфигурация вкладок
 const tabs = [
@@ -82,6 +87,34 @@ const levelInfo = computed(() => {
   if (percent >= 50) return { level: 'Продвинутый', color: 'from-blue-400 to-blue-600', icon: 'heroicons:arrow-trending-up' }
   return { level: 'Новичок', color: 'from-gray-400 to-gray-600', icon: 'heroicons:user' }
 })
+
+// =============================================================================
+// LIFECYCLE — обработка подсветки блока прогресса
+// =============================================================================
+
+// Проверка query параметра для подсветки
+watch(() => route.query.highlight, (value) => {
+  if (value === 'progress') {
+    highlightProgress.value = true
+    // Убираем подсветку через 0.7 секунды
+    setTimeout(() => {
+      highlightProgress.value = false
+      // Очищаем query параметр
+      navigateTo({ query: {} }, { replace: true })
+    }, 700)
+  }
+}, { immediate: true })
+
+// Проверка при монтировании
+onMounted(() => {
+  if (route.query.highlight === 'progress') {
+    highlightProgress.value = true
+    setTimeout(() => {
+      highlightProgress.value = false
+      navigateTo({ query: {} }, { replace: true })
+    }, 700)
+  }
+})
 </script>
 
 <template>
@@ -118,7 +151,13 @@ const levelInfo = computed(() => {
          ===================================================================== -->
     <div v-if="activeTab === 'profile'" class="space-y-6">
       <!-- Карточка прогресса заполнения профиля -->
-      <UiCard class="p-0 overflow-hidden">
+      <UiCard 
+        class="p-0 overflow-hidden transition-all duration-500"
+        :class="highlightProgress ? '!bg-[var(--glass-hover-bg)] !border-[var(--glass-hover-border)] translate-y-[-2px]' : ''"
+        :style="highlightProgress ? {
+          boxShadow: '0 20px 40px rgba(247, 148, 29, 0.15), 0 0 60px rgba(247, 148, 29, 0.1)'
+        } : {}"
+      >
         <div class="px-5 py-4">
           <div class="flex items-center gap-4">
             <!-- Level Icon -->
