@@ -63,6 +63,10 @@ const messagesContainer = ref<HTMLElement>()
 const replyTo = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
 
+// Текущая видимая дата для sticky плашки
+const visibleDate = ref<string | null>(null)
+const messageRefs = ref<Map<number, HTMLElement>>(new Map())
+
 // Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
   show: false,
@@ -166,6 +170,66 @@ function getDateSeparator(message: CommunityMessage, index: number): string | nu
   }
 
   return null
+}
+
+// Получить дату для сообщения (для sticky плашки)
+function getMessageDate(message: CommunityMessage): string {
+  const msgDate = new Date(message.createdAt)
+  if (isToday(msgDate)) {
+    return 'Сегодня'
+  }
+  return formatDate(msgDate)
+}
+
+// =============================================================================
+// INTERSECTION OBSERVER — отслеживание видимых разделителей дат
+// =============================================================================
+
+let intersectionObserver: IntersectionObserver | null = null
+
+function setupDateObserver(): void {
+  if (!messagesContainer.value) return
+
+  // Удаляем старый observer, если есть
+  if (intersectionObserver) {
+    intersectionObserver.disconnect()
+  }
+
+  // Создаем новый observer
+  intersectionObserver = new IntersectionObserver(
+    (entries) => {
+      // Находим первое видимое сообщение (самое верхнее)
+      const visibleEntries = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a, b) => {
+          const aRect = a.boundingClientRect
+          const bRect = b.boundingClientRect
+          return aRect.top - bRect.top
+        })
+
+      if (visibleEntries.length > 0 && visibleEntries[0]) {
+        const firstVisible = visibleEntries[0]
+        const messageIndex = Number(firstVisible.target.getAttribute('data-message-index'))
+        if (!isNaN(messageIndex) && messages.value[messageIndex]) {
+          visibleDate.value = getMessageDate(messages.value[messageIndex])
+        }
+      }
+    },
+    {
+      root: messagesContainer.value,
+      rootMargin: '-80px 0px 0px 0px', // Учитываем sticky плашку
+      threshold: 0.1
+    }
+  )
+
+  // Наблюдаем за всеми сообщениями
+  nextTick(() => {
+    messageRefs.value.forEach((el, index) => {
+      if (el) {
+        intersectionObserver?.observe(el)
+      }
+    })
+  })
 }
 
 // =============================================================================
@@ -337,10 +401,22 @@ onMounted(async () => {
     const buildingRoom = rooms.value.find(r => r.level === 'building')
     await selectRoom(buildingRoom || rooms.value[0])
   }
+
+  // Настраиваем observer для отслеживания видимых дат
+  nextTick(() => {
+    setupDateObserver()
+    // Устанавливаем начальную дату (последнее сообщение)
+    if (messages.value.length > 0) {
+      visibleDate.value = getMessageDate(messages.value[messages.value.length - 1])
+    }
+  })
 })
 
-// Убрать overflow-hidden при размонтировании
+// Очистка observer и overflow-hidden при размонтировании
 onUnmounted(() => {
+  if (intersectionObserver) {
+    intersectionObserver.disconnect()
+  }
   document.body.classList.remove('overflow-hidden')
 })
 
@@ -348,11 +424,17 @@ onUnmounted(() => {
 // WATCHERS
 // =============================================================================
 
-// Автоскролл при новых сообщениях
+// Автоскролл при новых сообщениях и настройка observer
 watch(messages, () => {
   nextTick(() => {
     if (messagesContainer.value) {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+    // Настраиваем observer при изменении сообщений
+    setupDateObserver()
+    // Обновляем видимую дату (последнее сообщение)
+    if (messages.value.length > 0) {
+      visibleDate.value = getMessageDate(messages.value[messages.value.length - 1])
     }
   })
 }, { deep: true })
@@ -435,9 +517,19 @@ watch(messages, () => {
         <!-- Messages -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto py-2 font-mono text-sm"
+          class="flex-1 overflow-y-auto py-2 font-mono text-sm relative"
           @scroll="handleScroll"
         >
+          <!-- Sticky date label -->
+          <div
+            v-if="visibleDate"
+            class="sticky top-0 z-10 flex items-center justify-center py-2 pointer-events-none"
+          >
+            <div class="px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs text-[var(--text-muted)] shadow-lg">
+              {{ visibleDate }}
+            </div>
+          </div>
+
           <!-- Loading indicator for history -->
           <div v-if="isLoadingMessages && messages.length > 0" class="text-center py-2">
             <Icon name="heroicons:arrow-path" class="w-4 h-4 text-primary animate-spin mx-auto" />
@@ -460,14 +552,19 @@ watch(messages, () => {
                 {{ getDateSeparator(msg, index) }}
               </div>
             </div>
-            <CommunityMessage
-              :message="msg"
-              :is-own="msg.userId === userStore.user?.id"
-              :show-moderation="showModeration"
-              :is-user-moderator="isUserModerator(msg.userId)"
-              @contextmenu="handleContextMenu"
-              @retry="handleRetry"
-            />
+            <div
+              :ref="el => { if (el) messageRefs.set(index, el as HTMLElement) }"
+              :data-message-index="index"
+            >
+              <CommunityMessage
+                :message="msg"
+                :is-own="msg.userId === userStore.user?.id"
+                :show-moderation="showModeration"
+                :is-user-moderator="isUserModerator(msg.userId)"
+                @contextmenu="handleContextMenu"
+                @retry="handleRetry"
+              />
+            </div>
           </template>
         </div>
 
