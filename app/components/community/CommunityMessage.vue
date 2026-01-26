@@ -132,7 +132,7 @@ function closeImageModal(): void {
         </div>
 
         <!-- Content wrapper with time for own messages -->
-        <div v-if="isOwn" class="relative pb-3">
+        <div v-if="isOwn" class="relative pb-3 overflow-hidden">
           <!-- Content -->
           <div v-if="message.isDeleted" class="italic opacity-70 pr-12">Сообщение удалено</div>
           <template v-else>
@@ -145,11 +145,11 @@ function closeImageModal(): void {
                   class="max-w-[250px] max-h-[250px] object-cover rounded-lg cursor-pointer hover:opacity-90 transition-opacity" 
                 />
               </button>
-              <div v-if="message.content" class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+              <div v-if="message.content" class="whitespace-pre-wrap pr-12 break-words">{{ message.content }}</div>
               <div v-else class="pr-12 min-h-[1em]"></div>
             </template>
             <!-- Text only -->
-            <div v-else class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
+            <div v-else class="whitespace-pre-wrap pr-12 break-words">{{ message.content }}</div>
           </template>
           
           <!-- Pinned badge -->
@@ -175,9 +175,12 @@ function closeImageModal(): void {
           </div>
           
           <!-- Time inside bubble for own messages - positioned bottom right -->
-          <span class="absolute bottom-0 right-2 text-[10px] text-white/70 font-mono tabular-nums whitespace-nowrap">
-            {{ formattedTime }}
-          </span>
+          <div class="absolute bottom-0 right-2 flex items-center gap-1">
+            <span v-if="message.createdAt !== message.updatedAt" class="text-[9px] text-white/50 italic">изменено</span>
+            <span class="text-[10px] text-white/70 font-mono tabular-nums whitespace-nowrap">
+              {{ formattedTime }}
+            </span>
+          </div>
         </div>
 
         <!-- Content for other users' messages -->
@@ -224,9 +227,12 @@ function closeImageModal(): void {
           </div>
 
           <!-- Time inside bubble for other users' messages - positioned bottom right -->
-          <span class="absolute bottom-0 right-2 text-[10px] text-[var(--text-muted)] font-mono tabular-nums whitespace-nowrap opacity-70">
-            {{ formattedTime }}
-          </span>
+          <div class="absolute bottom-0 right-2 flex items-center gap-1">
+            <span v-if="message.createdAt !== message.updatedAt" class="text-[9px] text-[var(--text-muted)] opacity-50 italic">изменено</span>
+            <span class="text-[10px] text-[var(--text-muted)] font-mono tabular-nums whitespace-nowrap opacity-70">
+              {{ formattedTime }}
+            </span>
+          </div>
         </div>
       </div>
     </div>

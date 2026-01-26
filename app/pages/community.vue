@@ -45,6 +45,7 @@ const {
   uploadImage,
   togglePin,
   deleteMessage,
+  editMessage,
   isModerator,
   isUserModerator,
   muteUser,
@@ -61,6 +62,8 @@ const messagesContainer = ref<HTMLElement>()
 
 // Ответ на сообщение
 const replyTo = ref<CommunityMessage | null>(null)
+// Редактирование сообщения
+const editingMessage = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
 
 // Текущая видимая дата для sticky плашки
@@ -248,7 +251,15 @@ function levelIcon(level: CommunityRoomLevel): string {
 
 // Отправка сообщения
 async function handleSend(content: string, options?: { replyToId?: number }): Promise<void> {
+  // Если редактируем сообщение
+  if (editingMessage.value) {
+    await editMessage(typeof editingMessage.value.id === 'string' ? Number(editingMessage.value.id) : editingMessage.value.id, content)
+    editingMessage.value = null
+    return
+  }
+  
   await sendMessage(content, options)
+  replyTo.value = null
 }
 
 // Загрузка и отправка изображения
@@ -302,6 +313,18 @@ function closeContextMenu(): void {
 function handleContextReply(): void {
   if (contextMenu.value.message) {
     replyTo.value = contextMenu.value.message
+    editingMessage.value = null
+    nextTick(() => {
+      messageInputRef.value?.focus()
+    })
+  }
+}
+
+// Редактировать сообщение из контекстного меню
+function handleContextEdit(): void {
+  if (contextMenu.value.message) {
+    editingMessage.value = contextMenu.value.message
+    replyTo.value = null
     nextTick(() => {
       messageInputRef.value?.focus()
     })
@@ -590,8 +613,9 @@ watch(messages, () => {
           ref="messageInputRef"
           :disabled="isSending || isMuted"
           :reply-to="replyTo"
+          :editing-message="editingMessage"
           @send="handleSend"
-          @cancel-reply="replyTo = null"
+          @cancel-reply="replyTo = null; editingMessage = null"
           @upload="handleUpload"
           @typing="broadcastTyping"
         />
@@ -613,6 +637,7 @@ watch(messages, () => {
       :show-moderation="showModeration"
       @close="closeContextMenu"
       @reply="handleContextReply"
+      @edit="handleContextEdit"
       @report="contextMenu.message && handleReportClick(contextMenu.message.id)"
       @pin="handleContextPin"
       @mute="contextMenu.message && handleMuteClick(contextMenu.message.userId)"
