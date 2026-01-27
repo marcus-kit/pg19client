@@ -236,6 +236,35 @@ function resetTest(): void {
 const isRunning = computed(() => ['ping', 'download', 'upload'].includes(testState.value))
 const canStart = computed(() => testState.value === 'idle' || testState.value === 'completed' || testState.value === 'error')
 
+// Определение мобильной версии
+const isMobile = ref(false)
+const windowWidth = ref(0)
+
+// Адаптивный размер спидометра на основе ширины экрана
+const speedometerSize = computed(() => {
+  if (typeof window === 'undefined' || windowWidth.value === 0) {
+    return 200 // Значение по умолчанию для SSR
+  }
+  
+  // Вычисляем размер на основе ширины экрана
+  // Минимум 120px, максимум 250px
+  // На мобильных (до 640px): 120-160px
+  // На планшетах (640-1024px): 160-200px
+  // На десктопе (1024px+): 200-250px
+  const width = windowWidth.value
+  
+  if (width < 640) {
+    // Мобильные: 120-160px в зависимости от ширины
+    return Math.max(120, Math.min(160, width * 0.25))
+  } else if (width < 1024) {
+    // Планшеты: 160-200px
+    return Math.max(160, Math.min(200, width * 0.2))
+  } else {
+    // Десктоп: 200-250px
+    return Math.max(200, Math.min(250, width * 0.15))
+  }
+})
+
 const currentTestLabel = computed(() => {
   switch (testState.value) {
     case 'ping': return 'Измерение пинга...'
@@ -244,6 +273,31 @@ const currentTestLabel = computed(() => {
     case 'completed': return 'Тест завершен'
     case 'error': return 'Ошибка'
     default: return 'Готов к тестированию'
+  }
+})
+
+// Функция для определения мобильной версии и обновления ширины
+function checkMobile(): void {
+  if (typeof window !== 'undefined') {
+    windowWidth.value = window.innerWidth
+    isMobile.value = window.innerWidth < 768
+  }
+}
+
+// =============================================================================
+// LIFECYCLE
+// =============================================================================
+
+onMounted(() => {
+  checkMobile()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', checkMobile)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', checkMobile)
   }
 })
 </script>
@@ -278,31 +332,27 @@ const currentTestLabel = computed(() => {
         </div>
 
         <!-- Speedometers - показываются всегда -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3 py-4 overflow-visible">
+        <div class="flex flex-row items-center justify-center gap-3 md:gap-10 py-2 md:py-4 overflow-visible">
           <!-- Download Speedometer -->
-          <div class="flex justify-center overflow-visible">
-            <div class="relative overflow-visible">
-              <Speedometer
-                :value="testState === 'download' ? currentDownload : (results.download || 0)"
-                :max="1000"
-                label="Загрузка"
-                color="#4CAF50"
-                :size="200"
-              />
-            </div>
+          <div class="flex justify-center overflow-visible flex-1 md:flex-none">
+            <Speedometer
+              :value="testState === 'download' ? currentDownload : (results.download || 0)"
+              :max="1000"
+              label="Загрузка"
+              color="#4CAF50"
+              :size="speedometerSize"
+            />
           </div>
 
           <!-- Upload Speedometer -->
-          <div class="flex justify-center overflow-visible">
-            <div class="relative overflow-visible">
-              <Speedometer
-                :value="testState === 'upload' ? currentUpload : (results.upload || 0)"
-                :max="1000"
-                label="Выгрузка"
-                color="#FF9800"
-                :size="200"
-              />
-            </div>
+          <div class="flex justify-center overflow-visible flex-1 md:flex-none">
+            <Speedometer
+              :value="testState === 'upload' ? currentUpload : (results.upload || 0)"
+              :max="1000"
+              label="Выгрузка"
+              color="#FF9800"
+              :size="speedometerSize"
+            />
           </div>
         </div>
 

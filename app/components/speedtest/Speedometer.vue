@@ -46,6 +46,8 @@ function drawSpeedometer(): void {
   const ctx = canvas.getContext('2d')
   if (!ctx) return
 
+  if (typeof window === 'undefined') return
+
   const size = canvasSize.value
   const dp = window.devicePixelRatio || 1
   const cw = size * dp
@@ -130,7 +132,7 @@ function drawSpeedometer(): void {
 // Анимация значения
 function animateValue(): void {
   // Проверка на наличие браузерного окружения
-  if (typeof window === 'undefined' || typeof requestAnimationFrame === 'undefined') {
+  if (typeof window === 'undefined' || typeof requestAnimationFrame === 'undefined' || typeof performance === 'undefined') {
     displayValue.value = props.value
     drawSpeedometer()
     return
@@ -167,7 +169,11 @@ function animateValue(): void {
 // =============================================================================
 
 watch(() => props.value, (newValue) => {
-  animateValue()
+  if (typeof window !== 'undefined') {
+    animateValue()
+  } else {
+    displayValue.value = props.value
+  }
 }, { immediate: true })
 
 // =============================================================================
