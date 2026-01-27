@@ -33,6 +33,7 @@ const navigation = [
   { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' },
   { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
   { name: 'Профиль', href: '/profile', icon: 'heroicons:user' },
+  { name: 'Скорость', href: '/speedtest', icon: 'heroicons:bolt' },
   { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' }
 ]
 
@@ -47,7 +48,8 @@ const mobileMainNav = [
 // Mobile меню "Ещё" — дополнительные пункты
 const mobileMoreNav = [
   { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' },
-  { name: 'Профиль', href: '/profile', icon: 'heroicons:user' }
+  { name: 'Профиль', href: '/profile', icon: 'heroicons:user' },
+  { name: 'Скорость', href: '/speedtest', icon: 'heroicons:bolt' }
 ]
 
 // Проверка активного пункта (точное совпадение или вложенный путь)
