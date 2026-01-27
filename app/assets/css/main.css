@@ -137,6 +137,7 @@ html, body {
   background-color: var(--bg-base);
   color: var(--text-primary);
   transition: background-color 0.3s ease, color 0.3s ease;
+  scrollbar-gutter: stable;
 }
 
 html {
@@ -288,4 +289,18 @@ html {
 
 .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
+}
+
+/* -----------------------------------------------------------------------------
+   Safe Area Insets — поддержка iPhone с вырезом и нижней панелью
+   ----------------------------------------------------------------------------- */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Поддержка динамической высоты viewport на мобильных */
+@supports (height: 100dvh) {
+  .h-screen-dynamic {
+    height: 100dvh;
+  }
 }
