@@ -14,7 +14,7 @@ export default defineNuxtConfig({
     '/api/auth/qr/**': {
       cors: true,
       headers: {
-        'Access-Control-Allow-Origin': 'https://pg19v3tgclient.doka.team',
+        'Access-Control-Allow-Origin': 'https://pg19v3-tg.doka.team',
         'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Allow-Credentials': 'true'
