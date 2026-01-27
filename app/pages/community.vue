@@ -473,8 +473,9 @@ watch(messages, () => {
   <!-- =========================================================================
        COMMUNITY PAGE — полноэкранный чат сообщества
        Высота: 100vh минус header (64px) и mobile nav (80px), минус отступы layout (48px)
+       Используем 100dvh для корректной работы на мобильных устройствах
        ========================================================================= -->
-  <div class="flex flex-col bg-[var(--bg-primary)] -mx-4 -my-6 overflow-hidden h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-4rem)]">
+  <div class="flex flex-col bg-[var(--bg-primary)] -mx-4 -my-6 overflow-hidden h-[calc(100dvh-4rem-5rem)] md:h-[calc(100vh-4rem)]">
 
     <!-- =====================================================================
          HEADER — табы комнат и счётчик онлайн
@@ -609,16 +610,18 @@ watch(messages, () => {
         </div>
 
         <!-- Input -->
-        <CommunityMessageInput
-          ref="messageInputRef"
-          :disabled="isSending || isMuted"
-          :reply-to="replyTo"
-          :editing-message="editingMessage"
-          @send="handleSend"
-          @cancel-reply="replyTo = null; editingMessage = null"
-          @upload="handleUpload"
-          @typing="broadcastTyping"
-        />
+        <div class="flex-shrink-0 bg-[var(--bg-primary)]">
+          <CommunityMessageInput
+            ref="messageInputRef"
+            :disabled="isSending || isMuted"
+            :reply-to="replyTo"
+            :editing-message="editingMessage"
+            @send="handleSend"
+            @cancel-reply="replyTo = null; editingMessage = null"
+            @upload="handleUpload"
+            @typing="broadcastTyping"
+          />
+        </div>
       </template>
 
       <!-- No room selected -->

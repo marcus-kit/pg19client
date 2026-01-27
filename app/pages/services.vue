@@ -83,15 +83,11 @@ function getStatusColor(status: string): string {
   }
   const statusKey = status as keyof typeof subscriptionStatusColors
   const colorValue = subscriptionStatusColors[statusKey]
-  if (!colorValue) {
+  if (!colorValue || typeof colorValue !== 'string') {
     return colorMap.gray
   }
-  const colorKey = colorValue as string
-  const result = colorMap[colorKey]
-  if (!result) {
-    return colorMap.gray
-  }
-  return result
+  const result = colorMap[colorValue]
+  return result || colorMap.gray
 }
 
 function getSubscriptionStatusBadge(status: Subscription['status']): { label: string; variant: 'success' | 'warning' | 'neutral' } {
@@ -139,7 +135,7 @@ async function requestConnection(service: Service): Promise<void> {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6" style="scrollbar-gutter: stable;">
     <!-- =====================================================================
          PAGE HEADER
          ===================================================================== -->
@@ -227,14 +223,13 @@ async function requestConnection(service: Service): Promise<void> {
           </button>
         </div>
         <p class="text-sm text-[var(--text-muted)]">
-          <span v-if="activeTab === 'my'">Подключённые услуги и их текущий статус.</span>
         </p>
       </div>
 
       <!-- =================================================================
            SUBSCRIPTIONS — подключенные услуги
            ================================================================= -->
-      <section v-if="activeTab === 'my'">
+      <section v-if="activeTab === 'my'" class="min-h-[200px]">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
         <div v-if="subscriptions.length" class="grid gap-4">
           <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
@@ -293,7 +288,7 @@ async function requestConnection(service: Service): Promise<void> {
       <!-- =================================================================
            AVAILABLE SERVICES — доступные для подключения
            ================================================================= -->
-      <section v-else>
+      <section v-else class="min-h-[200px]">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
         <div v-if="availableServices.length" class="grid md:grid-cols-2 gap-4">
           <UiCard

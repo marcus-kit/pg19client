@@ -113,7 +113,7 @@ defineExpose({ focus })
 </script>
 
 <template>
-  <div class="border-t border-white/10 p-3">
+  <div class="flex-shrink-0 border-t border-white/10 p-3 pb-safe">
     <!-- Reply preview -->
     <div
       v-if="replyTo"
