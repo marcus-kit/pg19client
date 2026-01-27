@@ -7,21 +7,6 @@ export default defineNuxtConfig({
   // Дата совместимости — включает все изменения Nuxt до этой даты
   compatibilityDate: '2026-01-22',
 
-  // ---------------------------------------------------------------------------
-  // Route Rules — CORS для QR авторизации из TG App
-  // ---------------------------------------------------------------------------
-  routeRules: {
-    '/api/auth/qr/**': {
-      cors: true,
-      headers: {
-        'Access-Control-Allow-Origin': 'https://pg19v3-tg.doka.team',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Credentials': 'true'
-      }
-    }
-  },
-
   // Vue DevTools в браузере (только для разработки)
   devtools: { enabled: true },
 
