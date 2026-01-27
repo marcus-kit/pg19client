@@ -7,7 +7,7 @@
  * Подключение создаёт тикет в категории 'connection'
  */
 import type { Subscription, Service } from '~/types/service'
-import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
+import { subscriptionStatusColors } from '~/types/service'
 import { formatKopeks } from '~/composables/useFormatters'
 
 definePageMeta({
@@ -39,7 +39,7 @@ const { subscriptions, pending: subsPending, error: subsError } = subscriptionsD
 // =============================================================================
 
 // ID услуги, для которой создаётся заявка (для показа спиннера)
-const connectingServiceId = ref<string | null>(null)
+const connectingServiceId = ref<number | null>(null)
 
 // =============================================================================
 // COMPUTED
@@ -61,6 +61,10 @@ const availableServices = computed(() => {
   return services.value.filter(s => !subscribedServiceIds.value.has(s.id))
 })
 
+type ServicesTab = 'my' | 'catalog'
+
+const activeTab = ref<ServicesTab>(subscriptions.value.length ? 'my' : 'catalog')
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -77,12 +81,35 @@ function getStatusColor(status: string): string {
     yellow: 'bg-yellow-500/20 text-yellow-400',
     gray: 'bg-gray-600/20 text-gray-400'
   }
-  return colorMap[subscriptionStatusColors[status as keyof typeof subscriptionStatusColors]] || colorMap.gray
+  const statusKey = status as keyof typeof subscriptionStatusColors
+  const colorValue = subscriptionStatusColors[statusKey]
+  if (!colorValue) {
+    return colorMap.gray
+  }
+  const colorKey = colorValue as string
+  const result = colorMap[colorKey]
+  if (!result) {
+    return colorMap.gray
+  }
+  return result
+}
+
+function getSubscriptionStatusBadge(status: Subscription['status']): { label: string; variant: 'success' | 'warning' | 'neutral' } {
+  if (status === 'active') return { label: 'Подключено', variant: 'success' }
+  if (status === 'paused') return { label: 'Приостановлено', variant: 'warning' }
+  return { label: 'Архив', variant: 'neutral' }
 }
 
 // Получить иконку услуги
 function getServiceIcon(service: Service | undefined): string {
   return service?.icon || 'heroicons:cube'
+}
+
+// Перезагрузить страницу
+function reloadPage(): void {
+  if (typeof window !== 'undefined') {
+    window.location.reload()
+  }
 }
 
 // Создать заявку на подключение услуги
@@ -118,7 +145,6 @@ async function requestConnection(service: Service): Promise<void> {
          ===================================================================== -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">Услуги</h1>
-      <p class="text-[var(--text-muted)] mt-1">Управление подключенными услугами</p>
     </div>
 
     <!-- =====================================================================
@@ -148,15 +174,67 @@ async function requestConnection(service: Service): Promise<void> {
       <UiErrorState
         title="Ошибка загрузки"
         description="Не удалось загрузить услуги"
-        @retry="() => window.location.reload()"
+        @retry="reloadPage"
       />
     </UiCard>
 
     <template v-else>
       <!-- =================================================================
+           TABS — мои услуги / каталог
+           ================================================================= -->
+      <div class="flex flex-col gap-2">
+        <div
+          class="inline-flex w-fit rounded-xl border px-1 py-1"
+          style="background: var(--glass-bg); border-color: var(--glass-border);"
+          role="tablist"
+          aria-label="Вкладки услуг"
+        >
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === 'my'"
+            :tabindex="activeTab === 'my' ? 0 : -1"
+            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+            :class="activeTab === 'my' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            @click="activeTab = 'my'"
+          >
+            Мои услуги
+            <span
+              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
+              :class="activeTab === 'my' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
+              style="border: 1px solid var(--glass-border);"
+            >
+              {{ subscriptions.length }}
+            </span>
+          </button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === 'catalog'"
+            :tabindex="activeTab === 'catalog' ? 0 : -1"
+            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+            :class="activeTab === 'catalog' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            @click="activeTab = 'catalog'"
+          >
+            Каталог услуг
+            <span
+              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
+              :class="activeTab === 'catalog' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
+              style="border: 1px solid var(--glass-border);"
+            >
+              {{ availableServices.length }}
+            </span>
+          </button>
+        </div>
+        <p class="text-sm text-[var(--text-muted)]">
+          <span v-if="activeTab === 'my'">Подключённые услуги и их текущий статус.</span>
+        </p>
+      </div>
+
+      <!-- =================================================================
            SUBSCRIPTIONS — подключенные услуги
            ================================================================= -->
-      <section>
+      <section v-if="activeTab === 'my'">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
         <div v-if="subscriptions.length" class="grid gap-4">
           <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
@@ -168,17 +246,29 @@ async function requestConnection(service: Service): Promise<void> {
                 <div class="flex items-start justify-between gap-4">
                   <div>
                     <h3 class="font-semibold text-[var(--text-primary)]">{{ sub.service?.name || 'Услуга' }}</h3>
-                    <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ sub.service?.description || '' }}</p>
+                    <div class="flex flex-wrap items-center gap-2 mt-1">
+                      <UiBadge :variant="getSubscriptionStatusBadge(sub.status).variant" size="sm">
+                        {{ getSubscriptionStatusBadge(sub.status).label }}
+                      </UiBadge>
+                    </div>
+                    <p class="text-sm text-[var(--text-muted)] mt-2 line-clamp-2">
+                      {{ sub.service?.description || 'Описание отсутствует' }}
+                    </p>
                   </div>
-                  <UiBadge :class="getStatusColor(sub.status)">
-                    {{ subscriptionStatusLabels[sub.status] }}
-                  </UiBadge>
+                  <!-- legacy color map kept for consistency with existing palette -->
+                  <span class="hidden">{{ getStatusColor(sub.status) }}</span>
                 </div>
                 <div class="flex items-center justify-between mt-4">
-                  <span class="text-lg font-bold text-[var(--text-primary)]">
-                    {{ formatKopeks(getSubscriptionPrice(sub)) }}
-                    <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
-                  </span>
+                  <div>
+                    <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
+                      {{ formatKopeks(getSubscriptionPrice(sub)) }}
+                      <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
+                    </div>
+                    <p v-if="sub.service?.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
+                      Подключение: <span class="text-[var(--text-secondary)] font-medium">{{ formatKopeks(sub.service.priceConnection) }} ₽</span>
+                      <span class="ml-1">разово</span>
+                    </p>
+                  </div>
                   <button class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                     Подробнее
                   </button>
@@ -192,16 +282,20 @@ async function requestConnection(service: Service): Promise<void> {
             icon="heroicons:cube"
             title="Нет подключенных услуг"
             description="Выберите услугу из списка ниже для подключения"
-          />
+          >
+            <UiButton variant="secondary" @click="activeTab = 'catalog'">
+              Перейти в каталог
+            </UiButton>
+          </UiEmptyState>
         </UiCard>
       </section>
 
       <!-- =================================================================
            AVAILABLE SERVICES — доступные для подключения
            ================================================================= -->
-      <section v-if="availableServices.length">
+      <section v-else>
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
-        <div class="grid md:grid-cols-2 gap-4">
+        <div v-if="availableServices.length" class="grid md:grid-cols-2 gap-4">
           <UiCard
             v-for="service in availableServices"
             :key="service.id"
@@ -214,14 +308,26 @@ async function requestConnection(service: Service): Promise<void> {
                 </div>
                 <div class="flex-1">
                   <h3 class="font-medium text-[var(--text-primary)]">{{ service.name }}</h3>
-                  <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ service.description }}</p>
+                  <div class="flex flex-wrap items-center gap-2 mt-1">
+                    <UiBadge v-if="!service.isActive" variant="neutral" size="sm">Архив</UiBadge>
+                    <UiBadge v-else-if="connectingServiceId === service.id" variant="warning" size="sm">В работе</UiBadge>
+                  </div>
+                  <p class="text-sm text-[var(--text-muted)] mt-2 line-clamp-2">
+                    {{ service.description || 'Описание отсутствует' }}
+                  </p>
                 </div>
               </div>
               <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
-                <span class="font-semibold text-[var(--text-primary)]">
-                  {{ formatKopeks(service.priceMonthly) }}
-                  <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
-                </span>
+                <div>
+                  <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
+                    {{ formatKopeks(service.priceMonthly) }}
+                    <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
+                  </div>
+                  <p v-if="service.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
+                    Подключение: <span class="text-[var(--text-secondary)] font-medium">{{ formatKopeks(service.priceConnection) }} ₽</span>
+                    <span class="ml-1">разово</span>
+                  </p>
+                </div>
                 <UiButton
                   size="sm"
                   variant="secondary"
@@ -234,6 +340,13 @@ async function requestConnection(service: Service): Promise<void> {
             </div>
           </UiCard>
         </div>
+        <UiCard v-else padding="lg">
+          <UiEmptyState
+            icon="heroicons:check-badge"
+            title="Все услуги уже подключены"
+            description="В каталоге нет доступных услуг для подключения"
+          />
+        </UiCard>
       </section>
     </template>
   </div>

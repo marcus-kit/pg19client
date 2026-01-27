@@ -53,7 +53,7 @@ function getServiceIcon(service: Service | undefined): string {
 
 <template>
   <section>
-    <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
+    <!-- <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2> -->
     <div v-if="subscriptions.length" class="grid gap-4">
       <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
         <div class="flex items-start gap-4 p-5">

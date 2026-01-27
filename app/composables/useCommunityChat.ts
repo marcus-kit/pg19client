@@ -589,6 +589,30 @@ export function useCommunityChat() {
     }
   }
 
+  // Редактировать сообщение (только свои сообщения)
+  async function editMessage(messageId: number, content: string): Promise<CommunityMessage> {
+    const response = await $fetch<{ message: CommunityMessage }>(
+      `/api/community/messages/${messageId}/edit`,
+      {
+        method: 'POST',
+        body: { content }
+      }
+    )
+
+    // Обновляем локально (id может быть string или number)
+    const messageIdStr = String(messageId)
+    const idx = messages.value.findIndex(m => String(m.id) === messageIdStr)
+    if (idx !== -1) {
+      messages.value[idx] = {
+        ...messages.value[idx],
+        content: response.message.content,
+        updatedAt: response.message.updatedAt
+      }
+    }
+
+    return response.message
+  }
+
   // Realtime подписка
   async function subscribe() {
     if (!currentRoom.value) return
@@ -683,13 +707,14 @@ export function useCommunityChat() {
         },
         (payload) => {
           const updated = payload.new as any
-          const idx = messages.value.findIndex(m => m.id === updated.id)
+          const idx = messages.value.findIndex(m => String(m.id) === String(updated.id))
           if (idx !== -1) {
             messages.value[idx] = {
               ...messages.value[idx],
               isDeleted: updated.is_deleted,
               isPinned: updated.is_pinned,
-              content: updated.is_deleted ? 'Сообщение удалено' : updated.content
+              content: updated.is_deleted ? 'Сообщение удалено' : updated.content,
+              updatedAt: updated.updated_at || messages.value[idx].updatedAt
             }
           }
         }
@@ -920,6 +945,7 @@ export function useCommunityChat() {
     uploadImage,
     togglePin,
     deleteMessage,
+    editMessage,
     unsubscribe,
     markAsRead,
     broadcastTyping,

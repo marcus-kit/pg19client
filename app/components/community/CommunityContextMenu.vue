@@ -27,6 +27,7 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   close: []
   reply: []
+  edit: []
   report: []
   pin: []
   mute: []
@@ -52,6 +53,11 @@ function handleKeydown(e: KeyboardEvent): void {
 // Обработчики с автозакрытием
 function handleReply(): void {
   emit('reply')
+  emit('close')
+}
+
+function handleEdit(): void {
+  emit('edit')
   emit('close')
 }
 
@@ -105,6 +111,15 @@ onUnmounted(() => {
         >
           <Icon name="heroicons:arrow-uturn-left" class="w-4 h-4" />
           Ответить
+        </button>
+
+        <button
+          v-if="isOwn"
+          @click="handleEdit"
+          class="w-full px-3 py-1.5 text-left hover:bg-white/10 flex items-center gap-2 text-[var(--text-primary)]"
+        >
+          <Icon name="heroicons:pencil" class="w-4 h-4" />
+          Редактировать
         </button>
 
         <button

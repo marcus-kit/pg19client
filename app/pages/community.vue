@@ -45,6 +45,7 @@ const {
   uploadImage,
   togglePin,
   deleteMessage,
+  editMessage,
   isModerator,
   isUserModerator,
   muteUser,
@@ -61,7 +62,13 @@ const messagesContainer = ref<HTMLElement>()
 
 // Ответ на сообщение
 const replyTo = ref<CommunityMessage | null>(null)
+// Редактирование сообщения
+const editingMessage = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
+
+// Текущая видимая дата для sticky плашки
+const visibleDate = ref<string | null>(null)
+const messageRefs = ref<Map<number, HTMLElement>>(new Map())
 
 // Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
@@ -104,6 +111,130 @@ const mutedUntilFormatted = computed(() => {
   })
 })
 
+// Проверка, является ли дата сегодняшней
+function isToday(date: Date): boolean {
+  const today = new Date()
+  return (
+    date.getDate() === today.getDate() &&
+    date.getMonth() === today.getMonth() &&
+    date.getFullYear() === today.getFullYear()
+  )
+}
+
+// Форматирование даты с учетом года
+function formatDate(date: Date): string {
+  const today = new Date()
+  const currentYear = today.getFullYear()
+  const messageYear = date.getFullYear()
+
+  // Если год текущий - не показываем год
+  if (messageYear === currentYear) {
+    return date.toLocaleDateString('ru-RU', {
+      day: 'numeric',
+      month: 'long'
+    })
+  }
+
+  // Если год прошлый или будущий - показываем год
+  return date.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric'
+  })
+}
+
+// Получить разделитель даты для сообщения
+function getDateSeparator(message: CommunityMessage, index: number): string | null {
+  // Для первого сообщения всегда показывать
+  if (index === 0) {
+    const msgDate = new Date(message.createdAt)
+    if (isToday(msgDate)) {
+      return 'Сегодня'
+    }
+    return formatDate(msgDate)
+  }
+
+  // Для остальных - проверяем, отличается ли дата от предыдущего сообщения
+  const prevMessage = messages.value[index - 1]
+  if (!prevMessage) return null
+
+  const msgDate = new Date(message.createdAt)
+  const prevDate = new Date(prevMessage.createdAt)
+
+  // Проверяем, что даты разные (без учета времени)
+  const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate())
+  const prevDateOnly = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate())
+
+  if (msgDateOnly.getTime() !== prevDateOnly.getTime()) {
+    if (isToday(msgDate)) {
+      return 'Сегодня'
+    }
+    return formatDate(msgDate)
+  }
+
+  return null
+}
+
+// Получить дату для сообщения (для sticky плашки)
+function getMessageDate(message: CommunityMessage): string {
+  const msgDate = new Date(message.createdAt)
+  if (isToday(msgDate)) {
+    return 'Сегодня'
+  }
+  return formatDate(msgDate)
+}
+
+// =============================================================================
+// INTERSECTION OBSERVER — отслеживание видимых разделителей дат
+// =============================================================================
+
+let intersectionObserver: IntersectionObserver | null = null
+
+function setupDateObserver(): void {
+  if (!messagesContainer.value) return
+
+  // Удаляем старый observer, если есть
+  if (intersectionObserver) {
+    intersectionObserver.disconnect()
+  }
+
+  // Создаем новый observer
+  intersectionObserver = new IntersectionObserver(
+    (entries) => {
+      // Находим первое видимое сообщение (самое верхнее)
+      const visibleEntries = entries
+        .filter(entry => entry.isIntersecting)
+        .sort((a, b) => {
+          const aRect = a.boundingClientRect
+          const bRect = b.boundingClientRect
+          return aRect.top - bRect.top
+        })
+
+      if (visibleEntries.length > 0 && visibleEntries[0]) {
+        const firstVisible = visibleEntries[0]
+        const messageIndex = Number(firstVisible.target.getAttribute('data-message-index'))
+        if (!isNaN(messageIndex) && messages.value[messageIndex]) {
+          visibleDate.value = getMessageDate(messages.value[messageIndex])
+        }
+      }
+    },
+    {
+      root: messagesContainer.value,
+      rootMargin: '-80px 0px 0px 0px', // Учитываем sticky плашку
+      threshold: 0.1
+    }
+  )
+
+  // Наблюдаем за всеми сообщениями
+  nextTick(() => {
+    messageRefs.value.forEach((el, index) => {
+      if (el) {
+        intersectionObserver?.observe(el)
+      }
+    })
+  })
+}
+
 // =============================================================================
 // METHODS — обработчики событий
 // =============================================================================
@@ -120,7 +251,15 @@ function levelIcon(level: CommunityRoomLevel): string {
 
 // Отправка сообщения
 async function handleSend(content: string, options?: { replyToId?: number }): Promise<void> {
+  // Если редактируем сообщение
+  if (editingMessage.value) {
+    await editMessage(typeof editingMessage.value.id === 'string' ? Number(editingMessage.value.id) : editingMessage.value.id, content)
+    editingMessage.value = null
+    return
+  }
+  
   await sendMessage(content, options)
+  replyTo.value = null
 }
 
 // Загрузка и отправка изображения
@@ -130,14 +269,14 @@ async function handleUpload(file: File): Promise<void> {
 }
 
 // Закрепить/открепить сообщение
-async function handlePin(messageId: number): Promise<void> {
-  await togglePin(messageId)
+async function handlePin(messageId: string | number): Promise<void> {
+  await togglePin(typeof messageId === 'string' ? Number(messageId) : messageId)
 }
 
 // Удалить сообщение (с подтверждением)
-async function handleDelete(messageId: number): Promise<void> {
+async function handleDelete(messageId: string | number): Promise<void> {
   if (confirm('Удалить это сообщение?')) {
-    await deleteMessage(messageId)
+    await deleteMessage(typeof messageId === 'string' ? Number(messageId) : messageId)
   }
 }
 
@@ -174,6 +313,18 @@ function closeContextMenu(): void {
 function handleContextReply(): void {
   if (contextMenu.value.message) {
     replyTo.value = contextMenu.value.message
+    editingMessage.value = null
+    nextTick(() => {
+      messageInputRef.value?.focus()
+    })
+  }
+}
+
+// Редактировать сообщение из контекстного меню
+function handleContextEdit(): void {
+  if (contextMenu.value.message) {
+    editingMessage.value = contextMenu.value.message
+    replyTo.value = null
     nextTick(() => {
       messageInputRef.value?.focus()
     })
@@ -183,14 +334,14 @@ function handleContextReply(): void {
 // Закрепить из контекстного меню
 function handleContextPin(): void {
   if (contextMenu.value.message) {
-    handlePin(contextMenu.value.message.id as number)
+    handlePin(contextMenu.value.message.id)
   }
 }
 
 // Удалить из контекстного меню
 function handleContextDelete(): void {
   if (contextMenu.value.message) {
-    handleDelete(contextMenu.value.message.id as number)
+    handleDelete(contextMenu.value.message.id)
   }
 }
 
@@ -199,10 +350,11 @@ function handleContextDelete(): void {
 // =============================================================================
 
 // Открыть модалку блокировки
-function handleMuteClick(userId: number): void {
-  const msg = messages.value.find(m => m.userId === userId)
+function handleMuteClick(userId: string | number): void {
+  const userIdStr = String(userId)
+  const msg = messages.value.find(m => String(m.userId) === userIdStr)
   muteTargetUserName.value = msg?.user?.nickname || msg?.user?.firstName || 'Пользователь'
-  muteTargetUserId.value = userId
+  muteTargetUserId.value = typeof userId === 'string' ? Number(userId) : userId
   showMuteModal.value = true
 }
 
@@ -222,8 +374,8 @@ async function handleMuteSubmit(data: { userId: number; duration: number; reason
 // =============================================================================
 
 // Открыть модалку жалобы
-function handleReportClick(messageId: number): void {
-  reportTargetMessageId.value = messageId
+function handleReportClick(messageId: string | number): void {
+  reportTargetMessageId.value = typeof messageId === 'string' ? Number(messageId) : messageId
   showReportModal.value = true
 }
 
@@ -251,6 +403,16 @@ function handleScroll(e: Event): void {
 }
 
 // =============================================================================
+// HEAD — отключение скролла на body
+// =============================================================================
+
+useHead({
+  bodyAttrs: {
+    class: 'overflow-hidden'
+  }
+})
+
+// =============================================================================
 // LIFECYCLE
 // =============================================================================
 
@@ -261,19 +423,47 @@ onMounted(async () => {
   // Автовыбор комнаты дома (или первой доступной)
   if (rooms.value.length > 0) {
     const buildingRoom = rooms.value.find(r => r.level === 'building')
-    await selectRoom(buildingRoom || rooms.value[0])
+    const roomToSelect = buildingRoom || rooms.value[0]
+    if (roomToSelect) {
+      await selectRoom(roomToSelect)
+    }
   }
+
+  // Настраиваем observer для отслеживания видимых дат
+  nextTick(() => {
+    setupDateObserver()
+    // Устанавливаем начальную дату (последнее сообщение)
+    const lastMessage = messages.value[messages.value.length - 1]
+    if (lastMessage) {
+      visibleDate.value = getMessageDate(lastMessage)
+    }
+  })
+})
+
+// Очистка observer и overflow-hidden при размонтировании
+onUnmounted(() => {
+  if (intersectionObserver) {
+    intersectionObserver.disconnect()
+  }
+  document.body.classList.remove('overflow-hidden')
 })
 
 // =============================================================================
 // WATCHERS
 // =============================================================================
 
-// Автоскролл при новых сообщениях
+// Автоскролл при новых сообщениях и настройка observer
 watch(messages, () => {
   nextTick(() => {
     if (messagesContainer.value) {
       messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+    // Настраиваем observer при изменении сообщений
+    setupDateObserver()
+    // Обновляем видимую дату (последнее сообщение)
+    const lastMessage = messages.value[messages.value.length - 1]
+    if (lastMessage) {
+      visibleDate.value = getMessageDate(lastMessage)
     }
   })
 }, { deep: true })
@@ -282,9 +472,9 @@ watch(messages, () => {
 <template>
   <!-- =========================================================================
        COMMUNITY PAGE — полноэкранный чат сообщества
-       Высота: 100vh минус header и mobile nav
+       Высота: 100vh минус header (64px) и mobile nav (80px), минус отступы layout (48px)
        ========================================================================= -->
-  <div class="h-[calc(100vh-theme(spacing.16)-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
+  <div class="flex flex-col bg-[var(--bg-primary)] -mx-4 -my-6 overflow-hidden h-[calc(100vh-4rem-5rem)] md:h-[calc(100vh-4rem)]">
 
     <!-- =====================================================================
          HEADER — табы комнат и счётчик онлайн
@@ -292,11 +482,6 @@ watch(messages, () => {
     <header class="flex-shrink-0 border-b border-white/10">
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
-        <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
-        <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
-          <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
-          {{ onlineCount }} онлайн
-        </p>
       </div>
 
       <!-- Loading -->
@@ -345,6 +530,10 @@ watch(messages, () => {
         <!-- Room info bar -->
         <div class="flex items-center gap-2 px-4 py-2 bg-white/5 text-xs text-[var(--text-muted)]">
           <span>{{ currentRoom.membersCount }} участников</span>
+          <p class="text-xs text-[var(--text-muted)] flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-accent animate-pulse" />
+          {{ onlineCount }} онлайн
+        </p>
         </div>
 
         <!-- Pinned messages -->
@@ -356,9 +545,19 @@ watch(messages, () => {
         <!-- Messages -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto py-2 font-mono text-sm"
+          class="flex-1 overflow-y-auto py-2 font-mono text-sm relative custom-scrollbar"
           @scroll="handleScroll"
         >
+          <!-- Sticky date label -->
+          <div
+            v-if="visibleDate"
+            class="sticky top-0 z-10 flex items-center justify-center py-2 pointer-events-none"
+          >
+            <div class="px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-xs text-[var(--text-muted)] shadow-lg">
+              {{ visibleDate }}
+            </div>
+          </div>
+
           <!-- Loading indicator for history -->
           <div v-if="isLoadingMessages && messages.length > 0" class="text-center py-2">
             <Icon name="heroicons:arrow-path" class="w-4 h-4 text-primary animate-spin mx-auto" />
@@ -371,16 +570,30 @@ watch(messages, () => {
           </div>
 
           <!-- Messages list (IRC style) -->
-          <CommunityMessage
-            v-for="msg in messages"
-            :key="msg.id"
-            :message="msg"
-            :is-own="msg.userId === userStore.user?.id"
-            :show-moderation="showModeration"
-            :is-user-moderator="isUserModerator(msg.userId)"
-            @contextmenu="handleContextMenu"
-            @retry="handleRetry"
-          />
+          <template v-for="(msg, index) in messages" :key="msg.id">
+            <!-- Date separator -->
+            <div
+              v-if="getDateSeparator(msg, index)"
+              class="flex items-center justify-center py-4"
+            >
+              <div class="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-[var(--text-muted)]">
+                {{ getDateSeparator(msg, index) }}
+              </div>
+            </div>
+            <div
+              :ref="el => { if (el) messageRefs.set(index, el as HTMLElement) }"
+              :data-message-index="index"
+            >
+              <CommunityMessage
+                :message="msg"
+                :is-own="msg.userId === userStore.user?.id"
+                :show-moderation="showModeration"
+                :is-user-moderator="isUserModerator(typeof msg.userId === 'string' ? Number(msg.userId) : msg.userId)"
+                @contextmenu="handleContextMenu"
+                @retry="handleRetry"
+              />
+            </div>
+          </template>
         </div>
 
         <!-- Typing indicator -->
@@ -400,8 +613,9 @@ watch(messages, () => {
           ref="messageInputRef"
           :disabled="isSending || isMuted"
           :reply-to="replyTo"
+          :editing-message="editingMessage"
           @send="handleSend"
-          @cancel-reply="replyTo = null"
+          @cancel-reply="replyTo = null; editingMessage = null"
           @upload="handleUpload"
           @typing="broadcastTyping"
         />
@@ -423,7 +637,8 @@ watch(messages, () => {
       :show-moderation="showModeration"
       @close="closeContextMenu"
       @reply="handleContextReply"
-      @report="contextMenu.message && handleReportClick(contextMenu.message.id as number)"
+      @edit="handleContextEdit"
+      @report="contextMenu.message && handleReportClick(contextMenu.message.id)"
       @pin="handleContextPin"
       @mute="contextMenu.message && handleMuteClick(contextMenu.message.userId)"
       @delete="handleContextDelete"

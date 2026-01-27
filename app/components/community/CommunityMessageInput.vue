@@ -17,6 +17,7 @@ import type { CommunityMessage } from '~/types/community'
 const props = defineProps<{
   disabled?: boolean
   replyTo?: CommunityMessage | null
+  editingMessage?: CommunityMessage | null
 }>()
 
 const emit = defineEmits<{
@@ -49,8 +50,8 @@ function focus(): void {
 function handleSend(): void {
   if (!text.value.trim() || props.disabled) return
 
-  emit('send', text.value, {
-    replyToId: props.replyTo?.id
+  emit('send', text.value, props.editingMessage ? undefined : {
+    replyToId: props.replyTo?.id ? (typeof props.replyTo.id === 'string' ? Number(props.replyTo.id) : props.replyTo.id) : undefined
   })
 
   text.value = ''
@@ -88,6 +89,23 @@ function handleFileSelect(e: Event): void {
 }
 
 // =============================================================================
+// WATCHERS
+// =============================================================================
+
+// Заполняем поле ввода при редактировании
+watch(() => props.editingMessage, (message) => {
+  if (message) {
+    text.value = message.content
+    nextTick(() => {
+      textInput.value?.focus()
+      textInput.value?.select()
+    })
+  } else if (!props.replyTo) {
+    text.value = ''
+  }
+}, { immediate: true })
+
+// =============================================================================
 // EXPOSE
 // =============================================================================
 
@@ -105,6 +123,18 @@ defineExpose({ focus })
       <span class="text-primary font-medium">{{ replyTo.user?.firstName }}:</span>
       <span class="text-[var(--text-muted)] truncate flex-1">{{ replyTo.content }}</span>
       <button @click="emit('cancelReply')" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+        <Icon name="heroicons:x-mark" class="w-4 h-4" />
+      </button>
+    </div>
+
+    <!-- Edit preview -->
+    <div
+      v-if="editingMessage"
+      class="mb-2 flex items-center gap-2 px-3 py-1.5 bg-blue-500/20 rounded text-sm"
+    >
+      <Icon name="heroicons:pencil" class="w-3 h-3 text-blue-400 flex-shrink-0" />
+      <span class="text-blue-400 font-medium">Редактирование сообщения</span>
+      <button @click="emit('cancelReply')" class="text-[var(--text-muted)] hover:text-[var(--text-primary)] ml-auto">
         <Icon name="heroicons:x-mark" class="w-4 h-4" />
       </button>
     </div>
@@ -143,9 +173,9 @@ defineExpose({ focus })
       <button
         @click="handleSend"
         :disabled="!text.trim() || disabled"
-        class="px-4 py-2 rounded bg-primary hover:bg-primary/90 disabled:opacity-50 text-white text-sm font-medium"
+        class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white flex items-center justify-center transition-colors"
       >
-        Отправить
+        <Icon name="heroicons:paper-airplane" class="w-5 h-5 rotate-[-90deg]" />
       </button>
     </div>
   </div>
