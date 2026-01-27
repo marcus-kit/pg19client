@@ -545,7 +545,7 @@ watch(messages, () => {
         <!-- Messages -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto py-2 font-mono text-sm relative"
+          class="flex-1 overflow-y-auto py-2 font-mono text-sm relative custom-scrollbar"
           @scroll="handleScroll"
         >
           <!-- Sticky date label -->
