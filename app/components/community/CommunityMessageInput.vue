@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  send: [content: string, options?: { replyToId?: string }]
+  send: [content: string, options?: { replyToId?: string; file?: File }]
   cancelReply: []
   upload: [file: File]
   typing: []
@@ -35,6 +35,8 @@ const emit = defineEmits<{
 const text = ref('')
 const fileInput = ref<HTMLInputElement>()
 const textInput = ref<HTMLInputElement>()
+const selectedImage = ref<File | null>(null)
+const imagePreview = ref<string | null>(null)
 
 // =============================================================================
 // METHODS
@@ -49,12 +51,15 @@ function focus(): void {
 
 // Отправить сообщение
 function handleSend(): void {
-  if (!text.value.trim() || props.disabled) return
+  // Проверяем что есть либо текст, либо изображение
+  if ((!text.value.trim() && !selectedImage.value) || props.disabled) return
 
-  // Если редактируем, не передаем replyToId
+  // Если редактируем, не передаем replyToId и файл
   if (props.editingMessage) {
     emit('send', text.value, undefined)
     text.value = ''
+    selectedImage.value = null
+    imagePreview.value = null
     emit('cancelReply')
     return
   }
@@ -62,10 +67,15 @@ function handleSend(): void {
   // Передаем replyToId если есть replyTo
   const replyToId = props.replyTo?.id ? String(props.replyTo.id) : undefined
   
-  // Отправляем с replyToId
-  emit('send', text.value, replyToId ? { replyToId } : undefined)
+  // Отправляем с replyToId и файлом (если есть)
+  emit('send', text.value, { 
+    replyToId, 
+    file: selectedImage.value || undefined 
+  })
   
   text.value = ''
+  selectedImage.value = null
+  imagePreview.value = null
   emit('cancelReply')
 }
 
@@ -85,18 +95,35 @@ function handleFileSelect(e: Event): void {
   if (file) {
     if (file.size > 5 * 1024 * 1024) {
       alert('Максимальный размер файла: 5 МБ')
+      input.value = ''
       return
     }
 
     if (!file.type.startsWith('image/')) {
       alert('Можно загружать только изображения')
+      input.value = ''
       return
     }
 
-    emit('upload', file)
+    // Сохраняем файл и создаем превью
+    selectedImage.value = file
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      imagePreview.value = e.target?.result as string
+    }
+    reader.readAsDataURL(file)
   }
 
   input.value = ''
+}
+
+// Удалить выбранное изображение
+function removeImage(): void {
+  selectedImage.value = null
+  imagePreview.value = null
+  if (fileInput.value) {
+    fileInput.value.value = ''
+  }
 }
 
 // =============================================================================
@@ -107,6 +134,8 @@ function handleFileSelect(e: Event): void {
 watch(() => props.editingMessage, (message) => {
   if (message) {
     text.value = message.content
+    selectedImage.value = null
+    imagePreview.value = null
     nextTick(() => {
       textInput.value?.focus()
       textInput.value?.select()
@@ -115,6 +144,13 @@ watch(() => props.editingMessage, (message) => {
     text.value = ''
   }
 }, { immediate: true })
+
+// Очищаем изображение при отмене ответа
+watch(() => props.replyTo, (newReplyTo) => {
+  if (!newReplyTo) {
+    // Не очищаем изображение при отмене ответа, только при отправке
+  }
+})
 
 // =============================================================================
 // EXPOSE
@@ -151,6 +187,27 @@ defineExpose({ focus })
       </button>
     </div>
 
+    <!-- Image preview -->
+    <div
+      v-if="imagePreview"
+      class="mb-2 relative inline-block"
+    >
+      <div class="relative rounded-lg overflow-hidden border border-white/10">
+        <img 
+          :src="imagePreview" 
+          alt="Превью изображения" 
+          class="max-h-32 max-w-full object-contain"
+        />
+        <button
+          @click="removeImage"
+          class="absolute top-1 right-1 p-1 rounded-full bg-black/50 hover:bg-black/70 text-white transition-colors"
+          title="Удалить изображение"
+        >
+          <Icon name="heroicons:x-mark" class="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+
     <!-- Input row -->
     <div class="flex items-center gap-2">
       <!-- Image upload -->
@@ -184,7 +241,7 @@ defineExpose({ focus })
       <!-- Send button -->
       <button
         @click="handleSend"
-        :disabled="!text.trim() || disabled"
+        :disabled="(!text.trim() && !selectedImage) || disabled"
         class="p-2 rounded-full bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white flex items-center justify-center transition-colors"
       >
         <Icon name="heroicons:paper-airplane" class="w-5 h-5 rotate-[-90deg]" />

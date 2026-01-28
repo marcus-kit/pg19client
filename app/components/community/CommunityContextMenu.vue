@@ -131,6 +131,15 @@ onUnmounted(() => {
           Пожаловаться
         </button>
 
+        <button
+          v-if="isOwn"
+          @click="handleDelete"
+          class="w-full px-3 py-1.5 text-left hover:bg-white/10 flex items-center gap-2 text-red-400"
+        >
+          <Icon name="heroicons:trash" class="w-4 h-4" />
+          Удалить
+        </button>
+
         <template v-if="showModeration">
           <hr class="border-white/10 my-1" />
 

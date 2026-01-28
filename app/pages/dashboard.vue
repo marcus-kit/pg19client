@@ -66,15 +66,6 @@ function closeNewsModal(): void {
 
 <template>
   <div class="space-y-6">
-    <!-- =====================================================================
-         PAGE HEADER — приветствие и номер договора
-         ===================================================================== -->
-    <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">
-        Добро пожаловать, {{ userStore.user?.firstName }}!
-      </h1>
-      <!-- <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p> -->
-    </div>
 
     <!-- =====================================================================
          MAIN CARDS — баланс и состояние подключения
