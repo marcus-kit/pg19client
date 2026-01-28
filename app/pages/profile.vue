@@ -118,7 +118,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 pb-20 md:pb-0">
     <!-- =====================================================================
          PAGE HEADER
          ===================================================================== -->
@@ -128,9 +128,10 @@ onMounted(() => {
     </div>
 
     <!-- =====================================================================
-         TABS — переключение между разделами
+         TABS — переключение между разделами (desktop: вверху, mobile: внизу)
          ===================================================================== -->
-    <div class="flex gap-2 overflow-x-auto pb-2">
+    <!-- Desktop: вкладки вверху -->
+    <div class="hidden md:flex gap-2 overflow-x-auto pb-2">
       <button
         v-for="tab in tabs"
         :key="tab.id"
@@ -144,6 +145,26 @@ onMounted(() => {
         <Icon :name="tab.icon" class="w-4 h-4" />
         {{ tab.label }}
       </button>
+    </div>
+
+    <!-- Mobile: вкладки внизу (sticky footer) -->
+    <div class="md:hidden fixed bottom-16 left-0 right-0 z-40 backdrop-blur-lg border-t safe-area-bottom"
+      style="background: var(--header-blur-bg); border-color: var(--glass-border);">
+      <div class="flex gap-1 overflow-x-auto px-2 py-2">
+        <button
+          v-for="tab in tabs"
+          :key="tab.id"
+          @click="activeTab = tab.id"
+          class="px-3 py-2 rounded-lg text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 flex-shrink-0"
+          :class="activeTab === tab.id
+            ? 'bg-primary text-white'
+            : 'text-[var(--text-muted)]'"
+          :style="activeTab !== tab.id ? 'background: var(--glass-bg);' : ''"
+        >
+          <Icon :name="tab.icon" class="w-4 h-4" />
+          <span class="hidden sm:inline">{{ tab.label }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- =====================================================================

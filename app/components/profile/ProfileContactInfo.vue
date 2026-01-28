@@ -26,6 +26,9 @@ const editData = ref({
   vkId: ''
 })
 
+// Мобильная версия — для адаптивного отображения длинных значений
+const isMobile = ref(false)
+
 // =============================================================================
 // COMPUTED
 // =============================================================================
@@ -68,6 +71,28 @@ const contacts = computed(() => [
 // METHODS
 // =============================================================================
 
+function updateIsMobile(): void {
+  if (typeof window === 'undefined') return
+  isMobile.value = window.innerWidth < 768
+}
+
+function truncateMobileValue(value: string, maxChars = 20): string {
+  if (!isMobile.value) return value
+  if (value.length <= maxChars) return value
+  return `${value.slice(0, maxChars)}...`
+}
+
+function formatContactValue(contact: { key: string; value?: string | null }): string {
+  const raw = contact.value || ''
+  if (!raw) return '—'
+
+  // Только для mobile и только для email / vkId
+  if (contact.key === 'email' || contact.key === 'vkId') {
+    return truncateMobileValue(raw, 20)
+  }
+  return raw
+}
+
 // Начать редактирование
 function startEdit(): void {
   editData.value = {
@@ -98,6 +123,19 @@ async function saveChanges(): Promise<void> {
     isEditing.value = false
   }
 }
+
+onMounted(() => {
+  updateIsMobile()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateIsMobile)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateIsMobile)
+  }
+})
 </script>
 
 <template>
@@ -145,7 +183,12 @@ async function saveChanges(): Promise<void> {
           </div>
           <div>
             <p class="text-xs text-[var(--text-muted)]">{{ contact.label }}</p>
-            <p class="text-sm text-[var(--text-primary)]">{{ contact.value || '—' }}</p>
+            <p
+              class="text-sm text-[var(--text-primary)]"
+              :title="contact.value || ''"
+            >
+              {{ formatContactValue(contact) }}
+            </p>
           </div>
         </div>
         <UiBadge v-if="contact.value && contact.verified" variant="success" size="sm">

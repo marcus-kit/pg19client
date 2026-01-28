@@ -54,15 +54,81 @@ const displayName = computed(() => {
 // =============================================================================
 
 const showImageModal = ref(false)
+let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
+let touchStartX = 0
+let touchStartY = 0
 
 // =============================================================================
 // METHODS
 // =============================================================================
 
-// Обработчик контекстного меню
+// Обработчик контекстного меню (для десктопа)
 function handleContextMenu(event: MouseEvent): void {
   emit('contextmenu', event, props.message)
 }
+
+// Обработчик долгого нажатия на мобилке
+function handleTouchStart(event: TouchEvent): void {
+  // Только на мобилке (ширина экрана < 768px)
+  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+    return
+  }
+  
+  const touch = event.touches[0]
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  
+  // Запускаем таймер для долгого нажатия (500ms)
+  touchHoldTimer = setTimeout(() => {
+    // Вибрация (если поддерживается)
+    if (navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+    
+    // Создаём синтетическое событие для контекстного меню
+    const syntheticEvent = {
+      clientX: touchStartX,
+      clientY: touchStartY,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    } as MouseEvent
+    
+    emit('contextmenu', syntheticEvent, props.message)
+    touchHoldTimer = null
+  }, 500)
+}
+
+// Отмена долгого нажатия
+function handleTouchEnd(): void {
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+    touchHoldTimer = null
+  }
+}
+
+// Отмена при движении пальца
+function handleTouchMove(event: TouchEvent): void {
+  if (!touchHoldTimer) return
+  
+  const touch = event.touches[0]
+  const deltaX = Math.abs(touch.clientX - touchStartX)
+  const deltaY = Math.abs(touch.clientY - touchStartY)
+  
+  // Если палец сдвинулся больше чем на 10px, отменяем долгое нажатие
+  if (deltaX > 10 || deltaY > 10) {
+    if (touchHoldTimer) {
+      clearTimeout(touchHoldTimer)
+      touchHoldTimer = null
+    }
+  }
+}
+
+// Очистка при размонтировании
+onUnmounted(() => {
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+  }
+})
 
 // Открыть изображение в модальном окне
 function openImageModal(event: MouseEvent): void {
@@ -87,6 +153,9 @@ function closeImageModal(): void {
       message.status === 'failed' && 'bg-red-500/10'
     ]"
     @contextmenu.prevent="handleContextMenu"
+    @touchstart.prevent="handleTouchStart"
+    @touchend.prevent="handleTouchEnd"
+    @touchmove.prevent="handleTouchMove"
   >
     <div
       :class="[
@@ -179,17 +248,17 @@ function closeImageModal(): void {
             <span v-if="message.createdAt !== message.updatedAt" class="text-[9px] text-white/50 italic">изменено</span>
             <span class="text-[10px] text-white/70 font-mono tabular-nums whitespace-nowrap">
               {{ formattedTime }}
-            </span>
+      </span>
           </div>
         </div>
 
         <!-- Content for other users' messages -->
         <div v-else class="relative pb-3">
-          <!-- Content -->
+      <!-- Content -->
           <div v-if="message.isDeleted" class="italic opacity-70 pr-12">Сообщение удалено</div>
-          <template v-else>
-            <!-- Image -->
-            <template v-if="message.contentType === 'image' && message.imageUrl">
+      <template v-else>
+        <!-- Image -->
+        <template v-if="message.contentType === 'image' && message.imageUrl">
               <button @click="openImageModal" class="block mb-1">
                 <img 
                   :src="message.imageUrl" 
@@ -199,18 +268,18 @@ function closeImageModal(): void {
               </button>
               <div v-if="message.content" class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
               <div v-else class="pr-12 min-h-[1em]"></div>
-            </template>
-            <!-- Text only -->
+        </template>
+        <!-- Text only -->
             <div v-else class="whitespace-pre-wrap pr-12">{{ message.content }}</div>
-          </template>
+      </template>
 
-          <!-- Pinned badge -->
+      <!-- Pinned badge -->
           <div v-if="message.isPinned" class="mt-1 flex items-center gap-1 text-xs opacity-80">
             <Icon name="heroicons:bookmark-solid" class="w-3 h-3" />
             <span>Закреплено</span>
           </div>
 
-          <!-- Status indicators -->
+      <!-- Status indicators -->
           <div v-if="message.status === 'sending'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
             <Icon name="heroicons:arrow-path" class="w-3 h-3 animate-spin" />
             <span>Отправка...</span>
@@ -218,12 +287,12 @@ function closeImageModal(): void {
           <div v-if="message.status === 'failed'" class="mt-1 flex items-center gap-1 text-xs opacity-70">
             <Icon name="heroicons:exclamation-circle" class="w-3 h-3" />
             <span>не отправлено</span>
-            <button
-              @click.stop="emit('retry', String(message.id))"
+        <button
+          @click.stop="emit('retry', String(message.id))"
               class="underline hover:no-underline"
-            >
-              повторить
-            </button>
+        >
+          повторить
+        </button>
           </div>
 
           <!-- Time inside bubble for other users' messages - positioned bottom right -->
@@ -231,7 +300,7 @@ function closeImageModal(): void {
             <span v-if="message.createdAt !== message.updatedAt" class="text-[9px] text-[var(--text-muted)] opacity-50 italic">изменено</span>
             <span class="text-[10px] text-[var(--text-muted)] font-mono tabular-nums whitespace-nowrap opacity-70">
               {{ formattedTime }}
-            </span>
+      </span>
           </div>
         </div>
       </div>

@@ -70,6 +70,14 @@ const messageInputRef = ref<{ focus: () => void } | null>(null)
 const visibleDate = ref<string | null>(null)
 const messageRefs = ref<Map<number, HTMLElement>>(new Map())
 
+// Определение мобилки
+const isMobile = ref(false)
+function checkMobile(): void {
+  if (typeof window !== 'undefined') {
+    isMobile.value = window.innerWidth < 768
+  }
+}
+
 // Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
   show: false,
@@ -418,6 +426,10 @@ useHead({
 
 // Загрузка комнат и автовыбор при монтировании
 onMounted(async () => {
+  checkMobile()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', checkMobile)
+  }
   await loadRooms()
 
   // Автовыбор комнаты дома (или первой доступной)
@@ -426,7 +438,7 @@ onMounted(async () => {
     const roomToSelect = buildingRoom || rooms.value[0]
     if (roomToSelect) {
       await selectRoom(roomToSelect)
-    }
+  }
   }
 
   // Настраиваем observer для отслеживания видимых дат
@@ -442,6 +454,9 @@ onMounted(async () => {
 
 // Очистка observer и overflow-hidden при размонтировании
 onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', checkMobile)
+  }
   if (intersectionObserver) {
     intersectionObserver.disconnect()
   }
@@ -585,14 +600,14 @@ watch(messages, () => {
               :ref="el => { if (el) messageRefs.set(index, el as HTMLElement) }"
               :data-message-index="index"
             >
-              <CommunityMessage
-                :message="msg"
-                :is-own="msg.userId === userStore.user?.id"
-                :show-moderation="showModeration"
+          <CommunityMessage
+            :message="msg"
+            :is-own="msg.userId === userStore.user?.id"
+            :show-moderation="showModeration"
                 :is-user-moderator="isUserModerator(typeof msg.userId === 'string' ? Number(msg.userId) : msg.userId)"
-                @contextmenu="handleContextMenu"
-                @retry="handleRetry"
-              />
+            @contextmenu="handleContextMenu"
+            @retry="handleRetry"
+          />
             </div>
           </template>
         </div>
@@ -611,16 +626,16 @@ watch(messages, () => {
 
         <!-- Input -->
         <div class="flex-shrink-0 bg-[var(--bg-primary)]">
-          <CommunityMessageInput
-            ref="messageInputRef"
-            :disabled="isSending || isMuted"
-            :reply-to="replyTo"
+        <CommunityMessageInput
+          ref="messageInputRef"
+          :disabled="isSending || isMuted"
+          :reply-to="replyTo"
             :editing-message="editingMessage"
-            @send="handleSend"
+          @send="handleSend"
             @cancel-reply="replyTo = null; editingMessage = null"
-            @upload="handleUpload"
-            @typing="broadcastTyping"
-          />
+          @upload="handleUpload"
+          @typing="broadcastTyping"
+        />
         </div>
       </template>
 
@@ -638,6 +653,7 @@ watch(messages, () => {
       :is-own="contextMenu.message?.userId === userStore.user?.id"
       :is-pinned="contextMenu.message?.isPinned || false"
       :show-moderation="showModeration"
+      :is-mobile="isMobile"
       @close="closeContextMenu"
       @reply="handleContextReply"
       @edit="handleContextEdit"

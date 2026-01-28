@@ -114,7 +114,7 @@ async function requestConnection(service: Service): Promise<void> {
   try {
     const { ticket, error } = await createTicket({
       subject: `Заявка на подключение: ${service.name}`,
-      description: `Прошу подключить услугу "${service.name}".\n\nОписание услуги: ${service.description || 'Не указано'}\nСтоимость: ${(service.priceMonthly / 100).toLocaleString('ru-RU')} руб/мес`,
+      description: ` Тема: Прошу подключить услугу "${service.name}".\n\nОписание услуги: ${service.description || 'Не указано'}\nСтоимость: ${(service.priceMonthly / 100).toLocaleString('ru-RU')} руб/мес`,
       category: 'connection'
     })
 
@@ -185,6 +185,24 @@ async function requestConnection(service: Service): Promise<void> {
           role="tablist"
           aria-label="Вкладки услуг"
         >
+        <button
+            type="button"
+            role="tab"
+            :aria-selected="activeTab === 'catalog'"
+            :tabindex="activeTab === 'catalog' ? 0 : -1"
+            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
+            :class="activeTab === 'catalog' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            @click="activeTab = 'catalog'"
+          >
+            Каталог услуг
+            <span
+              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
+              :class="activeTab === 'catalog' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
+              style="border: 1px solid var(--glass-border);"
+            >
+              {{ availableServices.length }}
+            </span>
+          </button>
           <button
             type="button"
             role="tab"
@@ -203,24 +221,7 @@ async function requestConnection(service: Service): Promise<void> {
               {{ subscriptions.length }}
             </span>
           </button>
-          <button
-            type="button"
-            role="tab"
-            :aria-selected="activeTab === 'catalog'"
-            :tabindex="activeTab === 'catalog' ? 0 : -1"
-            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-            :class="activeTab === 'catalog' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-            @click="activeTab = 'catalog'"
-          >
-            Каталог услуг
-            <span
-              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-              :class="activeTab === 'catalog' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-              style="border: 1px solid var(--glass-border);"
-            >
-              {{ availableServices.length }}
-            </span>
-          </button>
+
         </div>
         <p class="text-sm text-[var(--text-muted)]">
         </p>
@@ -256,7 +257,7 @@ async function requestConnection(service: Service): Promise<void> {
                 <div class="flex items-center justify-between mt-4">
                   <div>
                     <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
-                      {{ formatKopeks(getSubscriptionPrice(sub)) }}
+                    {{ formatKopeks(getSubscriptionPrice(sub)) }}
                       <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
                     </div>
                     <p v-if="sub.service?.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
@@ -315,7 +316,7 @@ async function requestConnection(service: Service): Promise<void> {
               <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
                 <div>
                   <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
-                    {{ formatKopeks(service.priceMonthly) }}
+                  {{ formatKopeks(service.priceMonthly) }}
                     <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
                   </div>
                   <p v-if="service.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
