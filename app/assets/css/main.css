@@ -49,14 +49,14 @@
 }
 
 /* -----------------------------------------------------------------------------
-   CSS-переменные: Светлая тема (по умолчанию)
+   CSS-переменные: Светлая тема (по умолчанию) — мягкий серый, не чисто белый
    ----------------------------------------------------------------------------- */
 :root {
-  /* Фоны */
-  --bg-base: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-elevated: #ffffff;
-  --bg-muted: #f1f5f9;
+  /* Фоны — слегка затемнённые для комфорта */
+  --bg-base: #f5f6f8;
+  --bg-surface: #eef0f4;
+  --bg-elevated: #f8f9fb;
+  --bg-muted: #e4e7ec;
 
   /* Текст */
   --text-primary: #111827;
@@ -65,24 +65,24 @@
   --text-inverted: #ffffff;
 
   /* Glass-эффекты (размытие + полупрозрачность) */
-  --glass-bg: rgba(255, 255, 255, 0.8);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-bg: rgba(245, 246, 248, 0.9);
+  --glass-border: rgba(0, 0, 0, 0.1);
   --glass-shadow: rgba(0, 0, 0, 0.08);
-  --glass-hover-bg: rgba(255, 255, 255, 0.95);
+  --glass-hover-bg: rgba(248, 249, 251, 0.95);
   --glass-hover-border: rgba(0, 0, 0, 0.12);
   --glass-hover-shadow: rgba(0, 0, 0, 0.1);
 
   /* Шапка */
-  --header-bg: rgba(255, 255, 255, 0.9);
-  --header-blur-bg: rgba(255, 255, 255, 0.95);
-  --header-border: rgba(0, 0, 0, 0.08);
+  --header-bg: rgba(245, 246, 248, 0.92);
+  --header-blur-bg: rgba(245, 246, 248, 0.97);
+  --header-border: rgba(0, 0, 0, 0.1);
 
   /* Mesh-градиенты (фоновые пятна) */
   --mesh-primary: rgba(247, 148, 29, 0.12);
   --mesh-secondary: rgba(233, 30, 140, 0.08);
   --mesh-accent: rgba(0, 84, 166, 0.06);
-  --mesh-base: #f8fafc;
-  --mesh-end: #f1f5f9;
+  --mesh-base: #f5f6f8;
+  --mesh-end: #eef0f4;
 
   /* Кнопки (используются в UiButton) */
   --btn-secondary-border: rgba(0, 0, 0, 0.2);
