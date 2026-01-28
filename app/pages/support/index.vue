@@ -580,14 +580,23 @@ watch(isOperatorTyping, (typing) => {
                 :class="{ 'rotate-180': expandedFaq === item.id }"
               />
             </div>
-            <!-- Ответ (раскрывается при клике) -->
-            <div
-              v-show="expandedFaq === item.id"
-              class="mt-3 pt-3"
-              style="border-top: 1px solid var(--glass-border);"
+            <!-- Ответ (раскрывается при клике) с мягкой анимацией -->
+            <Transition
+              enter-active-class="transition-all duration-200 ease-out"
+              leave-active-class="transition-all duration-150 ease-in"
+              enter-from-class="opacity-0 -translate-y-1"
+              leave-to-class="opacity-0 -translate-y-1"
             >
-              <p class="text-[var(--text-secondary)]">{{ item.answer }}</p>
-            </div>
+              <div
+                v-if="expandedFaq === item.id"
+                class="mt-3 pt-3 rounded-lg"
+                style="border-top: 1px solid var(--glass-border);"
+              >
+                <p class="text-sm text-[var(--text-secondary)]">
+                  {{ item.answer }}
+                </p>
+              </div>
+            </Transition>
           </div>
         </UiCard>
 
