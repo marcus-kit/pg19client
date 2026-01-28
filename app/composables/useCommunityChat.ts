@@ -253,8 +253,10 @@ export function useCommunityChat() {
           const updated = payload.new as any
           const idx = rooms.value.findIndex(r => r.id === updated.id)
           if (idx !== -1) {
+            const current = rooms.value[idx]
+            if (!current) return
             rooms.value[idx] = {
-              ...rooms.value[idx],
+              ...current,
               membersCount: updated.members_count,
               messagesCount: updated.messages_count
             }
@@ -273,7 +275,7 @@ export function useCommunityChat() {
   }
 
   // Вступить в комнату (auto-join)
-  async function joinRoom(roomId: number) {
+  async function joinRoom(roomId: string | number) {
     try {
       await $fetch(`/api/community/rooms/${roomId}/join`, { method: 'POST' })
     } catch {
@@ -368,7 +370,7 @@ export function useCommunityChat() {
   }
 
   // Загрузить сообщения (с пагинацией)
-  async function loadMessages(before?: number) {
+  async function loadMessages(before?: string | number) {
     if (!currentRoom.value) return
 
     isLoadingMessages.value = true
@@ -427,7 +429,7 @@ export function useCommunityChat() {
     imageUrl?: string
     imageWidth?: number
     imageHeight?: number
-    replyToId?: number
+    replyToId?: string
   }): Promise<CommunityMessage | null> {
     if (!currentRoom.value || !userStore.user) return null
     if (!content.trim() && !options?.imageUrl) return null
@@ -439,7 +441,7 @@ export function useCommunityChat() {
     // Находим replyTo сообщение из уже загруженных
     let replyToMessage: CommunityMessage | null = null
     if (options?.replyToId) {
-      replyToMessage = messages.value.find(m => m.id === options.replyToId || m.id === String(options.replyToId)) || null
+      replyToMessage = messages.value.find(m => String(m.id) === String(options.replyToId)) || null
     }
 
     const optimisticMessage: CommunityMessage = {
@@ -504,7 +506,10 @@ export function useCommunityChat() {
         messages.value.push({ ...response.message, replyTo: replyToMessage, status: 'sent' })
       } else {
         // Обновляем статус если уже было добавлено, сохраняем replyTo
-        messages.value[existingIdx] = { ...messages.value[existingIdx], replyTo: replyToMessage, status: 'sent' }
+        const current = messages.value[existingIdx]
+        if (current) {
+          messages.value[existingIdx] = { ...current, replyTo: replyToMessage, status: 'sent' }
+        }
       }
 
       return response.message
@@ -512,7 +517,8 @@ export function useCommunityChat() {
       // 5. Помечаем как failed
       const idx = messages.value.findIndex(m => m.id === tempId)
       if (idx !== -1) {
-        messages.value[idx] = { ...messages.value[idx], status: 'failed' }
+        const current = messages.value[idx]
+        if (current) messages.value[idx] = { ...current, status: 'failed' }
       }
 
       const err = e as { data?: { message?: string } }
@@ -533,7 +539,7 @@ export function useCommunityChat() {
 
     // Отправляем заново
     return sendMessage(msg.content, {
-      replyToId: msg.replyToId ? Number(msg.replyToId) : undefined,
+      replyToId: msg.replyToId || undefined,
       imageUrl: msg.imageUrl || undefined,
       imageWidth: msg.imageWidth || undefined,
       imageHeight: msg.imageHeight || undefined
@@ -554,16 +560,18 @@ export function useCommunityChat() {
   }
 
   // Закрепить/открепить сообщение (для модераторов)
-  async function togglePin(messageId: number) {
+  async function togglePin(messageId: string | number) {
     const response = await $fetch<{ success: boolean; isPinned: boolean }>(
       `/api/community/messages/${messageId}/pin`,
       { method: 'POST' }
     )
 
     // Обновляем локально
-    const idx = messages.value.findIndex(m => m.id === messageId)
+    const messageIdStr = String(messageId)
+    const idx = messages.value.findIndex(m => String(m.id) === messageIdStr)
     if (idx !== -1) {
-      messages.value[idx] = { ...messages.value[idx], isPinned: response.isPinned }
+      const current = messages.value[idx]
+      if (current) messages.value[idx] = { ...current, isPinned: response.isPinned }
     }
 
     // Перезагружаем закреплённые
@@ -573,24 +581,28 @@ export function useCommunityChat() {
   }
 
   // Удалить сообщение (для модераторов или автора)
-  async function deleteMessage(messageId: number) {
+  async function deleteMessage(messageId: string | number) {
     await $fetch(`/api/community/messages/${messageId}/delete`, {
       method: 'POST'
     })
 
     // Обновляем локально
-    const idx = messages.value.findIndex(m => m.id === messageId)
+    const messageIdStr = String(messageId)
+    const idx = messages.value.findIndex(m => String(m.id) === messageIdStr)
     if (idx !== -1) {
-      messages.value[idx] = {
-        ...messages.value[idx],
-        isDeleted: true,
-        content: 'Сообщение удалено'
+      const current = messages.value[idx]
+      if (current) {
+        messages.value[idx] = {
+          ...current,
+          isDeleted: true,
+          content: 'Сообщение удалено'
+        }
       }
     }
   }
 
   // Редактировать сообщение (только свои сообщения)
-  async function editMessage(messageId: number, content: string): Promise<CommunityMessage> {
+  async function editMessage(messageId: string | number, content: string): Promise<CommunityMessage> {
     const response = await $fetch<{ message: CommunityMessage }>(
       `/api/community/messages/${messageId}/edit`,
       {
@@ -603,10 +615,13 @@ export function useCommunityChat() {
     const messageIdStr = String(messageId)
     const idx = messages.value.findIndex(m => String(m.id) === messageIdStr)
     if (idx !== -1) {
-      messages.value[idx] = {
-        ...messages.value[idx],
-        content: response.message.content,
-        updatedAt: response.message.updatedAt
+      const current = messages.value[idx]
+      if (current) {
+        messages.value[idx] = {
+          ...current,
+          content: response.message.content,
+          updatedAt: response.message.updatedAt
+        }
       }
     }
 
@@ -709,12 +724,14 @@ export function useCommunityChat() {
           const updated = payload.new as any
           const idx = messages.value.findIndex(m => String(m.id) === String(updated.id))
           if (idx !== -1) {
+            const current = messages.value[idx]
+            if (!current) return
             messages.value[idx] = {
-              ...messages.value[idx],
+              ...current,
               isDeleted: updated.is_deleted,
               isPinned: updated.is_pinned,
               content: updated.is_deleted ? 'Сообщение удалено' : updated.content,
-              updatedAt: updated.updated_at || messages.value[idx].updatedAt
+              updatedAt: updated.updated_at || current.updatedAt
             }
           }
         }
@@ -724,12 +741,12 @@ export function useCommunityChat() {
         syncPresenceState()
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
-        for (const presence of newPresences as PresenceUser[]) {
+        for (const presence of (newPresences as unknown as PresenceUser[])) {
           onlineUsers.value.set(String(presence.id), presence)
         }
       })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        for (const presence of leftPresences as PresenceUser[]) {
+        for (const presence of (leftPresences as unknown as PresenceUser[])) {
           onlineUsers.value.delete(String(presence.id))
         }
       })
@@ -854,8 +871,9 @@ export function useCommunityChat() {
   }
 
   // Проверка, является ли пользователь модератором комнаты
-  function isUserModerator(userId: number): boolean {
-    return moderators.value.some(m => m.userId === userId)
+  function isUserModerator(userId: string | number): boolean {
+    const uid = String(userId)
+    return moderators.value.some(m => String(m.userId) === uid)
   }
 
   // Замутить пользователя
