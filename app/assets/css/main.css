@@ -69,7 +69,8 @@
   --glass-border: rgba(0, 0, 0, 0.08);
   --glass-shadow: rgba(0, 0, 0, 0.08);
   --glass-hover-bg: rgba(255, 255, 255, 0.95);
-  --glass-hover-border: rgba(247, 148, 29, 0.3);
+  --glass-hover-border: rgba(0, 0, 0, 0.12);
+  --glass-hover-shadow: rgba(0, 0, 0, 0.1);
 
   /* Шапка */
   --header-bg: rgba(255, 255, 255, 0.9);
@@ -110,7 +111,8 @@
   --glass-border: rgba(255, 255, 255, 0.08);
   --glass-shadow: rgba(0, 0, 0, 0.12);
   --glass-hover-bg: rgba(255, 255, 255, 0.06);
-  --glass-hover-border: rgba(247, 148, 29, 0.3);
+  --glass-hover-border: rgba(255, 255, 255, 0.12);
+  --glass-hover-shadow: rgba(0, 0, 0, 0.25);
 
   /* Шапка */
   --header-bg: rgba(17, 24, 39, 0.95);
@@ -160,10 +162,8 @@ html {
 .glass-card:hover {
   background: var(--glass-hover-bg);
   border-color: var(--glass-hover-border);
-  box-shadow:
-    0 20px 40px rgba(247, 148, 29, 0.15),
-    0 0 60px rgba(247, 148, 29, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 12px 24px var(--glass-hover-shadow);
+  transform: translateY(-1px);
 }
 
 /* -----------------------------------------------------------------------------
@@ -192,8 +192,8 @@ html {
 }
 
 .glass-card:hover .icon-container {
-  background: linear-gradient(135deg, rgba(247, 148, 29, 0.3) 0%, rgba(233, 30, 140, 0.2) 100%);
-  transform: scale(1.05);
+  background: linear-gradient(135deg, rgba(247, 148, 29, 0.25) 0%, rgba(233, 30, 140, 0.15) 100%);
+  transform: scale(1.03);
 }
 
 /* -----------------------------------------------------------------------------
