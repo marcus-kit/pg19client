@@ -250,7 +250,7 @@ function levelIcon(level: CommunityRoomLevel): string {
 }
 
 // Отправка сообщения
-async function handleSend(content: string, options?: { replyToId?: string }): Promise<void> {
+async function handleSend(content: string, options?: { replyToId?: string; file?: File }): Promise<void> {
   // Если редактируем сообщение
   if (editingMessage.value) {
     await editMessage(typeof editingMessage.value.id === 'string' ? Number(editingMessage.value.id) : editingMessage.value.id, content)
@@ -258,7 +258,25 @@ async function handleSend(content: string, options?: { replyToId?: string }): Pr
     return
   }
   
-  await sendMessage(content, options)
+  // Если есть файл, загружаем его и отправляем с изображением
+  if (options?.file) {
+    try {
+      const { url, width, height } = await uploadImage(options.file)
+      await sendMessage(content, {
+        imageUrl: url,
+        imageWidth: width,
+        imageHeight: height,
+        replyToId: options.replyToId
+      })
+    } catch (error) {
+      console.error('Ошибка загрузки изображения:', error)
+      // Можно показать уведомление пользователю
+    }
+  } else {
+    // Отправляем только текст
+    await sendMessage(content, { replyToId: options?.replyToId })
+  }
+  
   replyTo.value = null
 }
 
@@ -709,7 +727,6 @@ watch(messages, () => {
           @send="handleSend"
             @cancel-reply="replyTo = null; editingMessage = null"
           @scroll-to-reply="scrollToMessage"
-          @upload="handleUpload"
           @typing="broadcastTyping"
         />
         </div>

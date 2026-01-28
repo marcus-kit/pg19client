@@ -384,7 +384,7 @@ onUnmounted(() => {
             <!-- Шаг 2: Ожидание подтверждения — показываем ссылку на бота -->
             <template v-else-if="telegramStatus === 'waiting'">
               <div class="text-center">
-                <p class="text-[var(--text-muted)] mb-4">
+                <p class="text-[var(--text-muted)] mb-3 text-sm md:text-base">
                   Откройте Telegram и нажмите Start в боте
                 </p>
 
@@ -392,28 +392,28 @@ onUnmounted(() => {
                 <a
                   :href="telegramDeeplink"
                   target="_blank"
-                  class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium text-white bg-[#0088cc] hover:bg-[#0077b5] transition-colors mb-6"
+                  class="inline-flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl font-medium text-sm md:text-base text-white bg-[#0088cc] hover:bg-[#0077b5] transition-colors mb-3 md:mb-6"
                 >
-                  <Icon name="simple-icons:telegram" class="w-5 h-5" />
+                  <Icon name="simple-icons:telegram" class="w-4 h-4 md:w-5 md:h-5" />
                   Открыть @{{ botUsername }}
                 </a>
 
                 <!-- Таймер обратного отсчёта -->
-                <div class="flex items-center justify-center gap-2 text-[var(--text-muted)] mb-6">
-                  <Icon name="heroicons:clock" class="w-5 h-5" />
+                <div class="flex items-center justify-center gap-1.5 md:gap-2 text-[var(--text-muted)] mb-3 md:mb-6 text-xs md:text-sm">
+                  <Icon name="heroicons:clock" class="w-4 h-4 md:w-5 md:h-5" />
                   <span class="font-mono">{{ telegramTimer }}</span>
                 </div>
 
-                <!-- Анимация ожидания (спиннер) -->
-                <div class="relative w-20 h-20 mx-auto mb-6">
-                  <div class="absolute inset-0 rounded-full border-4 border-[#0088cc]/20"></div>
-                  <div class="absolute inset-0 rounded-full border-4 border-[#0088cc] border-t-transparent animate-spin"></div>
-                  <Icon name="simple-icons:telegram" class="absolute inset-0 m-auto w-8 h-8 text-[#0088cc]" />
+                <!-- Анимация ожидания (спиннер) - компактная на мобилке -->
+                <div class="relative w-12 h-12 md:w-20 md:h-20 mx-auto mb-3 md:mb-6">
+                  <div class="absolute inset-0 rounded-full border-2 md:border-4 border-[#0088cc]/20"></div>
+                  <div class="absolute inset-0 rounded-full border-2 md:border-4 border-[#0088cc] border-t-transparent animate-spin"></div>
+                  <Icon name="simple-icons:telegram" class="absolute inset-0 m-auto w-5 h-5 md:w-8 md:h-8 text-[#0088cc]" />
                 </div>
 
                 <button
                   @click="resetTelegram"
-                  class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                  class="text-xs md:text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                 >
                   Отмена
                 </button>
