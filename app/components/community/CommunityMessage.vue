@@ -54,15 +54,81 @@ const displayName = computed(() => {
 // =============================================================================
 
 const showImageModal = ref(false)
+let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
+let touchStartX = 0
+let touchStartY = 0
 
 // =============================================================================
 // METHODS
 // =============================================================================
 
-// Обработчик контекстного меню
+// Обработчик контекстного меню (для десктопа)
 function handleContextMenu(event: MouseEvent): void {
   emit('contextmenu', event, props.message)
 }
+
+// Обработчик долгого нажатия на мобилке
+function handleTouchStart(event: TouchEvent): void {
+  // Только на мобилке (ширина экрана < 768px)
+  if (typeof window !== 'undefined' && window.innerWidth >= 768) {
+    return
+  }
+  
+  const touch = event.touches[0]
+  touchStartX = touch.clientX
+  touchStartY = touch.clientY
+  
+  // Запускаем таймер для долгого нажатия (500ms)
+  touchHoldTimer = setTimeout(() => {
+    // Вибрация (если поддерживается)
+    if (navigator.vibrate) {
+      navigator.vibrate(50)
+    }
+    
+    // Создаём синтетическое событие для контекстного меню
+    const syntheticEvent = {
+      clientX: touchStartX,
+      clientY: touchStartY,
+      preventDefault: () => {},
+      stopPropagation: () => {}
+    } as MouseEvent
+    
+    emit('contextmenu', syntheticEvent, props.message)
+    touchHoldTimer = null
+  }, 500)
+}
+
+// Отмена долгого нажатия
+function handleTouchEnd(): void {
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+    touchHoldTimer = null
+  }
+}
+
+// Отмена при движении пальца
+function handleTouchMove(event: TouchEvent): void {
+  if (!touchHoldTimer) return
+  
+  const touch = event.touches[0]
+  const deltaX = Math.abs(touch.clientX - touchStartX)
+  const deltaY = Math.abs(touch.clientY - touchStartY)
+  
+  // Если палец сдвинулся больше чем на 10px, отменяем долгое нажатие
+  if (deltaX > 10 || deltaY > 10) {
+    if (touchHoldTimer) {
+      clearTimeout(touchHoldTimer)
+      touchHoldTimer = null
+    }
+  }
+}
+
+// Очистка при размонтировании
+onUnmounted(() => {
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+  }
+})
 
 // Открыть изображение в модальном окне
 function openImageModal(event: MouseEvent): void {
@@ -87,6 +153,9 @@ function closeImageModal(): void {
       message.status === 'failed' && 'bg-red-500/10'
     ]"
     @contextmenu.prevent="handleContextMenu"
+    @touchstart.prevent="handleTouchStart"
+    @touchend.prevent="handleTouchEnd"
+    @touchmove.prevent="handleTouchMove"
   >
     <div
       :class="[

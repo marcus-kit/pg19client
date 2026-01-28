@@ -70,6 +70,14 @@ const messageInputRef = ref<{ focus: () => void } | null>(null)
 const visibleDate = ref<string | null>(null)
 const messageRefs = ref<Map<number, HTMLElement>>(new Map())
 
+// Определение мобилки
+const isMobile = ref(false)
+function checkMobile(): void {
+  if (typeof window !== 'undefined') {
+    isMobile.value = window.innerWidth < 768
+  }
+}
+
 // Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
   show: false,
@@ -418,6 +426,10 @@ useHead({
 
 // Загрузка комнат и автовыбор при монтировании
 onMounted(async () => {
+  checkMobile()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', checkMobile)
+  }
   await loadRooms()
 
   // Автовыбор комнаты дома (или первой доступной)
@@ -442,6 +454,9 @@ onMounted(async () => {
 
 // Очистка observer и overflow-hidden при размонтировании
 onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', checkMobile)
+  }
   if (intersectionObserver) {
     intersectionObserver.disconnect()
   }
@@ -638,6 +653,7 @@ watch(messages, () => {
       :is-own="contextMenu.message?.userId === userStore.user?.id"
       :is-pinned="contextMenu.message?.isPinned || false"
       :show-moderation="showModeration"
+      :is-mobile="isMobile"
       @close="closeContextMenu"
       @reply="handleContextReply"
       @edit="handleContextEdit"
