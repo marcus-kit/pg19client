@@ -334,11 +334,16 @@ watch(isOperatorTyping, (typing) => {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <!-- =====================================================================
-         Page Header
-         ===================================================================== -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+  <div
+    class="space-y-6"
+    :class="activeTab === 'chat' ? 'flex flex-col min-h-0 h-[calc(100dvh-12rem)] md:!block md:!h-auto' : ''"
+  >
+    <!-- На мобилке при вкладке «Чат» — блок заголовка и табов не сжимается -->
+    <div :class="activeTab === 'chat' ? 'flex-shrink-0 space-y-4' : 'contents'">
+      <!-- =====================================================================
+           Page Header
+           ===================================================================== -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
         <h1 class="text-2xl font-bold text-[var(--text-primary)]">Поддержка</h1>
         <p class="text-[var(--text-muted)] mt-1">Задайте вопрос или найдите ответ</p>
@@ -399,6 +404,7 @@ watch(isOperatorTyping, (typing) => {
         <Icon name="heroicons:question-mark-circle" class="w-4 h-4 mr-2 inline-block" />
         Частые вопросы
       </button>
+    </div>
     </div>
 
     <!-- =====================================================================
@@ -550,10 +556,13 @@ watch(isOperatorTyping, (typing) => {
     <!-- =====================================================================
          Chat Tab — realtime чат с поддержкой
          ===================================================================== -->
-    <div v-if="activeTab === 'chat'" class="space-y-4">
-      <UiCard class="overflow-hidden">
+    <div
+      v-if="activeTab === 'chat'"
+      class="flex-1 min-h-0 flex flex-col md:flex-initial md:min-h-0 md:space-y-4"
+    >
+      <UiCard class="overflow-hidden flex-1 flex flex-col min-h-0 md:flex-initial md:min-h-0">
         <!-- Chat Header -->
-        <div class="flex items-center gap-3 pb-4 border-b border-[var(--glass-border)]">
+        <div class="flex items-center gap-3 pb-4 border-b border-[var(--glass-border)] flex-shrink-0">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
             <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 text-primary" />
           </div>
@@ -572,11 +581,12 @@ watch(isOperatorTyping, (typing) => {
 
         <!-- Chat Content -->
         <template v-else>
-          <!-- Messages Area -->
-          <div
-            ref="messagesContainer"
-            class="h-[400px] overflow-y-auto py-4 space-y-3"
-          >
+          <div class="flex flex-col flex-1 min-h-0">
+            <!-- Messages Area: на мобилке заполняет экран, на десктопе фикс. высота -->
+            <div
+              ref="messagesContainer"
+              class="flex-1 min-h-0 overflow-y-auto py-4 space-y-3 md:flex-none md:h-[720px]"
+            >
             <!-- Welcome message (если нет сообщений) -->
             <div v-if="messages.length === 0" class="text-center py-12">
               <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
@@ -694,8 +704,8 @@ watch(isOperatorTyping, (typing) => {
             </div>
           </div>
 
-          <!-- Input Area -->
-          <div class="pt-4 border-t border-[var(--glass-border)]">
+            <!-- Input Area -->
+            <div class="pt-4 border-t border-[var(--glass-border)] flex-shrink-0">
             <!-- Error message -->
             <div v-if="chatError" class="text-red-400 text-sm mb-2">{{ chatError }}</div>
 
@@ -768,6 +778,7 @@ watch(isOperatorTyping, (typing) => {
                   :class="{ 'animate-spin': isSending || isUploading }"
                 />
               </button>
+            </div>
             </div>
           </div>
         </template>
