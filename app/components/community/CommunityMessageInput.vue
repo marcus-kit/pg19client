@@ -21,7 +21,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  send: [content: string, options?: { replyToId?: number }]
+  send: [content: string, options?: { replyToId?: string }]
   cancelReply: []
   upload: [file: File]
   typing: []
@@ -50,10 +50,20 @@ function focus(): void {
 function handleSend(): void {
   if (!text.value.trim() || props.disabled) return
 
-  emit('send', text.value, props.editingMessage ? undefined : {
-    replyToId: props.replyTo?.id ? (typeof props.replyTo.id === 'string' ? Number(props.replyTo.id) : props.replyTo.id) : undefined
-  })
+  // Если редактируем, не передаем replyToId
+  if (props.editingMessage) {
+    emit('send', text.value, undefined)
+    text.value = ''
+    emit('cancelReply')
+    return
+  }
 
+  // Передаем replyToId если есть replyTo
+  const replyToId = props.replyTo?.id ? String(props.replyTo.id) : undefined
+  
+  // Отправляем с replyToId
+  emit('send', text.value, replyToId ? { replyToId } : undefined)
+  
   text.value = ''
   emit('cancelReply')
 }

@@ -250,7 +250,7 @@ function levelIcon(level: CommunityRoomLevel): string {
 }
 
 // Отправка сообщения
-async function handleSend(content: string, options?: { replyToId?: number }): Promise<void> {
+async function handleSend(content: string, options?: { replyToId?: string }): Promise<void> {
   // Если редактируем сообщение
   if (editingMessage.value) {
     await editMessage(typeof editingMessage.value.id === 'string' ? Number(editingMessage.value.id) : editingMessage.value.id, content)
