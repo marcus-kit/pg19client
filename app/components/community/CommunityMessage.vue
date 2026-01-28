@@ -31,6 +31,7 @@ const emit = defineEmits<{
   mute: [userId: number]
   retry: [tempId: string]
   contextmenu: [event: MouseEvent, message: CommunityMessage]
+  scrollToReply: [messageId: string | number]
 }>()
 
 // =============================================================================
@@ -58,6 +59,8 @@ const isHolding = ref(false) // Состояние долгого нажатия
 let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
 let touchStartX = 0
 let touchStartY = 0
+let touchTarget: HTMLElement | null = null // Сохраняем элемент, на котором началось касание
+let replyQuoteTouchStartTime = 0 // Время начала касания на превью ответа
 
 // =============================================================================
 // METHODS
@@ -75,7 +78,12 @@ function handleTouchStart(event: TouchEvent): void {
     return
   }
   
+  // Сохраняем элемент, на котором началось касание
+  touchTarget = event.target as HTMLElement
+  
   const touch = event.touches[0]
+  if (!touch) return
+  
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   
@@ -108,12 +116,53 @@ function handleTouchStart(event: TouchEvent): void {
 
 // Отмена долгого нажатия
 function handleTouchEnd(): void {
+  const wasLongPress = touchHoldTimer === null // Если таймер уже null, значит долгое нажатие сработало
+  const wasImageClick = touchTarget && (
+    touchTarget.tagName === 'IMG' || 
+    (touchTarget.tagName === 'BUTTON' && touchTarget.querySelector('img'))
+  )
+  
   if (touchHoldTimer) {
     clearTimeout(touchHoldTimer)
     touchHoldTimer = null
   }
+  
   // Убираем подсветку
   isHolding.value = false
+  
+  // Если это был обычный тап (не долгое нажатие) по изображению - открываем модальное окно
+  if (!wasLongPress && wasImageClick && props.message.contentType === 'image' && props.message.imageUrl) {
+    showImageModal.value = true
+  }
+  
+  touchTarget = null
+}
+
+// Обработчик клика на превью ответа (для мобилки)
+function handleReplyQuoteClick(): void {
+  if (props.message.replyTo?.id) {
+    emit('scrollToReply', props.message.replyTo.id)
+  }
+}
+
+// Обработчик touch-событий на превью ответа (для мобилки)
+function handleReplyQuoteTouchStart(event: TouchEvent): void {
+  // Останавливаем всплытие, чтобы не триггерить долгое нажатие на сообщении
+  event.stopPropagation()
+  replyQuoteTouchStartTime = Date.now()
+}
+
+function handleReplyQuoteTouchEnd(event: TouchEvent): void {
+  // Останавливаем всплытие
+  event.stopPropagation()
+  
+  // Если это был быстрый тап (менее 300ms) - переходим к сообщению
+  const touchDuration = Date.now() - replyQuoteTouchStartTime
+  if (touchDuration < 300 && props.message.replyTo?.id) {
+    emit('scrollToReply', props.message.replyTo.id)
+  }
+  
+  replyQuoteTouchStartTime = 0
 }
 
 // Отмена при движении пальца
@@ -121,6 +170,8 @@ function handleTouchMove(event: TouchEvent): void {
   if (!touchHoldTimer) return
   
   const touch = event.touches[0]
+  if (!touch) return
+  
   const deltaX = Math.abs(touch.clientX - touchStartX)
   const deltaY = Math.abs(touch.clientY - touchStartY)
   
@@ -143,9 +194,15 @@ onUnmounted(() => {
 })
 
 // Открыть изображение в модальном окне
-function openImageModal(event: MouseEvent): void {
+function openImageModal(event: MouseEvent | TouchEvent): void {
   event.preventDefault()
   event.stopPropagation()
+  // Отменяем долгое нажатие если оно было запущено
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+    touchHoldTimer = null
+  }
+  isHolding.value = false
   showImageModal.value = true
 }
 
@@ -207,7 +264,14 @@ function closeImageModal(): void {
         </div>
 
         <!-- Reply quote -->
-        <div v-if="message.replyTo" class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm" :class="isOwn ? 'border-white/30' : 'border-white/20'">
+        <div 
+          v-if="message.replyTo" 
+          class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm cursor-pointer hover:opacity-100 transition-opacity active:opacity-100" 
+          :class="isOwn ? 'border-white/30' : 'border-white/20'"
+          @click.stop="handleReplyQuoteClick"
+          @touchstart.stop="handleReplyQuoteTouchStart"
+          @touchend.stop="handleReplyQuoteTouchEnd"
+        >
           <div class="flex items-center gap-1">
             <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3" />
             <span class="font-medium">{{ message.replyTo.user?.firstName }}:</span>
@@ -222,7 +286,10 @@ function closeImageModal(): void {
           <template v-else>
             <!-- Image -->
             <template v-if="message.contentType === 'image' && message.imageUrl">
-              <button @click="openImageModal" class="block mb-1">
+              <button 
+                @click="openImageModal" 
+                class="block mb-1"
+              >
                 <img 
                   :src="message.imageUrl" 
                   :alt="message.content || 'Изображение'" 
@@ -274,7 +341,10 @@ function closeImageModal(): void {
       <template v-else>
         <!-- Image -->
         <template v-if="message.contentType === 'image' && message.imageUrl">
-              <button @click="openImageModal" class="block mb-1">
+              <button 
+                @click="openImageModal" 
+                class="block mb-1"
+              >
                 <img 
                   :src="message.imageUrl" 
                   :alt="message.content || 'Изображение'" 
