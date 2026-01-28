@@ -78,23 +78,22 @@ function terminateAllSessions(): void {
 
 <template>
   <UiCard>
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-[var(--text-primary)]">Безопасность</h2>
+    <div class="flex items-center justify-between mb-3 md:mb-5">
+      <h2 class="text-base md:text-lg font-semibold text-[var(--text-primary)]">Безопасность</h2>
     </div>
 
     <!-- Password Section -->
-    <div class="mb-6 pb-6" style="border-bottom: 1px solid var(--glass-border);">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-3">
-          <div class="p-2 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
-            <Icon name="heroicons:key" class="w-5 h-5 text-primary" />
+    <div class="mb-4 md:mb-6 pb-4 md:pb-6" style="border-bottom: 1px solid var(--glass-border);">
+      <div class="flex items-center justify-between gap-2 md:gap-0">
+        <div class="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
+          <div class="p-1.5 md:p-2 rounded-lg md:rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex-shrink-0">
+            <Icon name="heroicons:key" class="w-4 h-4 md:w-5 md:h-5 text-primary" />
           </div>
-          <div>
-            <p class="text-[var(--text-primary)] font-medium">Пароль</p>
-            <p class="text-sm text-[var(--text-muted)]">Последнее изменение: 3 месяца назад</p>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm md:text-base text-[var(--text-primary)] font-medium">Пароль</p>
           </div>
         </div>
-        <UiButton size="sm" variant="secondary" @click="showPasswordModal = true">
+        <UiButton size="sm" variant="secondary" @click="showPasswordModal = true" class="flex-shrink-0 text-xs md:text-sm px-2 md:px-3">
           Изменить
         </UiButton>
       </div>
@@ -102,8 +101,8 @@ function terminateAllSessions(): void {
 
     <!-- Active Sessions -->
     <div>
-      <div class="flex items-center justify-between mb-4">
-        <p class="text-sm text-[var(--text-muted)]">Активные сессии</p>
+      <div class="flex items-center justify-between mb-3 md:mb-4">
+        <p class="text-xs md:text-sm text-[var(--text-muted)]">Активные сессии</p>
         <button
           v-if="sessionsStore.sessions.length > 1"
           class="text-xs text-red-400 hover:text-red-300 transition-colors"
@@ -113,45 +112,46 @@ function terminateAllSessions(): void {
         </button>
       </div>
 
-      <div class="space-y-3">
+      <div class="space-y-2 md:space-y-3">
         <div
           v-for="session in sessionsStore.sessions"
           :key="session.id"
           :class="[
-            'p-3 rounded-xl',
+            'p-2 md:p-3 rounded-lg md:rounded-xl',
             session.current ? 'bg-primary/10 border border-primary/30' : ''
           ]"
           :style="!session.current ? 'background: var(--glass-bg);' : ''"
         >
-          <div class="flex items-start justify-between">
-            <div class="flex items-center gap-3">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-2 md:gap-3 flex-1 min-w-0">
               <div :class="[
-                'p-2 rounded-xl',
+                'p-1.5 md:p-2 rounded-lg md:rounded-xl flex-shrink-0',
                 session.current ? 'bg-gradient-to-br from-primary/20 to-secondary/10' : ''
               ]" :style="!session.current ? 'background: var(--glass-bg);' : ''">
                 <Icon
                   :name="getDeviceIcon(session.device)"
-                  :class="['w-5 h-5', session.current ? 'text-primary' : 'text-[var(--text-muted)]']"
+                  :class="['w-4 h-4 md:w-5 md:h-5', session.current ? 'text-primary' : 'text-[var(--text-muted)]']"
                 />
               </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <p class="text-[var(--text-primary)] font-medium text-sm">{{ session.device }}</p>
-                  <UiBadge v-if="session.current" variant="success" size="sm">
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 md:gap-2 flex-wrap">
+                  <p class="text-xs md:text-sm text-[var(--text-primary)] font-medium truncate">{{ session.device }}</p>
+                  <UiBadge v-if="session.current" variant="success" size="sm" class="text-[10px] md:text-xs">
                     Текущая
                   </UiBadge>
                 </div>
-                <p class="text-xs text-[var(--text-muted)]">{{ session.browser }}</p>
-                <p class="text-xs text-[var(--text-muted)] mt-1">
+                <p class="text-[10px] md:text-xs text-[var(--text-muted)] truncate">{{ session.browser }}</p>
+                <p class="text-[10px] md:text-xs text-[var(--text-muted)] mt-0.5 md:mt-1 truncate">
                   {{ session.location }} · {{ session.ip }}
                 </p>
+                <p class="text-[10px] md:text-xs text-[var(--text-muted)] mt-0.5 md:hidden">{{ formatRelativeDate(session.lastActive) }}</p>
               </div>
             </div>
-            <div class="text-right">
-              <p class="text-xs text-[var(--text-muted)] mb-2">{{ formatRelativeDate(session.lastActive) }}</p>
+            <div class="text-right flex-shrink-0 flex flex-col items-end gap-1">
+              <p class="text-[10px] md:text-xs text-[var(--text-muted)] hidden md:block">{{ formatRelativeDate(session.lastActive) }}</p>
               <button
                 v-if="!session.current"
-                class="text-xs text-red-400 hover:text-red-300 transition-colors"
+                class="text-[10px] md:text-xs text-red-400 hover:text-red-300 transition-colors whitespace-nowrap"
                 @click="terminateSession(session.id)"
               >
                 Завершить
