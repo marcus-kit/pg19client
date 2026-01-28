@@ -264,8 +264,25 @@ async function handleSend(content: string, options?: { replyToId?: string }): Pr
 
 // Загрузка и отправка изображения
 async function handleUpload(file: File): Promise<void> {
-  const { url, width, height } = await uploadImage(file)
-  await sendMessage('', { imageUrl: url, imageWidth: width, imageHeight: height })
+  try {
+    const { url, width, height } = await uploadImage(file)
+    
+    // Передаем replyToId если есть ответ на сообщение
+    const replyToId = replyTo.value?.id ? String(replyTo.value.id) : undefined
+    
+    await sendMessage('', { 
+      imageUrl: url, 
+      imageWidth: width, 
+      imageHeight: height,
+      replyToId 
+    })
+    
+    // Сбрасываем replyTo после успешной отправки
+    replyTo.value = null
+  } catch (error) {
+    console.error('Ошибка загрузки изображения:', error)
+    // Можно показать уведомление пользователю
+  }
 }
 
 // Закрепить/открепить сообщение
