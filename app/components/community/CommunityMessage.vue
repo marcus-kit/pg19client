@@ -34,7 +34,7 @@ const emit = defineEmits<{
   report: [messageId: number]
   mute: [userId: number]
   retry: [tempId: string]
-  contextmenu: [event: MouseEvent, message: CommunityMessage]
+  contextmenu: [event: MouseEvent, message: CommunityMessage, anchorRect: DOMRect | null]
 }>()
 
 // =============================================================================
@@ -147,6 +147,9 @@ let touchStartY = 0
 
 const LONG_PRESS_MS = 400
 
+const rootEl = ref<HTMLElement | null>(null)
+const bubbleEl = ref<HTMLElement | null>(null)
+
 function clearLongPress(): void {
   if (longPressTimer) {
     clearTimeout(longPressTimer)
@@ -162,7 +165,7 @@ function handleTouchStart(e: TouchEvent): void {
   longPressTimer = setTimeout(() => {
     longPressTimer = null
     const synthetic = { clientX: touchStartX, clientY: touchStartY } as MouseEvent
-    emit('contextmenu', synthetic, props.message)
+    emit('contextmenu', synthetic, props.message, bubbleEl.value?.getBoundingClientRect() || null)
   }, LONG_PRESS_MS)
 }
 
@@ -185,7 +188,7 @@ onUnmounted(clearLongPress)
 
 // Обработчик контекстного меню (ПКМ / long-press)
 function handleContextMenu(event: MouseEvent): void {
-  emit('contextmenu', event, props.message)
+  emit('contextmenu', event, props.message, bubbleEl.value?.getBoundingClientRect() || null)
 }
 </script>
 
@@ -193,6 +196,7 @@ function handleContextMenu(event: MouseEvent): void {
   <div
     class="px-3 py-1.5 select-none touch-manipulation"
     :class="[!isOwn && !showAuthorHeader && 'pt-0.5']"
+    ref="rootEl"
     @contextmenu.prevent="handleContextMenu"
     @touchstart.passive="handleTouchStart"
     @touchend="handleTouchEnd"
@@ -224,6 +228,7 @@ function handleContextMenu(event: MouseEvent): void {
           message.status === 'sending' && 'opacity-70',
           message.status === 'failed' && 'border-red-500/30 bg-red-500/10'
         ]"
+        ref="bubbleEl"
       >
         <!-- Имя отправителя (только для чужих и при showAuthorHeader) -->
         <div

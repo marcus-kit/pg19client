@@ -312,11 +312,36 @@ async function handleRoomSelect(room: CommunityRoom): Promise<void> {
 // =============================================================================
 
 // Открыть контекстное меню на сообщении
-function handleContextMenu(event: MouseEvent, message: CommunityMessage): void {
+function handleContextMenu(event: MouseEvent, message: CommunityMessage, anchorRect?: DOMRect | null): void {
+  // Позиционируем меню ПОД сообщением (одинаково удобно на мобилке и ПК)
+  const rect = anchorRect || null
+  const MENU_W = 200
+  const MENU_H = 260
+  const PAD = 8
+
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+
+  // X: под пузырьком сообщения (с учётом своих/чужих сообщений)
+  let left = PAD
+  if (rect) {
+    const isOwn = String(message.userId) === String(userStore.user?.id)
+    left = isOwn
+      ? Math.round(rect.right - MENU_W)
+      : Math.round(rect.left)
+  } else {
+    left = Math.round(event.clientX - MENU_W / 2)
+  }
+  left = Math.max(PAD, Math.min(left, vw - MENU_W - PAD))
+
+  // Y: всегда под сообщением
+  let top = rect ? Math.round(rect.bottom + PAD) : Math.round(event.clientY + PAD)
+  top = Math.max(PAD, Math.min(top, vh - MENU_H - PAD))
+
   contextMenu.value = {
     show: true,
-    x: event.clientX,
-    y: event.clientY,
+    x: left,
+    y: top,
     message
   }
 }
@@ -431,6 +456,10 @@ async function handleReportSubmit(data: { messageId: number; reason: CommunityRe
 // Подгрузка истории при скролле вверх
 async function handleScroll(e: Event): Promise<void> {
   const el = e.target as HTMLElement
+  // Если пользователь начал скроллить — прячем контекстное меню
+  if (contextMenu.value.show) {
+    closeContextMenu()
+  }
   // unread: если дошли до низа — считаем прочитанным
   isAtBottom.value = computeIsAtBottom()
   if (isAtBottom.value) {
