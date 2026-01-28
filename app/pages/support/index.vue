@@ -368,71 +368,57 @@ watch(isOperatorTyping, (typing) => {
   >
     <!-- На мобилке при вкладке «Чат» — блок заголовка и табов не сжимается -->
     <div :class="activeTab === 'chat' ? 'flex-shrink-0 space-y-4' : 'contents'">
-      <!-- =====================================================================
-           Page Header
-           ===================================================================== -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-[var(--text-primary)]">Поддержка</h1>
-        <p class="text-[var(--text-muted)] mt-1">Задайте вопрос или найдите ответ</p>
+      <!-- Page Header -->
+      <header class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div class="pb-1">
+          <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Поддержка</h1>
+          <p class="text-sm text-[var(--text-muted)] mt-2">Задайте вопрос или найдите ответ</p>
+        </div>
+        <UiButton @click="showNewTicketModal = true" class="w-full sm:w-auto">
+          <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
+          Создать заявку
+        </UiButton>
+      </header>
+
+      <!-- Tabs — сегмент-контрол -->
+      <div class="inline-flex rounded-xl border p-1 w-full sm:w-auto overflow-x-auto" style="background: var(--glass-bg); border-color: var(--glass-border);" role="tablist">
+        <button
+          @click="activeTab = 'chat'"
+          type="button"
+          role="tab"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap"
+          :class="activeTab === 'chat' ? 'bg-primary text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        >
+          <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4" />
+          Чат
+          <span v-if="chatStore.unreadCount > 0" class="ml-0.5 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white min-w-[20px] text-center">
+            {{ chatStore.unreadCount }}
+          </span>
+        </button>
+        <button
+          @click="activeTab = 'tickets'"
+          type="button"
+          role="tab"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap"
+          :class="activeTab === 'tickets' ? 'bg-primary text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        >
+          <Icon name="heroicons:ticket" class="w-4 h-4" />
+          Заявки
+          <span v-if="activeTicketsCount" class="ml-0.5 px-1.5 py-0.5 text-xs rounded-full min-w-[20px] text-center" :class="activeTab === 'tickets' ? 'bg-white/20' : 'bg-white/10 text-[var(--text-muted)]'">
+            {{ activeTicketsCount }}
+          </span>
+        </button>
+        <button
+          @click="activeTab = 'faq'"
+          type="button"
+          role="tab"
+          class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 whitespace-nowrap"
+          :class="activeTab === 'faq' ? 'bg-primary text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        >
+          <Icon name="heroicons:question-mark-circle" class="w-4 h-4" />
+          FAQ
+        </button>
       </div>
-      <UiButton @click="showNewTicketModal = true">
-        <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
-        Создать заявку
-      </UiButton>
-    </div>
-
-    <!-- =====================================================================
-         Tabs — переключение между чатом, заявками и FAQ
-         ===================================================================== -->
-    <div class="flex gap-2">
-      <!-- Чат -->
-      <button
-        @click="activeTab = 'chat'"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        :class="activeTab === 'chat'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 mr-2 inline-block" />
-        Чат с поддержкой
-        <!-- Badge непрочитанных сообщений -->
-        <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
-          {{ chatStore.unreadCount }}
-        </span>
-      </button>
-
-      <!-- Заявки -->
-      <button
-        @click="activeTab = 'tickets'"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        :class="activeTab === 'tickets'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'tickets' ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon name="heroicons:ticket" class="w-4 h-4 mr-2 inline-block" />
-        Мои заявки
-        <!-- Badge активных заявок -->
-        <span v-if="activeTicketsCount" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-white/20">
-          {{ activeTicketsCount }}
-        </span>
-      </button>
-
-      <!-- FAQ -->
-      <button
-        @click="activeTab = 'faq'"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-        :class="activeTab === 'faq'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon name="heroicons:question-mark-circle" class="w-4 h-4 mr-2 inline-block" />
-        Частые вопросы
-      </button>
-    </div>
     </div>
 
     <!-- =====================================================================
@@ -466,7 +452,7 @@ watch(isOperatorTyping, (typing) => {
       </div>
 
       <!-- Loading skeleton -->
-      <div v-if="ticketsPending" class="space-y-3">
+      <div v-if="ticketsPending" class="space-y-4">
         <UiCard v-for="i in 3" :key="i" class="animate-pulse">
           <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
@@ -503,7 +489,7 @@ watch(isOperatorTyping, (typing) => {
       </UiCard>
 
       <!-- Tickets List -->
-      <div v-else-if="tickets.length" class="space-y-3">
+      <div v-else-if="tickets.length" class="space-y-4">
         <UiCard
           v-for="ticket in filteredTickets"
           :key="ticket.id"
@@ -568,9 +554,9 @@ watch(isOperatorTyping, (typing) => {
     <!-- =====================================================================
          FAQ Tab — частые вопросы (аккордеон)
          ===================================================================== -->
-    <div v-if="activeTab === 'faq'" class="space-y-3">
+    <div v-if="activeTab === 'faq'" class="space-y-4">
       <!-- Loading skeleton -->
-      <div v-if="faqPending" class="space-y-3">
+      <div v-if="faqPending" class="space-y-4">
         <UiCard v-for="i in 5" :key="i" class="animate-pulse p-5">
           <div class="h-5 bg-[var(--glass-bg)] rounded w-3/4"></div>
         </UiCard>

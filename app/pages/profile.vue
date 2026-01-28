@@ -105,13 +105,10 @@ const levelInfo = computed(() => {
 
 <template>
   <div class="space-y-6">
-    <!-- =====================================================================
-         PAGE HEADER
-         ===================================================================== -->
-    <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">Профиль</h1>
-      <p class="text-[var(--text-muted)] mt-1">Управление личными данными</p>
-    </div>
+    <header class="pb-1">
+      <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Профиль</h1>
+      <p class="text-sm text-[var(--text-muted)] mt-2">Управление личными данными</p>
+    </header>
 
     <!-- =====================================================================
          PROFILE SUMMARY — быстрый обзор, чтобы было понятнее "кто я"
@@ -163,23 +160,23 @@ const levelInfo = computed(() => {
           </div>
         </div>
 
-        <div class="flex flex-wrap gap-2 mt-4">
+        <div class="flex flex-wrap gap-2 mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
           <button
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            class="px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
             style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
             @click="activeTab = 'personal'"
           >
-            Редактировать личные данные
+            Редактировать данные
           </button>
           <button
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            class="px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
             style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
             @click="activeTab = 'contract'"
           >
             Договор и адрес
           </button>
           <button
-            class="px-3 py-2 rounded-lg text-sm font-medium transition-colors"
+            class="px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
             style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
             @click="activeTab = 'security'"
           >
@@ -197,11 +194,10 @@ const levelInfo = computed(() => {
         v-for="tab in tabs"
         :key="tab.id"
         @click="activeTab = tab.id"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-2"
+        class="px-4 py-2 rounded-xl text-sm font-medium transition-colors duration-200 whitespace-nowrap flex items-center gap-2"
         :class="activeTab === tab.id
           ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== tab.id ? 'background: var(--glass-bg);' : ''"
+          : 'text-[var(--text-muted)] bg-[var(--glass-bg)] hover:text-[var(--text-primary)] hover:bg-white/10'"
       >
         <Icon :name="tab.icon" class="w-4 h-4" />
         {{ tab.label }}
@@ -216,7 +212,7 @@ const levelInfo = computed(() => {
             <button
               v-for="tab in tabs"
               :key="tab.id"
-              class="flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-colors text-left"
+              class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors duration-200 text-left"
               :class="activeTab === tab.id
                 ? 'bg-primary/10 text-primary'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)]'"

@@ -300,26 +300,23 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <!-- =====================================================================
-         CONTENT — карточка авторизации
-         ===================================================================== -->
-    <main class="flex-1 flex items-center justify-center px-4 py-8">
+    <!-- Content — карточка авторизации -->
+    <main class="flex-1 flex items-center justify-center px-4 py-8 min-h-[60vh]">
       <div class="w-full max-w-md">
-        <UiCard padding="lg">
-
-          <!-- Заголовок карточки -->
+        <UiCard padding="lg" class="shadow-xl">
+          <!-- Логотип и заголовок -->
           <div class="text-center mb-6">
-            <h1 class="text-2xl font-bold text-[var(--text-primary)] mb-2">Вход в личный кабинет</h1>
-            <p class="text-[var(--text-muted)]">Выберите способ входа</p>
+            <img src="/logo.png" alt="" class="h-10 mx-auto mb-4 opacity-90" />
+            <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)] mb-2">Вход в личный кабинет</h1>
+            <p class="text-sm text-[var(--text-muted)]">Выберите способ входа</p>
           </div>
 
-          <!-- -----------------------------------------------------------------
-               Табы — переключение метода авторизации
-               ----------------------------------------------------------------- -->
-          <div class="flex mb-6 p-1 rounded-lg" style="background: var(--glass-bg);">
+          <!-- Табы — сегмент-контрол -->
+          <div class="flex mb-6 p-1 rounded-xl border" style="background: var(--glass-bg); border-color: var(--glass-border);">
             <button
               @click="setAuthMethod('telegram')"
-              class="flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              type="button"
+              class="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
               :class="authMethod === 'telegram'
                 ? 'bg-[#0088cc] text-white shadow-md'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
@@ -329,7 +326,8 @@ onUnmounted(() => {
             </button>
             <button
               @click="setAuthMethod('contract')"
-              class="flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              type="button"
+              class="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
               :class="authMethod === 'contract'
                 ? 'bg-primary text-white shadow-md'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
@@ -339,7 +337,8 @@ onUnmounted(() => {
             </button>
             <button
               @click="setAuthMethod('call')"
-              class="flex-1 py-2 px-2 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-1.5"
+              type="button"
+              class="flex-1 py-2.5 px-3 rounded-lg text-sm font-medium transition-all duration-200 flex items-center justify-center gap-2"
               :class="authMethod === 'call'
                 ? 'bg-accent text-white shadow-md'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"

@@ -69,12 +69,12 @@ function closeNewsModal(): void {
     <!-- =====================================================================
          PAGE HEADER — приветствие и номер договора
          ===================================================================== -->
-    <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">
+    <header class="pb-1">
+      <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">
         Добро пожаловать, {{ userStore.user?.firstName }}!
       </h1>
-      <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p>
-    </div>
+      <p class="text-sm text-[var(--text-muted)] mt-2">Договор № {{ accountStore.account?.contractNumber }}</p>
+    </header>
 
     <!-- =====================================================================
          MAIN CARDS — баланс и состояние подключения
@@ -93,26 +93,24 @@ function closeNewsModal(): void {
          SPECIAL OFFER — специальное предложение
          ===================================================================== -->
     <section>
-      <UiCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
-        <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
-          <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Icon name="heroicons:gift" class="w-8 h-8 text-white" />
+      <UiCard class="p-0 overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
+        <div class="p-5 flex flex-col md:flex-row md:items-center gap-4">
+          <div class="flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
+            <Icon name="heroicons:gift" class="w-7 h-7 text-white" />
           </div>
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="px-2 py-0.5 text-xs font-semibold bg-primary/20 text-primary rounded-full">
-                Специальное предложение
-              </span>
-            </div>
-            <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">
+          <div class="flex-1 min-w-0">
+            <span class="inline-block px-2.5 py-0.5 text-xs font-medium bg-primary/15 text-primary rounded-full mb-2">
+              Специальное предложение
+            </span>
+            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-1">
               ТВ Расширенный — месяц бесплатно
             </h3>
-            <p class="text-[var(--text-muted)] text-sm">
+            <p class="text-sm text-[var(--text-muted)]">
               191 канал + кинозалы. Подключите сейчас и смотрите бесплатно до 28 февраля!
             </p>
           </div>
           <div class="flex-shrink-0">
-            <UiButton variant="primary">
+            <UiButton variant="primary" class="w-full md:w-auto">
               Подключить
             </UiButton>
           </div>
@@ -124,28 +122,27 @@ function closeNewsModal(): void {
          COMMUNITY NEWS — блок новостей
          ===================================================================== -->
     <section>
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="text-lg font-semibold text-[var(--text-primary)]">Новости сообщества</h2>
-      </div>
+      <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Новости сообщества</h2>
 
       <!-- Загрузка -->
       <div v-if="pending" class="grid md:grid-cols-3 gap-4">
         <UiCard v-for="i in 3" :key="i" class="p-5 animate-pulse">
-          <div class="h-3 bg-white/10 rounded w-20 mb-2" />
+          <div class="h-3 bg-white/10 rounded w-20 mb-3" />
           <div class="h-5 bg-white/10 rounded w-full mb-2" />
           <div class="h-4 bg-white/10 rounded w-full" />
         </UiCard>
       </div>
 
       <!-- Ошибка -->
-      <div v-else-if="error" class="p-6 bg-red-500/10 border border-red-500/20 rounded-lg">
-        <p class="text-red-400 text-center">Не удалось загрузить новости</p>
+      <div v-else-if="error" class="rounded-xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+        <Icon name="heroicons:exclamation-triangle" class="w-10 h-10 text-red-400 mx-auto mb-2" />
+        <p class="text-sm text-red-400">Не удалось загрузить новости</p>
       </div>
 
       <!-- Пусто -->
-      <div v-else-if="news.length === 0" class="p-8 text-center bg-white/5 rounded-lg">
-        <Icon name="heroicons:newspaper" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-2" />
-        <p class="text-[var(--text-muted)]">Новостей пока нет</p>
+      <div v-else-if="news.length === 0" class="rounded-xl border border-[var(--glass-border)] p-8 text-center" style="background: var(--glass-bg);">
+        <Icon name="heroicons:newspaper" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" />
+        <p class="text-sm text-[var(--text-muted)]">Новостей пока нет</p>
       </div>
 
       <!-- Сетка новостей -->
@@ -154,19 +151,17 @@ function closeNewsModal(): void {
           v-for="item in news"
           :key="item.id"
           hover
-          class="p-5 cursor-pointer transition-transform hover:scale-[1.02]"
+          class="p-5 cursor-pointer transition-all duration-200 hover:shadow-lg"
           @click="openNewsModal(item.id)"
         >
-          <div class="flex items-center gap-2 mb-2">
-            <p class="text-xs text-[var(--text-muted)]">
-              {{ formatDateShort(item.publishedAt) }}
-            </p>
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-xs text-[var(--text-muted)]">{{ formatDateShort(item.publishedAt) }}</span>
             <UiBadge :variant="categoryVariants[item.category]" size="sm">
               {{ categoryLabels[item.category] }}
             </UiBadge>
-            <Icon v-if="item.isPinned" name="heroicons:star-solid" class="w-3 h-3 text-primary ml-auto" />
+            <Icon v-if="item.isPinned" name="heroicons:star-solid" class="w-3.5 h-3.5 text-primary ml-auto" />
           </div>
-          <h3 class="font-medium text-[var(--text-primary)] mb-2">{{ item.title }}</h3>
+          <h3 class="font-semibold text-[var(--text-primary)] mb-2 line-clamp-2">{{ item.title }}</h3>
           <p class="text-sm text-[var(--text-secondary)] line-clamp-2">
             {{ item.summary || item.content.substring(0, 100) + '...' }}
           </p>

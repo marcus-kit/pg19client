@@ -124,8 +124,10 @@ onUnmounted(() => {
               v-for="item in navigation"
               :key="item.href"
               :to="item.href"
-              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              :class="isActive(item.href) ? 'text-primary bg-primary/10' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)]'"
+              class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+              :class="isActive(item.href)
+                ? 'text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20'
+                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)] active:bg-white/10'"
             >
               <span class="relative">
                 <Icon :name="item.icon" class="w-5 h-5" />
@@ -197,6 +199,7 @@ onUnmounted(() => {
          CONTENT — основной контент страницы
          pt-16 — отступ под фиксированную шапку (64px)
          pb-20 — отступ под мобильную навигацию (80px), убирается на desktop
+         py-6 — единый вертикальный ритм (24px сверху/снизу)
          ===================================================================== -->
     <main class="flex-1 pt-16 pb-20 md:pb-0">
       <div class="container mx-auto px-4 py-6">
@@ -220,8 +223,10 @@ onUnmounted(() => {
             v-for="item in mobileMainNav"
             :key="item.href"
             :to="item.href"
-            class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors"
-            :class="isActive(item.href) ? 'text-primary' : 'text-[var(--text-muted)]'"
+            class="flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-colors duration-200 min-w-[64px]"
+            :class="isActive(item.href)
+              ? 'text-primary bg-primary/10 active:bg-primary/15'
+              : 'text-[var(--text-muted)] active:bg-white/10'"
             @click="showMoreMenu = false"
           >
             <span class="relative">
@@ -238,8 +243,10 @@ onUnmounted(() => {
           <!-- Кнопка "Ещё" — открывает дополнительное меню -->
           <button
             @click="showMoreMenu = !showMoreMenu"
-            class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors"
-            :class="showMoreMenu || isMoreActive ? 'text-primary' : 'text-[var(--text-muted)]'"
+            class="flex flex-col items-center gap-1 py-2 px-3 rounded-xl transition-colors duration-200 min-w-[64px]"
+            :class="showMoreMenu || isMoreActive
+              ? 'text-primary bg-primary/10 active:bg-primary/15'
+              : 'text-[var(--text-muted)] active:bg-white/10'"
           >
             <Icon name="heroicons:ellipsis-horizontal" class="w-6 h-6" />
             <span class="text-xs font-medium">Ещё</span>

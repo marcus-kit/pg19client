@@ -608,7 +608,7 @@ watch(isSearching, () => {
        COMMUNITY PAGE — полноэкранный чат сообщества
        Высота: 100dvh (моб.) минус header и mobile nav
        ========================================================================= -->
-  <div class="min-h-0 h-[calc(100dvh-12rem)] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
+  <div class="min-h-0 h-[calc(100dvh-12rem)] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)] -mb-0 md:mb-0">
 
     <!-- =====================================================================
          HEADER — табы комнат и счётчик онлайн
@@ -617,7 +617,7 @@ watch(isSearching, () => {
       <!-- Title row -->
       <div class="flex items-center justify-between px-4 py-2">
         <div class="flex items-center gap-2">
-          <h2 class="font-bold text-[var(--text-primary)]">Сообщество</h2>
+          <h2 class="text-lg font-bold tracking-tight text-[var(--text-primary)]">Сообщество</h2>
           <span
             v-if="communityUiStore.hasUnread"
             class="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-primary text-white text-[10px] font-semibold"
@@ -707,18 +707,20 @@ watch(isSearching, () => {
       </div>
 
       <!-- Empty -->
-      <div v-else-if="rooms.length === 0" class="text-center py-3 px-4">
-        <p class="text-[var(--text-muted)] text-sm">Нет доступных чатов. Укажите адрес в профиле.</p>
+      <div v-else-if="rooms.length === 0" class="text-center py-6 px-4 rounded-xl mx-2" style="background: var(--glass-bg);">
+        <Icon name="heroicons:chat-bubble-left-right" class="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" />
+        <p class="text-sm text-[var(--text-muted)]">Нет доступных чатов</p>
+        <p class="text-xs text-[var(--text-muted)] mt-1">Укажите адрес в профиле</p>
       </div>
 
       <!-- Channel tabs -->
-      <div v-else class="flex gap-1 px-2 pb-2 overflow-x-auto">
+      <div v-else class="flex gap-2 px-2 pb-2 overflow-x-auto">
         <button
           v-for="room in rooms"
           :key="room.id"
           @click="handleRoomSelect(room)"
           :class="[
-            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm whitespace-nowrap transition-colors',
+            'flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm whitespace-nowrap transition-colors duration-200',
             currentRoom?.id === room.id
               ? 'bg-primary text-white'
               : 'bg-white/5 hover:bg-white/10 text-[var(--text-secondary)]'

@@ -150,13 +150,13 @@ useHead({
     <!-- =====================================================================
          BACK BUTTON — возврат к списку заявок
          ===================================================================== -->
-    <button
-      @click="router.push('/support?tab=tickets')"
-      class="flex items-center gap-2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+    <NuxtLink
+      to="/support?tab=tickets"
+      class="inline-flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors duration-200"
     >
       <Icon name="heroicons:arrow-left" class="w-5 h-5" />
       Назад к заявкам
-    </button>
+    </NuxtLink>
 
     <!-- =====================================================================
          LOADING — скелетон загрузки
@@ -198,8 +198,8 @@ useHead({
               />
             </div>
             <div>
-              <div class="flex items-center gap-2 mb-1 flex-wrap">
-                <span class="text-sm text-[var(--text-muted)]">{{ ticket.number }}</span>
+              <div class="flex items-center gap-2 mb-2 flex-wrap">
+                <span class="text-xs text-[var(--text-muted)]">{{ ticket.number }}</span>
                 <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
                   {{ statusConfig[ticket.status]?.label || ticket.status }}
                 </UiBadge>
@@ -207,8 +207,8 @@ useHead({
                   {{ ticketCategoryLabels[ticket.category] || ticket.category }}
                 </UiBadge>
               </div>
-              <h1 class="text-xl font-semibold text-[var(--text-primary)]">{{ ticket.subject }}</h1>
-              <p class="text-sm text-[var(--text-muted)] mt-1">
+              <h1 class="text-xl font-semibold tracking-tight text-[var(--text-primary)]">{{ ticket.subject }}</h1>
+              <p class="text-sm text-[var(--text-muted)] mt-2">
                 Создана {{ formatDateTime(ticket.createdAt) }}
               </p>
             </div>

@@ -89,29 +89,27 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 
 <template>
   <div class="space-y-6">
-    <!-- =====================================================================
-         PAGE HEADER
-         ===================================================================== -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-[var(--text-primary)]">Счета</h1>
-        <p class="text-[var(--text-muted)] mt-1">История выставленных счетов</p>
-      </div>
-    </div>
+    <header class="pb-1">
+      <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Счета</h1>
+      <p class="text-sm text-[var(--text-muted)] mt-2">История выставленных счетов</p>
+    </header>
 
-    <!-- =====================================================================
-         FILTERS — фильтр по статусу оплаты
-         ===================================================================== -->
-    <div class="flex gap-2">
+    <!-- Фильтр по статусу -->
+    <div
+      class="inline-flex rounded-xl border p-1"
+      style="background: var(--glass-bg); border-color: var(--glass-border);"
+      role="tablist"
+    >
       <button
         v-for="f in filters"
         :key="f.value"
+        type="button"
+        role="tab"
         @click="filter = f.value as any"
-        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
         :class="filter === f.value
           ? 'bg-primary text-white'
           : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="filter !== f.value ? 'background: var(--glass-bg);' : ''"
       >
         {{ f.label }}
       </button>
@@ -151,7 +149,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
         v-for="invoice in filteredInvoices"
         :key="invoice.id"
         hover
-        class="cursor-pointer"
+        class="cursor-pointer transition-all duration-200"
         @click="openInvoice(invoice.id)"
       >
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -193,6 +191,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
         <UiEmptyState
           icon="heroicons:document-text"
           title="Счетов не найдено"
+          description="В этой категории счетов нет. Счета появятся после выставления."
         />
       </UiCard>
     </div>

@@ -123,13 +123,10 @@ async function requestConnection(service: Service): Promise<void> {
 
 <template>
   <div class="space-y-6">
-    <!-- =====================================================================
-         PAGE HEADER
-         ===================================================================== -->
-    <div>
-      <h1 class="text-2xl font-bold text-[var(--text-primary)]">Услуги</h1>
-      <p class="text-[var(--text-muted)] mt-1">Управление подключенными услугами</p>
-    </div>
+    <header class="pb-1">
+      <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Услуги</h1>
+      <p class="text-sm text-[var(--text-muted)] mt-2">Управление подключенными услугами</p>
+    </header>
 
     <!-- =====================================================================
          LOADING — скелетон загрузки
@@ -166,9 +163,9 @@ async function requestConnection(service: Service): Promise<void> {
       <!-- =================================================================
            TABS — мои услуги / каталог
            ================================================================= -->
-      <div class="flex flex-col gap-2">
+      <div class="flex flex-col gap-4">
         <div
-          class="inline-flex w-fit rounded-xl border px-1 py-1"
+          class="inline-flex w-fit rounded-xl border p-1"
           style="background: var(--glass-bg); border-color: var(--glass-border);"
           role="tablist"
           aria-label="Вкладки услуг"
@@ -178,16 +175,12 @@ async function requestConnection(service: Service): Promise<void> {
             role="tab"
             :aria-selected="activeTab === 'my'"
             :tabindex="activeTab === 'my' ? 0 : -1"
-            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-            :class="activeTab === 'my' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+            :class="activeTab === 'my' ? 'bg-primary text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
             @click="activeTab = 'my'"
           >
             Мои услуги
-            <span
-              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-              :class="activeTab === 'my' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-              style="border: 1px solid var(--glass-border);"
-            >
+            <span class="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-semibold" :class="activeTab === 'my' ? 'bg-white/20' : 'bg-white/10 text-[var(--text-muted)]'">
               {{ subscriptions.length }}
             </span>
           </button>
@@ -196,16 +189,12 @@ async function requestConnection(service: Service): Promise<void> {
             role="tab"
             :aria-selected="activeTab === 'catalog'"
             :tabindex="activeTab === 'catalog' ? 0 : -1"
-            class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-            :class="activeTab === 'catalog' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+            class="px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200"
+            :class="activeTab === 'catalog' ? 'bg-primary text-white' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
             @click="activeTab = 'catalog'"
           >
-            Каталог услуг
-            <span
-              class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-              :class="activeTab === 'catalog' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-              style="border: 1px solid var(--glass-border);"
-            >
+            Каталог
+            <span class="ml-2 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-xs font-semibold" :class="activeTab === 'catalog' ? 'bg-white/20' : 'bg-white/10 text-[var(--text-muted)]'">
               {{ availableServices.length }}
             </span>
           </button>
