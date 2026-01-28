@@ -95,6 +95,34 @@ const activeTicketsCount = computed(() => {
   return tickets.value.filter(t => t.status !== 'closed').length
 })
 
+// Фильтр по статусу во вкладке «Мои заявки»
+type TicketStatusFilter = 'all' | 'new' | 'resolved' | 'closed'
+const ticketStatusFilter = ref<TicketStatusFilter>('all')
+
+const ticketFilterOptions: { value: TicketStatusFilter; label: string }[] = [
+  { value: 'all', label: 'Все' },
+  { value: 'new', label: 'Новые' },
+  { value: 'resolved', label: 'Решенные' },
+  { value: 'closed', label: 'Закрытые' }
+]
+
+const ticketFilterCounts = computed(() => {
+  const list = tickets.value
+  return {
+    all: list.length,
+    new: list.filter(t => t.status === 'new').length,
+    resolved: list.filter(t => t.status === 'resolved').length,
+    closed: list.filter(t => t.status === 'closed').length
+  }
+})
+
+const filteredTickets = computed(() => {
+  const list = tickets.value
+  const filter = ticketStatusFilter.value
+  if (filter === 'all') return list
+  return list.filter(t => t.status === filter)
+})
+
 // =============================================================================
 // CONSTANTS
 // =============================================================================
@@ -411,6 +439,32 @@ watch(isOperatorTyping, (typing) => {
          Tickets Tab — список заявок пользователя
          ===================================================================== -->
     <div v-if="activeTab === 'tickets'" class="space-y-4">
+      <!-- Фильтр по статусу -->
+      <div class="flex gap-2 overflow-x-auto pb-1 -mx-1">
+        <button
+          v-for="opt in ticketFilterOptions"
+          :key="opt.value"
+          type="button"
+          :class="[
+            'flex items-center gap-2 px-3 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors',
+            ticketStatusFilter === opt.value
+              ? 'bg-primary text-white'
+              : 'bg-[var(--glass-bg)] text-[var(--text-secondary)] hover:bg-white/10 border border-[var(--glass-border)]'
+          ]"
+          @click="ticketStatusFilter = opt.value"
+        >
+          {{ opt.label }}
+          <span
+            :class="[
+              'min-w-[20px] h-5 px-1.5 rounded-full flex items-center justify-center text-xs font-semibold',
+              ticketStatusFilter === opt.value ? 'bg-white/20 text-white' : 'bg-white/10 text-[var(--text-muted)]'
+            ]"
+          >
+            {{ ticketFilterCounts[opt.value] }}
+          </span>
+        </button>
+      </div>
+
       <!-- Loading skeleton -->
       <div v-if="ticketsPending" class="space-y-3">
         <UiCard v-for="i in 3" :key="i" class="animate-pulse">
@@ -433,10 +487,25 @@ watch(isOperatorTyping, (typing) => {
         </div>
       </UiCard>
 
+      <!-- Пусто по выбранному фильтру -->
+      <UiCard v-else-if="tickets.length && !filteredTickets.length" class="p-8">
+        <div class="text-center">
+          <Icon name="heroicons:funnel" class="w-12 h-12 text-[var(--text-muted)] mx-auto mb-3" />
+          <p class="text-[var(--text-muted)]">В этой категории заявок нет</p>
+          <button
+            type="button"
+            class="mt-3 text-sm text-primary hover:underline"
+            @click="ticketStatusFilter = 'all'"
+          >
+            Показать все заявки
+          </button>
+        </div>
+      </UiCard>
+
       <!-- Tickets List -->
       <div v-else-if="tickets.length" class="space-y-3">
         <UiCard
-          v-for="ticket in tickets"
+          v-for="ticket in filteredTickets"
           :key="ticket.id"
           hover
           class="cursor-pointer"
