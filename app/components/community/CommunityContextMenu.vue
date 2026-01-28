@@ -29,6 +29,7 @@ const emit = defineEmits<{
   close: []
   reply: []
   edit: []
+  copy: []
   report: []
   pin: []
   mute: []
@@ -59,6 +60,11 @@ function handleReply(): void {
 
 function handleEdit(): void {
   emit('edit')
+  emit('close')
+}
+
+function handleCopy(): void {
+  emit('copy')
   emit('close')
 }
 
@@ -121,6 +127,14 @@ onUnmounted(() => {
         >
           <Icon name="heroicons:pencil-square" class="w-4 h-4" />
           Редактировать
+        </button>
+
+        <button
+          @click="handleCopy"
+          class="w-full px-3 py-1.5 text-left hover:bg-white/10 flex items-center gap-2 text-[var(--text-primary)]"
+        >
+          <Icon name="heroicons:clipboard-document" class="w-4 h-4" />
+          Копировать
         </button>
 
         <button

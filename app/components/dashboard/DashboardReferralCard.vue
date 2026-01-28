@@ -56,9 +56,12 @@ async function copyCode(): Promise<void> {
         <Icon name="heroicons:gift" class="w-6 h-6 text-white" />
       </div>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
           <span class="text-sm font-medium text-[var(--text-primary)]">Ваш промокод</span>
-          <UiBadge variant="success" size="sm">+300 ₽</UiBadge>
+          <span class="text-sm font-semibold text-accent whitespace-nowrap md:hidden">+300 ₽</span>
+          <UiBadge variant="success" size="sm" class="hidden md:inline-flex shrink-0">
+            <span class="whitespace-nowrap">+300 ₽</span>
+          </UiBadge>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xl font-bold text-[var(--text-primary)] tracking-wider">

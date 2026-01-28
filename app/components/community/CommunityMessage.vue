@@ -138,10 +138,52 @@ const contentParts = computed<HighlightPart[] | null>(() => {
 })
 
 // =============================================================================
+// TOUCH LONG-PRESS — на мобилке длинное нажатие открывает меню вместо копирования
+// =============================================================================
+
+let longPressTimer: ReturnType<typeof setTimeout> | null = null
+let touchStartX = 0
+let touchStartY = 0
+
+const LONG_PRESS_MS = 400
+
+function clearLongPress(): void {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer)
+    longPressTimer = null
+  }
+}
+
+function handleTouchStart(e: TouchEvent): void {
+  if (e.touches.length !== 1) return
+  clearLongPress()
+  touchStartX = e.touches[0].clientX
+  touchStartY = e.touches[0].clientY
+  longPressTimer = setTimeout(() => {
+    longPressTimer = null
+    const synthetic = { clientX: touchStartX, clientY: touchStartY } as MouseEvent
+    emit('contextmenu', synthetic, props.message)
+  }, LONG_PRESS_MS)
+}
+
+function handleTouchEnd(): void {
+  clearLongPress()
+}
+
+function handleTouchMove(e: TouchEvent): void {
+  if (e.touches.length !== 1) return
+  const dx = Math.abs(e.touches[0].clientX - touchStartX)
+  const dy = Math.abs(e.touches[0].clientY - touchStartY)
+  if (dx > 8 || dy > 8) clearLongPress()
+}
+
+onUnmounted(clearLongPress)
+
+// =============================================================================
 // METHODS
 // =============================================================================
 
-// Обработчик контекстного меню
+// Обработчик контекстного меню (ПКМ / long-press)
 function handleContextMenu(event: MouseEvent): void {
   emit('contextmenu', event, props.message)
 }
@@ -149,9 +191,13 @@ function handleContextMenu(event: MouseEvent): void {
 
 <template>
   <div
-    class="px-3 py-1.5"
+    class="px-3 py-1.5 select-none touch-manipulation"
     :class="[!isOwn && !showAuthorHeader && 'pt-0.5']"
     @contextmenu.prevent="handleContextMenu"
+    @touchstart.passive="handleTouchStart"
+    @touchend="handleTouchEnd"
+    @touchmove.passive="handleTouchMove"
+    @touchcancel="handleTouchEnd"
   >
     <div :class="['flex gap-2', isOwn ? 'justify-end' : 'justify-start']">
       <!-- Колонка аватара (только для чужих сообщений, для выравнивания группировки) -->

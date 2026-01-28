@@ -348,6 +348,24 @@ function handleContextEdit(): void {
   })
 }
 
+// Копировать текст сообщения из контекстного меню
+async function handleContextCopy(): Promise<void> {
+  const msg = contextMenu.value.message
+  if (!msg) return
+  const text = msg.isDeleted ? 'Сообщение удалено' : (msg.content || '')
+  if (!text) return
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    const input = document.createElement('input')
+    input.value = text
+    document.body.appendChild(input)
+    input.select()
+    document.execCommand('copy')
+    document.body.removeChild(input)
+  }
+}
+
 // Закрепить из контекстного меню
 function handleContextPin(): void {
   if (contextMenu.value.message) {
@@ -860,6 +878,7 @@ watch(isSearching, () => {
       @close="closeContextMenu"
       @reply="handleContextReply"
       @edit="handleContextEdit"
+      @copy="handleContextCopy"
       @report="contextMenu.message && handleReportClick(contextMenu.message.id as number)"
       @pin="handleContextPin"
       @mute="contextMenu.message && handleMuteClick(contextMenu.message.userId)"

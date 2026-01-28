@@ -21,13 +21,6 @@ const userStore = useUserStore()
 const accountStore = useAccountStore()
 const { fetchNews } = useNews()
 
-const quickActions = [
-  { label: 'Счета', to: '/invoices', icon: 'heroicons:document-text' },
-  { label: 'Поддержка', to: '/support', icon: 'heroicons:chat-bubble-left-right' },
-  { label: 'Услуги', to: '/services', icon: 'heroicons:squares-2x2' },
-  { label: 'Профиль', to: '/profile', icon: 'heroicons:user-circle' }
-] as const
-
 // =============================================================================
 // DATA — загрузка новостей
 // =============================================================================
@@ -82,36 +75,6 @@ function closeNewsModal(): void {
       </h1>
       <p class="text-[var(--text-muted)] mt-1">Договор № {{ accountStore.account?.contractNumber }}</p>
     </div>
-
-    <!-- =====================================================================
-         QUICK ACTIONS — быстрые переходы по ЛК
-         Mobile: 2×2 плитки, Desktop: 4 в ряд
-         ===================================================================== -->
-    <section class="md:hidden">
-      <div class="flex items-center justify-between mb-3">
-        <h2 class="text-sm font-semibold text-[var(--text-secondary)]">Быстрые действия</h2>
-      </div>
-
-      <div class="grid grid-cols-2 gap-3">
-        <NuxtLink
-          v-for="action in quickActions"
-          :key="action.to"
-          :to="action.to"
-          class="group rounded-2xl p-4 transition-all active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
-          style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-        >
-          <div class="flex items-center gap-2">
-            <p class="text-sm font-semibold text-[var(--text-primary)] leading-snug break-words">
-              {{ action.label }}
-            </p>
-            <Icon
-              name="heroicons:chevron-right"
-              class="w-5 h-5 text-[var(--text-muted)] ml-auto group-hover:translate-x-0.5 transition-transform"
-            />
-          </div>
-        </NuxtLink>
-      </div>
-    </section>
 
     <!-- =====================================================================
          MAIN CARDS — баланс и состояние подключения
