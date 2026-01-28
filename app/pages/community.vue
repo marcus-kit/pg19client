@@ -559,9 +559,9 @@ watch(isSearching, () => {
 <template>
   <!-- =========================================================================
        COMMUNITY PAGE — полноэкранный чат сообщества
-       Высота: 100vh минус header и mobile nav
+       Высота: 100dvh (моб.) минус header и mobile nav
        ========================================================================= -->
-  <div class="h-[calc(100vh-theme(spacing.16)-theme(spacing.20))] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
+  <div class="min-h-0 h-[calc(100dvh-12rem)] md:h-[calc(100vh-theme(spacing.16)-theme(spacing.6))] flex flex-col bg-[var(--bg-primary)]">
 
     <!-- =====================================================================
          HEADER — табы комнат и счётчик онлайн
