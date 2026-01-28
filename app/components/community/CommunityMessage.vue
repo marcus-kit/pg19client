@@ -55,6 +55,15 @@ const displayName = computed(() => {
 
 const avatarUrl = computed(() => props.message.user?.avatar || null)
 
+const isEdited = computed(() => {
+  if (props.message.isDeleted) return false
+  const created = new Date(props.message.createdAt).getTime()
+  const updated = new Date(props.message.updatedAt).getTime()
+  if (!Number.isFinite(created) || !Number.isFinite(updated)) return false
+  // небольшой порог, чтобы не считать insert как "редактирование"
+  return updated - created > 1500
+})
+
 const initials = computed(() => {
   const name = (displayName.value || '').trim()
   if (!name) return '?'
@@ -266,6 +275,14 @@ function handleContextMenu(event: MouseEvent): void {
               title="Отправляется"
             />
           </div>
+          <span
+            v-if="isEdited"
+            class="text-[11px] tabular-nums opacity-70"
+            :class="isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'"
+            title="Сообщение отредактировано"
+          >
+            ред.
+          </span>
           <span class="text-[11px] tabular-nums opacity-70" :class="isOwn ? 'text-white/70' : 'text-[var(--text-muted)]'">
             {{ formattedTime }}
           </span>

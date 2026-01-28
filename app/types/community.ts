@@ -197,6 +197,15 @@ export interface SendMessageResponse {
   message: CommunityMessage
 }
 
+// PATCH /api/community/messages/:id/edit
+export interface EditMessageRequest {
+  content: string
+}
+
+export interface EditMessageResponse {
+  message: CommunityMessage
+}
+
 // POST /api/community/upload/image
 export interface UploadImageResponse {
   url: string

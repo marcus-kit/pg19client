@@ -46,6 +46,7 @@ const {
   uploadImage,
   togglePin,
   deleteMessage,
+  editMessage,
   isModerator,
   isUserModerator,
   muteUser,
@@ -205,6 +206,9 @@ const chatListItems = computed<ChatListItem[]>(() => {
 const replyTo = ref<CommunityMessage | null>(null)
 const messageInputRef = ref<{ focus: () => void } | null>(null)
 
+// Редактирование сообщения
+const editingMessage = ref<CommunityMessage | null>(null)
+
 // Контекстное меню (ПКМ на сообщении)
 const contextMenu = ref({
   show: false,
@@ -262,7 +266,17 @@ function levelIcon(level: CommunityRoomLevel): string {
 
 // Отправка сообщения
 async function handleSend(content: string, options?: { replyToId?: number }): Promise<void> {
+  // Если был включён режим редактирования — считаем, что это новая отправка и выходим из редактирования
+  editingMessage.value = null
   await sendMessage(content, options)
+}
+
+// Редактирование сообщения
+async function handleEdit(id: string, content: string): Promise<void> {
+  const updated = await editMessage(id, content)
+  if (updated) {
+    editingMessage.value = null
+  }
 }
 
 // Загрузка и отправка изображения
@@ -315,11 +329,23 @@ function closeContextMenu(): void {
 // Ответить на сообщение из контекстного меню
 function handleContextReply(): void {
   if (contextMenu.value.message) {
+    editingMessage.value = null
     replyTo.value = contextMenu.value.message
     nextTick(() => {
       messageInputRef.value?.focus()
     })
   }
+}
+
+// Редактировать из контекстного меню
+function handleContextEdit(): void {
+  const msg = contextMenu.value.message
+  if (!msg) return
+  editingMessage.value = msg
+  replyTo.value = null
+  nextTick(() => {
+    messageInputRef.value?.focus()
+  })
 }
 
 // Закрепить из контекстного меню
@@ -770,6 +796,22 @@ watch(isSearching, () => {
         <!-- Typing indicator -->
         <CommunityTypingIndicator :typing-users="typingUsers" />
 
+        <!-- Error banner -->
+        <div
+          v-if="error"
+          class="px-4 py-2 bg-red-500/15 text-red-300 text-sm flex items-center gap-2"
+        >
+          <Icon name="heroicons:exclamation-circle" class="w-4 h-4 flex-shrink-0" />
+          <span class="flex-1">{{ error }}</span>
+          <button
+            type="button"
+            class="text-red-200/90 hover:text-red-100 underline hover:no-underline"
+            @click="error = null"
+          >
+            Скрыть
+          </button>
+        </div>
+
         <!-- Muted banner -->
         <div
           v-if="isMuted"
@@ -784,8 +826,11 @@ watch(isSearching, () => {
           ref="messageInputRef"
           :disabled="isSending || isMuted"
           :reply-to="replyTo"
+          :editing-message="editingMessage"
           @send="handleSend"
           @cancel-reply="replyTo = null"
+          @edit="handleEdit"
+          @cancel-edit="editingMessage = null"
           @upload="handleUpload"
           @typing="broadcastTyping"
         />
@@ -803,10 +848,18 @@ watch(isSearching, () => {
       :x="contextMenu.x"
       :y="contextMenu.y"
       :is-own="contextMenu.message?.userId === userStore.user?.id"
+      :can-edit="!!contextMenu.message
+        && !isMuted
+        && String(contextMenu.message.userId) === String(userStore.user?.id)
+        && !contextMenu.message.isDeleted
+        && contextMenu.message.contentType === 'text'
+        && !String(contextMenu.message.id).startsWith('temp-')
+        && contextMenu.message.status !== 'sending'"
       :is-pinned="contextMenu.message?.isPinned || false"
       :show-moderation="showModeration"
       @close="closeContextMenu"
       @reply="handleContextReply"
+      @edit="handleContextEdit"
       @report="contextMenu.message && handleReportClick(contextMenu.message.id as number)"
       @pin="handleContextPin"
       @mute="contextMenu.message && handleMuteClick(contextMenu.message.userId)"

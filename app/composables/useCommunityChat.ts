@@ -10,7 +10,8 @@ import type {
   GetMessagesResponse,
   GetMyRoleResponse,
   GetModeratorsResponse,
-  SendMessageResponse
+  SendMessageResponse,
+  EditMessageResponse
 } from '~/types/community'
 
 export function useCommunityChat() {
@@ -589,6 +590,73 @@ export function useCommunityChat() {
     }
   }
 
+  // Редактировать сообщение (только текст, автор)
+  async function editMessage(messageId: string | number, content: string): Promise<CommunityMessage | null> {
+    const trimmed = (content || '').trim()
+    if (!trimmed) return null
+
+    const idx = messages.value.findIndex(m => String(m.id) === String(messageId))
+    if (idx === -1) return null
+
+    const original = messages.value[idx]
+    if (original.isDeleted) return null
+    if (original.contentType !== 'text') return null
+    if (String(original.id).startsWith('temp-')) return null
+
+    // Optimistic update
+    const prev = { ...original }
+    const optimistic: CommunityMessage = {
+      ...original,
+      content: trimmed,
+      updatedAt: new Date().toISOString()
+    }
+    messages.value[idx] = optimistic
+
+    // Также обновим закреплённые, если там есть
+    const pinnedIdx = pinnedMessages.value.findIndex(m => String(m.id) === String(messageId))
+    const pinnedPrev = pinnedIdx !== -1 ? { ...pinnedMessages.value[pinnedIdx] } : null
+    if (pinnedIdx !== -1) {
+      pinnedMessages.value[pinnedIdx] = {
+        ...pinnedMessages.value[pinnedIdx],
+        content: trimmed,
+        updatedAt: optimistic.updatedAt
+      }
+    }
+
+    try {
+      const response = await $fetch<EditMessageResponse>(`/api/community/messages/${messageId}/edit`, {
+        method: 'PATCH',
+        body: { content: trimmed }
+      })
+
+      // API не возвращает replyTo — сохраняем локально
+      const merged: CommunityMessage = {
+        ...optimistic,
+        ...response.message,
+        replyTo: optimistic.replyTo ?? original.replyTo ?? null,
+        status: original.status
+      }
+
+      const newIdx = messages.value.findIndex(m => String(m.id) === String(messageId))
+      if (newIdx !== -1) messages.value[newIdx] = merged
+
+      const newPinnedIdx = pinnedMessages.value.findIndex(m => String(m.id) === String(messageId))
+      if (newPinnedIdx !== -1) pinnedMessages.value[newPinnedIdx] = { ...pinnedMessages.value[newPinnedIdx], ...merged }
+
+      error.value = null
+      return merged
+    } catch (e: unknown) {
+      // Revert on error
+      const revertIdx = messages.value.findIndex(m => String(m.id) === String(messageId))
+      if (revertIdx !== -1) messages.value[revertIdx] = prev
+      if (pinnedIdx !== -1 && pinnedPrev) pinnedMessages.value[pinnedIdx] = pinnedPrev
+
+      const err = e as { data?: { message?: string } }
+      error.value = err.data?.message || 'Ошибка редактирования'
+      return null
+    }
+  }
+
   // Realtime подписка
   async function subscribe() {
     if (!currentRoom.value) return
@@ -685,11 +753,26 @@ export function useCommunityChat() {
           const updated = payload.new as any
           const idx = messages.value.findIndex(m => m.id === updated.id)
           if (idx !== -1) {
-            messages.value[idx] = {
+            const nextMsg: CommunityMessage = {
               ...messages.value[idx],
               isDeleted: updated.is_deleted,
               isPinned: updated.is_pinned,
-              content: updated.is_deleted ? 'Сообщение удалено' : updated.content
+              content: updated.is_deleted ? 'Сообщение удалено' : updated.content,
+              updatedAt: updated.updated_at || messages.value[idx].updatedAt
+            }
+            messages.value[idx] = nextMsg
+
+            // Синхронизируем pinnedMessages (для чужих действий/редактирований)
+            const pIdx = pinnedMessages.value.findIndex(m => m.id === updated.id)
+            if (nextMsg.isPinned) {
+              if (pIdx !== -1) {
+                pinnedMessages.value[pIdx] = { ...pinnedMessages.value[pIdx], ...nextMsg }
+              } else {
+                // Нет данных user в payload — просто перезагрузим закреплённые
+                void loadPinnedMessages()
+              }
+            } else if (pIdx !== -1) {
+              pinnedMessages.value.splice(pIdx, 1)
             }
           }
         }
@@ -920,6 +1003,7 @@ export function useCommunityChat() {
     uploadImage,
     togglePin,
     deleteMessage,
+    editMessage,
     unsubscribe,
     markAsRead,
     broadcastTyping,
