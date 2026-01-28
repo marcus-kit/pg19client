@@ -60,6 +60,7 @@ let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
 let touchStartX = 0
 let touchStartY = 0
 let touchTarget: HTMLElement | null = null // Сохраняем элемент, на котором началось касание
+let replyQuoteTouchStartTime = 0 // Время начала касания на превью ответа
 
 // =============================================================================
 // METHODS
@@ -135,6 +136,33 @@ function handleTouchEnd(): void {
   }
   
   touchTarget = null
+}
+
+// Обработчик клика на превью ответа (для мобилки)
+function handleReplyQuoteClick(): void {
+  if (props.message.replyTo?.id) {
+    emit('scrollToReply', props.message.replyTo.id)
+  }
+}
+
+// Обработчик touch-событий на превью ответа (для мобилки)
+function handleReplyQuoteTouchStart(event: TouchEvent): void {
+  // Останавливаем всплытие, чтобы не триггерить долгое нажатие на сообщении
+  event.stopPropagation()
+  replyQuoteTouchStartTime = Date.now()
+}
+
+function handleReplyQuoteTouchEnd(event: TouchEvent): void {
+  // Останавливаем всплытие
+  event.stopPropagation()
+  
+  // Если это был быстрый тап (менее 300ms) - переходим к сообщению
+  const touchDuration = Date.now() - replyQuoteTouchStartTime
+  if (touchDuration < 300 && props.message.replyTo?.id) {
+    emit('scrollToReply', props.message.replyTo.id)
+  }
+  
+  replyQuoteTouchStartTime = 0
 }
 
 // Отмена при движении пальца
@@ -238,9 +266,11 @@ function closeImageModal(): void {
         <!-- Reply quote -->
         <div 
           v-if="message.replyTo" 
-          class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm cursor-pointer hover:opacity-100 transition-opacity" 
+          class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm cursor-pointer hover:opacity-100 transition-opacity active:opacity-100" 
           :class="isOwn ? 'border-white/30' : 'border-white/20'"
-          @click="message.replyTo?.id && emit('scrollToReply', message.replyTo.id)"
+          @click.stop="handleReplyQuoteClick"
+          @touchstart.stop="handleReplyQuoteTouchStart"
+          @touchend.stop="handleReplyQuoteTouchEnd"
         >
           <div class="flex items-center gap-1">
             <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3" />
