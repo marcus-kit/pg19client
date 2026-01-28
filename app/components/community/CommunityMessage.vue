@@ -58,6 +58,7 @@ const isHolding = ref(false) // Состояние долгого нажатия
 let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
 let touchStartX = 0
 let touchStartY = 0
+let touchTarget: HTMLElement | null = null // Сохраняем элемент, на котором началось касание
 
 // =============================================================================
 // METHODS
@@ -75,7 +76,12 @@ function handleTouchStart(event: TouchEvent): void {
     return
   }
   
+  // Сохраняем элемент, на котором началось касание
+  touchTarget = event.target as HTMLElement
+  
   const touch = event.touches[0]
+  if (!touch) return
+  
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   
@@ -108,12 +114,26 @@ function handleTouchStart(event: TouchEvent): void {
 
 // Отмена долгого нажатия
 function handleTouchEnd(): void {
+  const wasLongPress = touchHoldTimer === null // Если таймер уже null, значит долгое нажатие сработало
+  const wasImageClick = touchTarget && (
+    touchTarget.tagName === 'IMG' || 
+    (touchTarget.tagName === 'BUTTON' && touchTarget.querySelector('img'))
+  )
+  
   if (touchHoldTimer) {
     clearTimeout(touchHoldTimer)
     touchHoldTimer = null
   }
+  
   // Убираем подсветку
   isHolding.value = false
+  
+  // Если это был обычный тап (не долгое нажатие) по изображению - открываем модальное окно
+  if (!wasLongPress && wasImageClick && props.message.contentType === 'image' && props.message.imageUrl) {
+    showImageModal.value = true
+  }
+  
+  touchTarget = null
 }
 
 // Отмена при движении пальца
@@ -121,6 +141,8 @@ function handleTouchMove(event: TouchEvent): void {
   if (!touchHoldTimer) return
   
   const touch = event.touches[0]
+  if (!touch) return
+  
   const deltaX = Math.abs(touch.clientX - touchStartX)
   const deltaY = Math.abs(touch.clientY - touchStartY)
   
@@ -143,9 +165,15 @@ onUnmounted(() => {
 })
 
 // Открыть изображение в модальном окне
-function openImageModal(event: MouseEvent): void {
+function openImageModal(event: MouseEvent | TouchEvent): void {
   event.preventDefault()
   event.stopPropagation()
+  // Отменяем долгое нажатие если оно было запущено
+  if (touchHoldTimer) {
+    clearTimeout(touchHoldTimer)
+    touchHoldTimer = null
+  }
+  isHolding.value = false
   showImageModal.value = true
 }
 
@@ -222,7 +250,10 @@ function closeImageModal(): void {
           <template v-else>
             <!-- Image -->
             <template v-if="message.contentType === 'image' && message.imageUrl">
-              <button @click="openImageModal" class="block mb-1">
+              <button 
+                @click="openImageModal" 
+                class="block mb-1"
+              >
                 <img 
                   :src="message.imageUrl" 
                   :alt="message.content || 'Изображение'" 
@@ -274,7 +305,10 @@ function closeImageModal(): void {
       <template v-else>
         <!-- Image -->
         <template v-if="message.contentType === 'image' && message.imageUrl">
-              <button @click="openImageModal" class="block mb-1">
+              <button 
+                @click="openImageModal" 
+                class="block mb-1"
+              >
                 <img 
                   :src="message.imageUrl" 
                   :alt="message.content || 'Изображение'" 
