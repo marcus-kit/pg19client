@@ -426,7 +426,7 @@ onMounted(async () => {
     const roomToSelect = buildingRoom || rooms.value[0]
     if (roomToSelect) {
       await selectRoom(roomToSelect)
-    }
+  }
   }
 
   // Настраиваем observer для отслеживания видимых дат
@@ -585,14 +585,14 @@ watch(messages, () => {
               :ref="el => { if (el) messageRefs.set(index, el as HTMLElement) }"
               :data-message-index="index"
             >
-              <CommunityMessage
-                :message="msg"
-                :is-own="msg.userId === userStore.user?.id"
-                :show-moderation="showModeration"
+          <CommunityMessage
+            :message="msg"
+            :is-own="msg.userId === userStore.user?.id"
+            :show-moderation="showModeration"
                 :is-user-moderator="isUserModerator(typeof msg.userId === 'string' ? Number(msg.userId) : msg.userId)"
-                @contextmenu="handleContextMenu"
-                @retry="handleRetry"
-              />
+            @contextmenu="handleContextMenu"
+            @retry="handleRetry"
+          />
             </div>
           </template>
         </div>
@@ -611,16 +611,16 @@ watch(messages, () => {
 
         <!-- Input -->
         <div class="flex-shrink-0 bg-[var(--bg-primary)]">
-          <CommunityMessageInput
-            ref="messageInputRef"
-            :disabled="isSending || isMuted"
-            :reply-to="replyTo"
+        <CommunityMessageInput
+          ref="messageInputRef"
+          :disabled="isSending || isMuted"
+          :reply-to="replyTo"
             :editing-message="editingMessage"
-            @send="handleSend"
+          @send="handleSend"
             @cancel-reply="replyTo = null; editingMessage = null"
-            @upload="handleUpload"
-            @typing="broadcastTyping"
-          />
+          @upload="handleUpload"
+          @typing="broadcastTyping"
+        />
         </div>
       </template>
 

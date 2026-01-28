@@ -256,7 +256,7 @@ async function requestConnection(service: Service): Promise<void> {
                 <div class="flex items-center justify-between mt-4">
                   <div>
                     <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
-                      {{ formatKopeks(getSubscriptionPrice(sub)) }}
+                    {{ formatKopeks(getSubscriptionPrice(sub)) }}
                       <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
                     </div>
                     <p v-if="sub.service?.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
@@ -315,7 +315,7 @@ async function requestConnection(service: Service): Promise<void> {
               <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
                 <div>
                   <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
-                    {{ formatKopeks(service.priceMonthly) }}
+                  {{ formatKopeks(service.priceMonthly) }}
                     <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
                   </div>
                   <p v-if="service.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
