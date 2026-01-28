@@ -31,6 +31,7 @@ const emit = defineEmits<{
   mute: [userId: number]
   retry: [tempId: string]
   contextmenu: [event: MouseEvent, message: CommunityMessage]
+  scrollToReply: [messageId: string | number]
 }>()
 
 // =============================================================================
@@ -235,7 +236,12 @@ function closeImageModal(): void {
         </div>
 
         <!-- Reply quote -->
-        <div v-if="message.replyTo" class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm" :class="isOwn ? 'border-white/30' : 'border-white/20'">
+        <div 
+          v-if="message.replyTo" 
+          class="mb-1 pb-1 border-l-2 pl-2 opacity-80 text-sm cursor-pointer hover:opacity-100 transition-opacity" 
+          :class="isOwn ? 'border-white/30' : 'border-white/20'"
+          @click="message.replyTo?.id && emit('scrollToReply', message.replyTo.id)"
+        >
           <div class="flex items-center gap-1">
             <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3" />
             <span class="font-medium">{{ message.replyTo.user?.firstName }}:</span>

@@ -362,6 +362,77 @@ function handleContextDelete(): void {
   }
 }
 
+// Прокрутить к сообщению по ID
+function scrollToMessage(messageId: string | number): void {
+  if (!messagesContainer.value) return
+  
+  // Нормализуем ID для сравнения (используем строковое сравнение)
+  const targetIdStr = String(messageId)
+  
+  // Находим индекс сообщения (используем строковое сравнение)
+  const messageIndex = messages.value.findIndex(msg => {
+    return String(msg.id) === targetIdStr
+  })
+  
+  if (messageIndex === -1) {
+    console.warn('Message not found:', messageId, 'Total messages:', messages.value.length)
+    // Попробуем найти через data-атрибут
+    const allMessageElements = messagesContainer.value.querySelectorAll('[data-message-id]')
+    for (const el of allMessageElements) {
+      if (el.getAttribute('data-message-id') === targetIdStr) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('highlight-message')
+        setTimeout(() => {
+          el.classList.remove('highlight-message')
+        }, 2000)
+        return
+      }
+    }
+    return
+  }
+  
+  // Получаем элемент сообщения
+  const messageElement = messageRefs.value.get(messageIndex)
+  if (!messageElement) {
+    // Если элемент еще не создан, ждем следующего тика
+    nextTick(() => {
+      const retryElement = messageRefs.value.get(messageIndex)
+      if (retryElement && messagesContainer.value) {
+        scrollToElement(retryElement)
+      }
+    })
+    return
+  }
+  
+  // Прокручиваем к сообщению
+  scrollToElement(messageElement)
+}
+
+// Вспомогательная функция для прокрутки к элементу
+function scrollToElement(element: HTMLElement): void {
+  if (!messagesContainer.value) return
+  
+  nextTick(() => {
+    if (messagesContainer.value && element) {
+      const containerRect = messagesContainer.value.getBoundingClientRect()
+      const elementRect = element.getBoundingClientRect()
+      const scrollTop = messagesContainer.value.scrollTop
+      const targetScrollTop = scrollTop + (elementRect.top - containerRect.top) - 20 // 20px отступ сверху
+      
+      messagesContainer.value.scrollTo({
+        top: targetScrollTop,
+        behavior: 'smooth'
+      })
+      
+      // Добавляем визуальную подсветку
+      element.classList.add('highlight-message')
+      setTimeout(() => {
+        element.classList.remove('highlight-message')
+      }, 2000)
+    }
+  })
+}
+
 // =============================================================================
 // Mute Modal
 // =============================================================================
@@ -601,6 +672,7 @@ watch(messages, () => {
             <div
               :ref="el => { if (el) messageRefs.set(index, el as HTMLElement) }"
               :data-message-index="index"
+              :data-message-id="String(msg.id)"
             >
           <CommunityMessage
             :message="msg"
@@ -609,6 +681,7 @@ watch(messages, () => {
                 :is-user-moderator="isUserModerator(typeof msg.userId === 'string' ? Number(msg.userId) : msg.userId)"
             @contextmenu="handleContextMenu"
             @retry="handleRetry"
+            @scroll-to-reply="scrollToMessage"
           />
             </div>
           </template>
@@ -635,6 +708,7 @@ watch(messages, () => {
             :editing-message="editingMessage"
           @send="handleSend"
             @cancel-reply="replyTo = null; editingMessage = null"
+          @scroll-to-reply="scrollToMessage"
           @upload="handleUpload"
           @typing="broadcastTyping"
         />
@@ -681,3 +755,23 @@ watch(messages, () => {
     />
   </div>
 </template>
+
+<style scoped>
+.highlight-message {
+  animation: highlight 2s ease-in-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: rgba(59, 130, 246, 0.3);
+    transform: scale(1.02);
+  }
+  50% {
+    background-color: rgba(59, 130, 246, 0.2);
+  }
+  100% {
+    background-color: transparent;
+    transform: scale(1);
+  }
+}
+</style>

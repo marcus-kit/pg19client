@@ -25,6 +25,7 @@ const emit = defineEmits<{
   cancelReply: []
   upload: [file: File]
   typing: []
+  scrollToReply: [messageId: string | number]
 }>()
 
 // =============================================================================
@@ -127,12 +128,13 @@ defineExpose({ focus })
     <!-- Reply preview -->
     <div
       v-if="replyTo"
-      class="mb-2 flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded text-sm"
+      class="mb-2 flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded text-sm cursor-pointer hover:bg-white/10 transition-colors"
+      @click="replyTo.id && emit('scrollToReply', replyTo.id)"
     >
       <Icon name="heroicons:arrow-uturn-left" class="w-3 h-3 text-primary flex-shrink-0" />
       <span class="text-primary font-medium">{{ replyTo.user?.firstName }}:</span>
       <span class="text-[var(--text-muted)] truncate flex-1">{{ replyTo.content }}</span>
-      <button @click="emit('cancelReply')" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
+      <button @click.stop="emit('cancelReply')" class="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
         <Icon name="heroicons:x-mark" class="w-4 h-4" />
       </button>
     </div>
