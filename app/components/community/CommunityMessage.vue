@@ -54,6 +54,7 @@ const displayName = computed(() => {
 // =============================================================================
 
 const showImageModal = ref(false)
+const isHolding = ref(false) // Состояние долгого нажатия для визуальной обратной связи
 let touchHoldTimer: ReturnType<typeof setTimeout> | null = null
 let touchStartX = 0
 let touchStartY = 0
@@ -78,6 +79,9 @@ function handleTouchStart(event: TouchEvent): void {
   touchStartX = touch.clientX
   touchStartY = touch.clientY
   
+  // Включаем визуальную подсветку сразу при начале касания
+  isHolding.value = true
+  
   // Запускаем таймер для долгого нажатия (500ms)
   touchHoldTimer = setTimeout(() => {
     // Вибрация (если поддерживается)
@@ -95,6 +99,10 @@ function handleTouchStart(event: TouchEvent): void {
     
     emit('contextmenu', syntheticEvent, props.message)
     touchHoldTimer = null
+    // Убираем подсветку через небольшую задержку после открытия меню
+    setTimeout(() => {
+      isHolding.value = false
+    }, 300)
   }, 500)
 }
 
@@ -104,6 +112,8 @@ function handleTouchEnd(): void {
     clearTimeout(touchHoldTimer)
     touchHoldTimer = null
   }
+  // Убираем подсветку
+  isHolding.value = false
 }
 
 // Отмена при движении пальца
@@ -120,6 +130,8 @@ function handleTouchMove(event: TouchEvent): void {
       clearTimeout(touchHoldTimer)
       touchHoldTimer = null
     }
+    // Убираем подсветку при движении
+    isHolding.value = false
   }
 }
 
@@ -153,9 +165,6 @@ function closeImageModal(): void {
       message.status === 'failed' && 'bg-red-500/10'
     ]"
     @contextmenu.prevent="handleContextMenu"
-    @touchstart.prevent="handleTouchStart"
-    @touchend.prevent="handleTouchEnd"
-    @touchmove.prevent="handleTouchMove"
   >
     <div
       :class="[
@@ -166,11 +175,17 @@ function closeImageModal(): void {
       <!-- Message bubble -->
       <div
         :class="[
-          'rounded-2xl px-4 py-2 mb-1 break-words relative',
+          'rounded-2xl px-4 py-2 mb-1 break-words relative transition-all duration-200',
           isOwn
             ? 'bg-blue-500 text-white'
-            : 'bg-white/10 text-[var(--text-primary)]'
+            : 'bg-white/10 text-[var(--text-primary)]',
+          isHolding && isOwn && 'bg-blue-400 brightness-110 scale-[1.02] shadow-lg z-50',
+          isHolding && !isOwn && 'bg-white/20 brightness-110 scale-[1.02] shadow-lg z-50'
         ]"
+        :style="isHolding ? { filter: 'none', backdropFilter: 'none' } : {}"
+        @touchstart.prevent="handleTouchStart"
+        @touchend.prevent="handleTouchEnd"
+        @touchmove.prevent="handleTouchMove"
       >
         <!-- Nickname (для чужих на мобильных, для всех на десктопе) -->
         <div v-if="!isOwn" class="flex items-center gap-2 mb-1">
