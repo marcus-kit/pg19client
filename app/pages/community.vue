@@ -142,14 +142,13 @@ const searchStats = computed(() => {
   return `${filteredMessages.value.length} из ${messages.value.length}`
 })
 
-// Разделители по датам (UI-only)
+// Разделители по датам и группировка подряд идущих от одного пользователя (UI-only)
 type ChatListItem =
   | { type: 'day'; key: string; label: string }
-  | { type: 'msg'; key: string; msg: CommunityMessage }
+  | { type: 'msg'; key: string; msg: CommunityMessage; isFirstInGroup: boolean }
 
 function dayKey(dateStr: string): string {
   const d = new Date(dateStr)
-  // YYYY-MM-DD
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
@@ -176,6 +175,7 @@ function dayLabel(dateStr: string): string {
 const chatListItems = computed<ChatListItem[]>(() => {
   const items: ChatListItem[] = []
   let prevDay: string | null = null
+  let prevUserId: string | null = null
 
   for (const msg of filteredMessages.value) {
     const currentDay = dayKey(msg.createdAt)
@@ -186,11 +186,15 @@ const chatListItems = computed<ChatListItem[]>(() => {
         label: dayLabel(msg.createdAt)
       })
       prevDay = currentDay
+      prevUserId = null
     }
+    const isFirstInGroup = prevUserId !== msg.userId
+    prevUserId = msg.userId
     items.push({
       type: 'msg',
       key: `msg-${msg.id}`,
-      msg
+      msg,
+      isFirstInGroup
     })
   }
 
@@ -688,7 +692,7 @@ watch(isSearching, () => {
         <!-- Messages -->
         <div
           ref="messagesContainer"
-          class="flex-1 overflow-y-auto py-2 font-mono text-sm"
+          class="flex-1 overflow-y-auto py-2 text-sm"
           @scroll="handleScroll"
         >
           <!-- Loading indicator for history -->
@@ -736,6 +740,7 @@ watch(isSearching, () => {
               v-else
               :message="item.msg"
               :is-own="item.msg.userId === userStore.user?.id"
+              :show-author-header="item.type === 'msg' ? item.isFirstInGroup : true"
               :show-moderation="showModeration"
               :is-user-moderator="isUserModerator(item.msg.userId)"
               :highlight="isSearching ? searchQueryTrimmed : ''"
