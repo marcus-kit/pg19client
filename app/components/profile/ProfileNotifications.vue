@@ -109,19 +109,19 @@ function toggleType(key: 'payments' | 'maintenance' | 'promotions' | 'news'): vo
 
 <template>
   <UiCard>
-    <div class="flex items-center justify-between mb-5">
-      <h2 class="text-lg font-semibold text-[var(--text-primary)]">Уведомления</h2>
+    <div class="flex items-center justify-between mb-3 md:mb-5">
+      <h2 class="text-base md:text-lg font-semibold text-[var(--text-primary)]">Уведомления</h2>
     </div>
 
     <!-- Channels -->
-    <div class="mb-6">
-      <p class="text-sm text-[var(--text-muted)] mb-3">Каналы доставки</p>
-      <div class="grid grid-cols-2 gap-3">
+    <div class="mb-4 md:mb-6">
+      <p class="text-xs md:text-sm text-[var(--text-muted)] mb-2 md:mb-3">Каналы доставки</p>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
         <button
           v-for="channel in channels"
           :key="channel.key"
           :class="[
-            'p-3 rounded-xl border transition-all text-left',
+            'p-2 md:p-3 rounded-lg md:rounded-xl border transition-all text-left',
             channel.enabled
               ? 'bg-primary/10 border-primary/30 text-[var(--text-primary)]'
               : 'text-[var(--text-muted)] hover:border-[var(--glass-hover-border)]'
@@ -129,22 +129,22 @@ function toggleType(key: 'payments' | 'maintenance' | 'promotions' | 'news'): vo
           :style="!channel.enabled ? 'background: var(--glass-bg); border: 1px solid var(--glass-border);' : ''"
           @click="toggleChannel(channel.key)"
         >
-          <div class="flex items-center gap-3">
+          <div class="flex items-center gap-2 md:gap-3">
             <div :class="[
-              'p-2 rounded-xl',
+              'p-1.5 md:p-2 rounded-lg md:rounded-xl flex-shrink-0',
               channel.enabled ? 'bg-gradient-to-br from-primary/20 to-secondary/10' : ''
             ]" :style="!channel.enabled ? 'background: var(--glass-bg);' : ''">
               <Icon
                 :name="channel.icon"
-                :class="['w-5 h-5', channel.enabled ? 'text-primary' : 'text-[var(--text-muted)]']"
+                :class="['w-4 h-4 md:w-5 md:h-5', channel.enabled ? 'text-primary' : 'text-[var(--text-muted)]']"
               />
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-medium text-sm truncate">{{ channel.label }}</p>
-              <p class="text-xs text-[var(--text-muted)] truncate">{{ channel.description }}</p>
+              <p class="font-medium text-xs md:text-sm truncate">{{ channel.label }}</p>
+              <p class="text-[10px] md:text-xs text-[var(--text-muted)] truncate">{{ channel.description }}</p>
             </div>
             <div :class="[
-              'w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors',
+              'w-3.5 h-3.5 md:w-4 md:h-4 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0',
               channel.enabled
                 ? 'bg-primary border-primary'
                 : 'border-[var(--text-muted)]'
@@ -152,7 +152,7 @@ function toggleType(key: 'payments' | 'maintenance' | 'promotions' | 'news'): vo
               <Icon
                 v-if="channel.enabled"
                 name="heroicons:check"
-                class="w-3 h-3 text-white"
+                class="w-2.5 h-2.5 md:w-3 md:h-3 text-white"
               />
             </div>
           </div>
@@ -162,26 +162,26 @@ function toggleType(key: 'payments' | 'maintenance' | 'promotions' | 'news'): vo
 
     <!-- Types -->
     <div>
-      <p class="text-sm text-[var(--text-muted)] mb-3">Типы уведомлений</p>
-      <div class="space-y-2">
+      <p class="text-xs md:text-sm text-[var(--text-muted)] mb-2 md:mb-3">Типы уведомлений</p>
+      <div class="space-y-1.5 md:space-y-2">
         <button
           v-for="type in notificationTypes"
           :key="type.key"
-          class="w-full flex items-center justify-between p-3 rounded-xl hover:opacity-80 transition-colors"
+          class="w-full flex items-center justify-between p-2 md:p-3 rounded-lg md:rounded-xl hover:opacity-80 transition-colors"
           style="background: var(--glass-bg);"
           @click="toggleType(type.key)"
         >
-          <div>
-            <p class="text-[var(--text-primary)] text-sm font-medium text-left">{{ type.label }}</p>
-            <p class="text-xs text-[var(--text-muted)] text-left">{{ type.description }}</p>
+          <div class="flex-1 min-w-0">
+            <p class="text-[var(--text-primary)] text-xs md:text-sm font-medium text-left">{{ type.label }}</p>
+            <p class="text-[10px] md:text-xs text-[var(--text-muted)] text-left truncate">{{ type.description }}</p>
           </div>
           <div :class="[
-            'w-10 h-6 rounded-full p-1 transition-colors',
+            'w-9 h-5 md:w-10 md:h-6 rounded-full p-0.5 md:p-1 transition-colors flex-shrink-0',
             type.enabled ? 'bg-primary' : 'bg-[var(--glass-border)]'
           ]">
             <div :class="[
               'w-4 h-4 rounded-full bg-white transition-transform',
-              type.enabled ? 'translate-x-4' : 'translate-x-0'
+              type.enabled ? 'translate-x-4 md:translate-x-4' : 'translate-x-0'
             ]" />
           </div>
         </button>
