@@ -96,25 +96,6 @@ const activeTicketsCount = computed(() => {
 })
 
 // =============================================================================
-// TICKETS FILTER — Все / Новые / Закрытые / Решенные (UI-only)
-// =============================================================================
-
-type TicketsFilter = 'all' | 'new' | 'closed' | 'resolved'
-const ticketFilter = ref<TicketsFilter>('all')
-
-const ticketsCountAll = computed(() => tickets.value.length)
-const ticketsCountNew = computed(() => tickets.value.filter(t => t.status === 'new').length)
-const ticketsCountClosed = computed(() => tickets.value.filter(t => t.status === 'closed').length)
-const ticketsCountResolved = computed(() => tickets.value.filter(t => t.status === 'resolved').length)
-
-const filteredTickets = computed(() => {
-  if (ticketFilter.value === 'all') return tickets.value
-  if (ticketFilter.value === 'new') return tickets.value.filter(t => t.status === 'new')
-  if (ticketFilter.value === 'closed') return tickets.value.filter(t => t.status === 'closed')
-  return tickets.value.filter(t => t.status === 'resolved')
-})
-
-// =============================================================================
 // CONSTANTS
 // =============================================================================
 
@@ -446,165 +427,67 @@ watch(isOperatorTyping, (typing) => {
         </div>
       </UiCard>
 
-      <template v-else>
-        <template v-if="tickets.length">
-          <!-- Filters -->
-          <UiCard class="p-4">
-            <div
-              class="inline-flex w-fit rounded-xl border px-1 py-1"
-              style="background: var(--glass-bg); border-color: var(--glass-border);"
-              role="tablist"
-              aria-label="Фильтр заявок"
-            >
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="ticketFilter === 'all'"
-                :tabindex="ticketFilter === 'all' ? 0 : -1"
-                class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                :class="ticketFilter === 'all' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-                @click="ticketFilter = 'all'"
-              >
-                Все
-                <span
-                  class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-                  :class="ticketFilter === 'all' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-                  style="border: 1px solid var(--glass-border);"
-                >
-                  {{ ticketsCountAll }}
-                </span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="ticketFilter === 'new'"
-                :tabindex="ticketFilter === 'new' ? 0 : -1"
-                class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                :class="ticketFilter === 'new' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-                @click="ticketFilter = 'new'"
-              >
-                Новые
-                <span
-                  class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-                  :class="ticketFilter === 'new' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-                  style="border: 1px solid var(--glass-border);"
-                >
-                  {{ ticketsCountNew }}
-                </span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="ticketFilter === 'resolved'"
-                :tabindex="ticketFilter === 'resolved' ? 0 : -1"
-                class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                :class="ticketFilter === 'resolved' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-                @click="ticketFilter = 'resolved'"
-              >
-                Решенные
-                <span
-                  class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-                  :class="ticketFilter === 'resolved' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-                  style="border: 1px solid var(--glass-border);"
-                >
-                  {{ ticketsCountResolved }}
-                </span>
-              </button>
-              <button
-                type="button"
-                role="tab"
-                :aria-selected="ticketFilter === 'closed'"
-                :tabindex="ticketFilter === 'closed' ? 0 : -1"
-                class="px-3 py-2 rounded-lg text-sm font-semibold transition-colors"
-                :class="ticketFilter === 'closed' ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-                @click="ticketFilter = 'closed'"
-              >
-                Закрытые
-                <span
-                  class="ml-2 inline-flex items-center justify-center min-w-6 h-5 px-1 rounded-full text-xs font-bold"
-                  :class="ticketFilter === 'closed' ? 'bg-primary/15 text-primary' : 'bg-[var(--glass-bg)] text-[var(--text-muted)]'"
-                  style="border: 1px solid var(--glass-border);"
-                >
-                  {{ ticketsCountClosed }}
-                </span>
-              </button>
-            </div>
-          </UiCard>
-
-          <!-- Tickets List -->
-          <div v-if="filteredTickets.length" class="space-y-3">
-            <UiCard
-              v-for="ticket in filteredTickets"
-              :key="ticket.id"
-              hover
-              class="cursor-pointer"
-              @click="router.push(`/support/${ticket.id}`)"
-            >
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div class="flex items-start gap-4">
-                  <!-- Иконка статуса -->
-                  <div class="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
-                    <Icon
-                      :name="ticket.status === 'resolved' ? 'heroicons:check-circle' : 'heroicons:chat-bubble-left-right'"
-                      class="w-6 h-6"
-                      :class="statusConfig[ticket.status]?.color || 'text-primary'"
-                    />
-                  </div>
-                  <div>
-                    <!-- Номер и статус -->
-                    <div class="flex items-center gap-2 mb-1">
-                      <span class="text-xs text-[var(--text-muted)]">{{ ticket.number }}</span>
-                      <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
-                        {{ statusConfig[ticket.status]?.label || ticket.status }}
-                      </UiBadge>
-                    </div>
-                    <!-- Тема -->
-                    <p class="font-medium text-[var(--text-primary)]">{{ ticket.subject }}</p>
-                    <!-- Мета-информация -->
-                    <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
-                      <span class="flex items-center gap-1">
-                        <Icon name="heroicons:clock" class="w-3.5 h-3.5" />
-                        {{ formatRelativeDate(ticket.updatedAt) }}
-                      </span>
-                      <span v-if="ticket.commentsCount" class="flex items-center gap-1">
-                        <Icon name="heroicons:chat-bubble-left" class="w-3.5 h-3.5" />
-                        {{ ticket.commentsCount }} сообщ.
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
+      <!-- Tickets List -->
+      <div v-else-if="tickets.length" class="space-y-3">
+        <UiCard
+          v-for="ticket in tickets"
+          :key="ticket.id"
+          hover
+          class="cursor-pointer"
+          @click="router.push(`/support/${ticket.id}`)"
+        >
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-4">
+              <!-- Иконка статуса -->
+              <div class="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
+                <Icon
+                  :name="ticket.status === 'resolved' ? 'heroicons:check-circle' : 'heroicons:chat-bubble-left-right'"
+                  class="w-6 h-6"
+                  :class="statusConfig[ticket.status]?.color || 'text-primary'"
+                />
               </div>
-            </UiCard>
-          </div>
-
-          <!-- Empty result for current filter -->
-          <UiCard v-else class="p-8">
-            <UiEmptyState
-              icon="heroicons:inbox"
-              title="Заявок нет"
-              description="Нет заявок в выбранном фильтре"
-            >
-              <UiButton variant="secondary" @click="ticketFilter = 'all'">Показать все</UiButton>
-            </UiEmptyState>
-          </UiCard>
-        </template>
-
-        <!-- Empty State -->
-        <UiCard v-else class="p-8">
-          <div class="text-center">
-            <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-4">
-              <Icon name="heroicons:inbox" class="w-8 h-8 text-primary" />
+              <div>
+                <!-- Номер и статус -->
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs text-[var(--text-muted)]">{{ ticket.number }}</span>
+                  <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
+                    {{ statusConfig[ticket.status]?.label || ticket.status }}
+                  </UiBadge>
+                </div>
+                <!-- Тема -->
+                <p class="font-medium text-[var(--text-primary)]">{{ ticket.subject }}</p>
+                <!-- Мета-информация -->
+                <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                  <span class="flex items-center gap-1">
+                    <Icon name="heroicons:clock" class="w-3.5 h-3.5" />
+                    {{ formatRelativeDate(ticket.updatedAt) }}
+                  </span>
+                  <span v-if="ticket.commentsCount" class="flex items-center gap-1">
+                    <Icon name="heroicons:chat-bubble-left" class="w-3.5 h-3.5" />
+                    {{ ticket.commentsCount }} сообщ.
+                  </span>
+                </div>
+              </div>
             </div>
-            <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Заявок пока нет</h3>
-            <p class="text-[var(--text-muted)] mb-4">Создайте заявку, если у вас есть вопрос или проблема</p>
-            <UiButton @click="showNewTicketModal = true">
-              <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
-              Создать заявку
-            </UiButton>
+            <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
           </div>
         </UiCard>
-      </template>
+      </div>
+
+      <!-- Empty State -->
+      <UiCard v-else class="p-8">
+        <div class="text-center">
+          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-4">
+            <Icon name="heroicons:inbox" class="w-8 h-8 text-primary" />
+          </div>
+          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Заявок пока нет</h3>
+          <p class="text-[var(--text-muted)] mb-4">Создайте заявку, если у вас есть вопрос или проблема</p>
+          <UiButton @click="showNewTicketModal = true">
+            <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
+            Создать заявку
+          </UiButton>
+        </div>
+      </UiCard>
     </div>
 
     <!-- =====================================================================
@@ -637,22 +520,13 @@ watch(isOperatorTyping, (typing) => {
               />
             </div>
             <!-- Ответ (раскрывается при клике) -->
-            <Transition
-              enter-active-class="transition-all duration-200 ease-out"
-              enter-from-class="opacity-0 -translate-y-1 max-h-0"
-              enter-to-class="opacity-100 translate-y-0 max-h-[320px]"
-              leave-active-class="transition-all duration-150 ease-in"
-              leave-from-class="opacity-100 translate-y-0 max-h-[320px]"
-              leave-to-class="opacity-0 -translate-y-1 max-h-0"
+            <div
+              v-show="expandedFaq === item.id"
+              class="mt-3 pt-3"
+              style="border-top: 1px solid var(--glass-border);"
             >
-              <div
-                v-if="expandedFaq === item.id"
-                class="mt-3 pt-3 overflow-hidden"
-                style="border-top: 1px solid var(--glass-border);"
-              >
-                <p class="text-[var(--text-secondary)]">{{ item.answer }}</p>
-              </div>
-            </Transition>
+              <p class="text-[var(--text-secondary)]">{{ item.answer }}</p>
+            </div>
           </div>
         </UiCard>
 
@@ -677,7 +551,7 @@ watch(isOperatorTyping, (typing) => {
          Chat Tab — realtime чат с поддержкой
          ===================================================================== -->
     <div v-if="activeTab === 'chat'" class="space-y-4">
-      <UiCard class="overflow-hidden flex flex-col min-h-[70vh]">
+      <UiCard class="overflow-hidden">
         <!-- Chat Header -->
         <div class="flex items-center gap-3 pb-4 border-b border-[var(--glass-border)]">
           <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
@@ -701,7 +575,7 @@ watch(isOperatorTyping, (typing) => {
           <!-- Messages Area -->
           <div
             ref="messagesContainer"
-            class="flex-1 overflow-y-auto py-4 space-y-3 min-h-[420px]"
+            class="h-[400px] overflow-y-auto py-4 space-y-3"
           >
             <!-- Welcome message (если нет сообщений) -->
             <div v-if="messages.length === 0" class="text-center py-12">
@@ -880,14 +754,16 @@ watch(isOperatorTyping, (typing) => {
                 :disabled="isSending || isUploading"
               ></textarea>
 
-              <!-- Send button -->
+              <!-- Send button (как у Соседей: круглая, стрелка вверх) -->
               <button
                 @click="handleSendMessage"
                 :disabled="(!messageText.trim() && !pendingFile) || isSending || isUploading"
-                class="w-12 h-12 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
+                class="w-11 h-11 rounded-full bg-primary hover:bg-primary/90 disabled:opacity-50 text-white flex items-center justify-center transition-colors"
+                aria-label="Отправить"
+                title="Отправить"
               >
                 <Icon
-                  :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
+                  :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:arrow-up'"
                   class="w-5 h-5"
                   :class="{ 'animate-spin': isSending || isUploading }"
                 />
