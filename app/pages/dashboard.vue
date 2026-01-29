@@ -85,7 +85,7 @@ function closeNewsModal(): void {
     <!-- =====================================================================
          SPECIAL OFFER — специальное предложение
          ===================================================================== -->
-    <section>
+    <!-- <section>
       <UiCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
         <div class="p-3 md:p-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
           <div class="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
@@ -111,7 +111,7 @@ function closeNewsModal(): void {
           </div>
         </div>
       </UiCard>
-    </section>
+    </section> -->
 
     <!-- =====================================================================
          COMMUNITY NEWS — блок новостей

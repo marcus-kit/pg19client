@@ -44,6 +44,20 @@ const completionPercent = computed(() =>
   Math.round((completedPoints.value / totalPoints.value) * 100)
 )
 
+// =============================================================================
+// COMPUTED — адаптивный размер ФИО на мобилке (чем длиннее — тем меньше)
+// =============================================================================
+
+const fullNameTextClass = computed(() => {
+  const name = (userStore.fullName || '').trim()
+  const len = name.length
+
+  // Desktop оставляем как было (text-lg). На мобилке уменьшаем только при длинных ФИО.
+  if (len >= 34) return 'text-sm md:text-lg'
+  if (len >= 26) return 'text-base md:text-lg'
+  return 'text-lg md:text-lg'
+})
+
 // Уровень профиля (зависит от процента заполнения)
 const levelInfo = computed(() => {
   const percent = completionPercent.value
@@ -66,7 +80,7 @@ const levelInfo = computed(() => {
             <span>{{ levelInfo.level }}</span>
           </NuxtLink>
         </div>
-        <p class="text-lg font-semibold text-[var(--text-primary)]">
+        <p :class="[fullNameTextClass, 'font-semibold text-[var(--text-primary)] break-words']">
           {{ userStore.fullName || 'Не указано' }}
         </p>
       </div>

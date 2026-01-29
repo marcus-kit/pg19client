@@ -66,7 +66,10 @@ const statusConfig = computed(() => {
 // Обработчик клика на кнопку оплаты
 function handlePayClick(): void {
   if (unpaidInvoices.value.length > 0) {
-    window.open(`https://invoice.doka.team/invoice/${unpaidInvoices.value[0].id}`, '_blank')
+    const first = unpaidInvoices.value[0]
+    if (first) {
+      window.open(`https://invoice.doka.team/invoice/${first.id}`, '_blank')
+    }
   } else {
     showAllPaidModal.value = true
   }
@@ -103,7 +106,8 @@ function handlePayClick(): void {
       <div class="flex items-center gap-2 text-[var(--text-muted)]">
         <Icon name="heroicons:calendar" class="w-4 h-4" />
         <span class="text-sm">
-          Следующая оплата: <span class="text-[var(--text-primary)] font-medium">{{ nextPaymentDate }}</span>
+          Следующая оплата
+          <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
         </span>
       </div>
       <UiButton size="sm" variant="secondary" @click="handlePayClick">
