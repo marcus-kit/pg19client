@@ -12,7 +12,7 @@
 
 interface Props {
   hover?: boolean                      // Добавить hover-эффект (pointer + подсветка)
-  padding?: 'none' | 'sm' | 'md' | 'lg'
+  padding?: 'none' | 'sm' | 'md' | 'lg' | 'compact'  // compact — компактно на мобилке
 }
 
 withDefaults(defineProps<Props>(), {
@@ -25,7 +25,8 @@ const paddingClasses: Record<string, string> = {
   none: '',
   sm: 'p-4',
   md: 'p-6',
-  lg: 'p-8'
+  lg: 'p-8',
+  compact: 'p-3 md:p-6'
 }
 </script>
 

@@ -50,21 +50,21 @@ async function copyCode(): Promise<void> {
 </script>
 
 <template>
-  <UiCard class="border-accent/30 bg-gradient-to-r from-accent/10 to-primary/5">
-    <div class="flex items-center gap-4">
-      <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-        <Icon name="heroicons:gift" class="w-6 h-6 text-white" />
+  <UiCard class="border-accent/30 bg-gradient-to-r from-accent/10 to-primary/5" padding="compact">
+    <div class="flex items-center gap-3 md:gap-4">
+      <div class="flex-shrink-0 w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
+        <Icon name="heroicons:gift" class="w-5 h-5 md:w-6 md:h-6 text-white" />
       </div>
       <div class="flex-1 min-w-0">
-        <div class="flex items-center gap-2 mb-1 flex-wrap">
-          <span class="text-sm font-medium text-[var(--text-primary)]">Ваш промокод</span>
+        <div class="flex items-center gap-2 mb-0.5 md:mb-1 flex-wrap">
+          <span class="text-xs md:text-sm font-medium text-[var(--text-primary)]">Ваш промокод</span>
           <span class="text-sm font-semibold text-accent whitespace-nowrap md:hidden">+300 ₽</span>
           <UiBadge variant="success" size="sm" class="hidden md:inline-flex shrink-0">
             <span class="whitespace-nowrap">+300 ₽</span>
           </UiBadge>
         </div>
         <div class="flex items-center gap-2">
-          <span class="text-xl font-bold text-[var(--text-primary)] tracking-wider">
+          <span class="text-lg md:text-xl font-bold text-[var(--text-primary)] tracking-wider">
             {{ referralStore.referralProgram?.code || '...' }}
           </span>
           <button

@@ -122,7 +122,7 @@ async function requestConnection(service: Service): Promise<void> {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-3 md:space-y-6">
     <header class="pb-1">
       <h1 class="text-2xl font-bold tracking-tight text-[var(--text-primary)]">Услуги</h1>
       <p class="text-sm text-[var(--text-muted)] mt-2">Управление подключенными услугами</p>
@@ -131,7 +131,7 @@ async function requestConnection(service: Service): Promise<void> {
     <!-- =====================================================================
          LOADING — скелетон загрузки
          ===================================================================== -->
-    <div v-if="pending" class="space-y-6">
+    <div v-if="pending" class="space-y-3 md:space-y-6">
       <section>
         <div class="h-6 bg-[var(--glass-bg)] rounded w-40 mb-4"></div>
         <div class="space-y-4">
@@ -163,7 +163,7 @@ async function requestConnection(service: Service): Promise<void> {
       <!-- =================================================================
            TABS — мои услуги / каталог
            ================================================================= -->
-      <div class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2 md:gap-4">
         <div
           class="inline-flex w-fit rounded-xl border p-1"
           style="background: var(--glass-bg); border-color: var(--glass-border);"
@@ -210,9 +210,9 @@ async function requestConnection(service: Service): Promise<void> {
            ================================================================= -->
       <section v-if="activeTab === 'my'">
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2>
-        <div v-if="subscriptions.length" class="grid gap-4">
+        <div v-if="subscriptions.length" class="grid gap-2 md:gap-4">
           <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
-            <div class="flex items-start gap-4 p-5">
+            <div class="flex items-start gap-3 p-3 md:p-5">
               <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
                 <Icon :name="getServiceIcon(sub.service)" class="w-6 h-6 text-primary" />
               </div>
@@ -232,7 +232,7 @@ async function requestConnection(service: Service): Promise<void> {
                   <!-- legacy color map kept for consistency with existing palette -->
                   <span class="hidden">{{ getStatusColor(sub.status) }}</span>
                 </div>
-                <div class="flex items-center justify-between mt-4">
+                <div class="flex items-center justify-between mt-3 md:mt-4">
                   <div>
                     <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
                       {{ formatKopeks(getSubscriptionPrice(sub)) }}
@@ -269,13 +269,13 @@ async function requestConnection(service: Service): Promise<void> {
            ================================================================= -->
       <section v-else>
         <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Доступные услуги</h2>
-        <div v-if="availableServices.length" class="grid md:grid-cols-2 gap-4">
+        <div v-if="availableServices.length" class="grid md:grid-cols-2 gap-2 md:gap-4">
           <UiCard
             v-for="service in availableServices"
             :key="service.id"
             class="p-0 overflow-hidden hover:border-primary/30 transition-colors cursor-pointer"
           >
-            <div class="p-5">
+            <div class="p-3 md:p-5">
               <div class="flex items-start gap-4">
                 <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--glass-bg);">
                   <Icon :name="service.icon || 'heroicons:cube'" class="w-5 h-5 text-[var(--text-muted)]" />
@@ -291,7 +291,7 @@ async function requestConnection(service: Service): Promise<void> {
                   </p>
                 </div>
               </div>
-              <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
+              <div class="flex items-center justify-between mt-3 md:mt-4 pt-3 md:pt-4" style="border-top: 1px solid var(--glass-border);">
                 <div>
                   <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
                     {{ formatKopeks(service.priceMonthly) }}

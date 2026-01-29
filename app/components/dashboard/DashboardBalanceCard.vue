@@ -74,11 +74,11 @@ function handlePayClick(): void {
 </script>
 
 <template>
-  <UiCard hover>
-    <div class="flex items-start justify-between mb-4">
+  <UiCard hover padding="compact">
+    <div class="flex items-start justify-between mb-3 md:mb-4">
       <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
-        <div class="flex items-center gap-3 mt-2">
+        <p class="text-xs md:text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+        <div class="flex items-center gap-2 md:gap-3 mt-1 md:mt-2">
           <span class="relative flex h-3 w-3">
             <span
               class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
@@ -89,7 +89,7 @@ function handlePayClick(): void {
               :class="statusConfig.color"
             ></span>
           </span>
-          <span class="text-xl font-semibold text-[var(--text-primary)]">
+          <span class="text-lg md:text-xl font-semibold text-[var(--text-primary)]">
             {{ statusConfig.text }}
           </span>
         </div>
