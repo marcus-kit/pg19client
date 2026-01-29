@@ -87,25 +87,25 @@ function closeNewsModal(): void {
          ===================================================================== -->
     <section>
       <UiCard class="p-0 overflow-hidden border-primary/30 bg-gradient-to-r from-primary/10 to-secondary/5">
-        <div class="p-6 flex flex-col md:flex-row md:items-center gap-6">
-          <div class="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Icon name="heroicons:gift" class="w-8 h-8 text-white" />
+        <div class="p-3 md:p-6 flex flex-col md:flex-row md:items-center gap-3 md:gap-6">
+          <div class="flex-shrink-0 w-12 h-12 md:w-16 md:h-16 rounded-xl md:rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+            <Icon name="heroicons:gift" class="w-6 h-6 md:w-8 md:h-8 text-white" />
           </div>
-          <div class="flex-1">
+          <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <span class="px-2 py-0.5 text-xs font-semibold bg-primary/20 text-primary rounded-full">
+              <span class="px-2 py-0.5 text-[10px] md:text-xs font-semibold bg-primary/20 text-primary rounded-full">
                 Специальное предложение
               </span>
             </div>
-            <h3 class="text-xl font-bold text-[var(--text-primary)] mb-1">
+            <h3 class="text-base md:text-xl font-bold text-[var(--text-primary)] mb-1">
               ТВ Расширенный — месяц бесплатно
             </h3>
-            <p class="text-[var(--text-muted)] text-sm">
+            <p class="text-[var(--text-muted)] text-xs md:text-sm">
               191 канал + кинозалы. Подключите сейчас и смотрите бесплатно до 28 февраля!
             </p>
           </div>
           <div class="flex-shrink-0">
-            <UiButton variant="primary">
+            <UiButton variant="primary" size="sm" class="text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2">
               Подключить
             </UiButton>
           </div>

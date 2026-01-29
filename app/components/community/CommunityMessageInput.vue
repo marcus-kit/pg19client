@@ -68,11 +68,11 @@ function handleSend(): void {
   const replyToId = props.replyTo?.id ? String(props.replyTo.id) : undefined
   
   // Отправляем с replyToId и файлом (если есть)
-  emit('send', text.value, { 
+  emit('send', text.value, {
     replyToId, 
     file: selectedImage.value || undefined 
   })
-  
+
   text.value = ''
   selectedImage.value = null
   imagePreview.value = null
