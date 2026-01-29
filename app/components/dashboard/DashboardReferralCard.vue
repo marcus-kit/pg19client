@@ -58,7 +58,7 @@ async function copyCode(): Promise<void> {
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
           <span class="text-sm font-medium text-[var(--text-primary)]">Ваш промокод</span>
-          <UiBadge variant="success" size="sm">+300 ₽</UiBadge>
+          <UiBadge variant="success" size="sm" class="hidden md:inline-flex">+300 ₽</UiBadge>
         </div>
         <div class="flex items-center gap-2">
           <span class="text-xl font-bold text-[var(--text-primary)] tracking-wider">
@@ -75,11 +75,14 @@ async function copyCode(): Promise<void> {
           </button>
         </div>
       </div>
-      <NuxtLink to="/profile" class="flex-shrink-0">
-        <UiButton size="sm" variant="secondary">
-          Подробнее
-        </UiButton>
-      </NuxtLink>
+      <div class="flex-shrink-0 flex flex-col md:block items-end md:items-center gap-2">
+        <UiBadge variant="success" size="sm" class="md:hidden">+300 ₽</UiBadge>
+        <NuxtLink to="/profile">
+          <UiButton size="sm" variant="secondary">
+            Подробнее
+          </UiButton>
+        </NuxtLink>
+      </div>
     </div>
   </UiCard>
 </template>

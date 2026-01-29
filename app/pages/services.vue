@@ -76,7 +76,7 @@ function getSubscriptionPrice(sub: Subscription): number {
 
 // Получить CSS-класс для бейджа статуса
 function getStatusColor(status: string): string {
-  const colorMap: Record<string, string> = {
+  const colorMap: { green: string; yellow: string; gray: string } = {
     green: 'bg-accent/20 text-accent',
     yellow: 'bg-yellow-500/20 text-yellow-400',
     gray: 'bg-gray-600/20 text-gray-400'
@@ -86,8 +86,10 @@ function getStatusColor(status: string): string {
   if (!colorValue || typeof colorValue !== 'string') {
     return colorMap.gray
   }
-  const result = colorMap[colorValue]
-  return result || colorMap.gray
+  if (colorValue === 'green' || colorValue === 'yellow') {
+    return colorMap[colorValue]
+  }
+  return colorMap.gray
 }
 
 function getSubscriptionStatusBadge(status: Subscription['status']): { label: string; variant: 'success' | 'warning' | 'neutral' } {
@@ -297,37 +299,38 @@ async function requestConnection(service: Service): Promise<void> {
             :key="service.id"
             class="p-0 overflow-hidden hover:border-primary/30 transition-colors cursor-pointer"
           >
-            <div class="p-5">
-              <div class="flex items-start gap-4">
-                <div class="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center" style="background: var(--glass-bg);">
-                  <Icon :name="service.icon || 'heroicons:cube'" class="w-5 h-5 text-[var(--text-muted)]" />
+            <div class="p-3 md:p-5">
+              <div class="flex items-start gap-2 md:gap-4">
+                <div class="flex-shrink-0 w-8 h-8 md:w-10 md:h-10 rounded-lg flex items-center justify-center" style="background: var(--glass-bg);">
+                  <Icon :name="service.icon || 'heroicons:cube'" class="w-4 h-4 md:w-5 md:h-5 text-[var(--text-muted)]" />
                 </div>
-                <div class="flex-1">
-                  <h3 class="font-medium text-[var(--text-primary)]">{{ service.name }}</h3>
-                  <div class="flex flex-wrap items-center gap-2 mt-1">
-                    <UiBadge v-if="!service.isActive" variant="neutral" size="sm">Архив</UiBadge>
-                    <UiBadge v-else-if="connectingServiceId === service.id" variant="warning" size="sm">В работе</UiBadge>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-sm md:text-base font-medium text-[var(--text-primary)]">{{ service.name }}</h3>
+                  <div class="flex flex-wrap items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1">
+                    <UiBadge v-if="!service.isActive" variant="neutral" size="sm" class="text-[10px] md:text-xs">Архив</UiBadge>
+                    <UiBadge v-else-if="connectingServiceId === service.id" variant="warning" size="sm" class="text-[10px] md:text-xs">В работе</UiBadge>
                   </div>
-                  <p class="text-sm text-[var(--text-muted)] mt-2 line-clamp-2">
+                  <p class="text-xs md:text-sm text-[var(--text-muted)] mt-1.5 md:mt-2 line-clamp-2">
                     {{ service.description || 'Описание отсутствует' }}
                   </p>
                 </div>
               </div>
-              <div class="flex items-center justify-between mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
-                <div>
-                  <div class="text-xl font-extrabold text-[var(--text-primary)] leading-none">
+              <div class="flex items-center justify-between mt-3 md:mt-4 pt-3 md:pt-4" style="border-top: 1px solid var(--glass-border);">
+                <div class="min-w-0 flex-1">
+                  <div class="text-base md:text-xl font-extrabold text-[var(--text-primary)] leading-none">
                   {{ formatKopeks(service.priceMonthly) }}
-                    <span class="text-xs font-semibold text-[var(--text-muted)] ml-1">руб/мес</span>
+                    <span class="text-[10px] md:text-xs font-semibold text-[var(--text-muted)] ml-0.5 md:ml-1">руб/мес</span>
                   </div>
-                  <p v-if="service.priceConnection" class="text-xs text-[var(--text-muted)] mt-1">
+                  <p v-if="service.priceConnection" class="text-[10px] md:text-xs text-[var(--text-muted)] mt-0.5 md:mt-1">
                     Подключение: <span class="text-[var(--text-secondary)] font-medium">{{ formatKopeks(service.priceConnection) }} ₽</span>
-                    <span class="ml-1">разово</span>
+                    <span class="ml-0.5 md:ml-1">разово</span>
                   </p>
                 </div>
                 <UiButton
                   size="sm"
                   variant="secondary"
                   :loading="connectingServiceId === service.id"
+                  class="ml-2 md:ml-0 text-xs md:text-sm px-2 md:px-3 py-1 md:py-1.5 flex-shrink-0"
                   @click.stop="requestConnection(service)"
                 >
                   {{ connectingServiceId === service.id ? 'Отправка...' : 'Подключить' }}

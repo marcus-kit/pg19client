@@ -592,12 +592,12 @@ export function useCommunityChat() {
     if (idx !== -1) {
       const current = messages.value[idx]
       if (current) {
-        messages.value[idx] = {
+      messages.value[idx] = {
           ...current,
-          isDeleted: true,
-          content: 'Сообщение удалено'
-        }
+        isDeleted: true,
+        content: 'Сообщение удалено'
       }
+    }
     }
   }
 

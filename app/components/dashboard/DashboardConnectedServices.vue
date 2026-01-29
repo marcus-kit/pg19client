@@ -85,13 +85,13 @@ function getServiceIcon(service: Service | undefined): string {
         </div>
       </UiCard>
     </div>
-    <UiCard v-else padding="lg">
+    <UiCard v-else class="!p-4 md:!p-6">
       <UiEmptyState
         icon="heroicons:cube"
         title="Нет подключенных услуг"
       >
         <NuxtLink to="/services">
-          <UiButton variant="secondary" class="mt-4">
+          <UiButton variant="secondary" size="sm" class="mt-2 md:mt-4 text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2">
             Выберите услугу для подключения
           </UiButton>
         </NuxtLink>

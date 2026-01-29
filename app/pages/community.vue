@@ -283,7 +283,7 @@ async function handleSend(content: string, options?: { replyToId?: string; file?
 // Загрузка и отправка изображения
 async function handleUpload(file: File): Promise<void> {
   try {
-    const { url, width, height } = await uploadImage(file)
+  const { url, width, height } = await uploadImage(file)
     
     // Передаем replyToId если есть ответ на сообщение
     const replyToId = replyTo.value?.id ? String(replyTo.value.id) : undefined
