@@ -290,29 +290,29 @@ onUnmounted(() => {
   <div class="min-h-screen mesh-gradient-hero flex flex-col">
 
     <!-- =====================================================================
-         HEADER — логотип (ведёт на дашборд)
+         HEADER — логотип (мобилка: компактнее)
          ===================================================================== -->
-    <header class="py-6">
+    <header class="py-4 md:py-6">
       <div class="container mx-auto px-4">
         <NuxtLink to="/dashboard" class="flex items-center gap-3 w-fit">
-          <img src="/logo.png" alt="PG19" class="h-10" />
+          <img src="/logo.png" alt="PG19" class="h-8 md:h-10" />
         </NuxtLink>
       </div>
     </header>
 
     <!-- Content — карточка авторизации -->
-    <main class="flex-1 flex items-center justify-center px-4 py-8 min-h-[60vh]">
+    <main class="flex-1 flex items-center justify-center px-4 py-4 md:py-8 min-h-0 md:min-h-[60vh]">
       <div class="w-full max-w-md">
-        <UiCard padding="lg" class="shadow-xl">
+        <UiCard class="shadow-xl" padding="compact">
           <!-- Логотип и заголовок -->
-          <div class="text-center mb-6">
-            <img src="/logo.png" alt="" class="h-10 mx-auto mb-4 opacity-90" />
-            <h1 class="text-xl font-bold tracking-tight text-[var(--text-primary)] mb-2">Вход в личный кабинет</h1>
-            <p class="text-sm text-[var(--text-muted)]">Выберите способ входа</p>
+          <div class="text-center mb-4 md:mb-6">
+            <img src="/logo.png" alt="" class="h-8 md:h-10 mx-auto mb-3 md:mb-4 opacity-90" />
+            <h1 class="text-lg md:text-xl font-bold tracking-tight text-[var(--text-primary)] mb-1 md:mb-2">Вход в личный кабинет</h1>
+            <p class="text-xs md:text-sm text-[var(--text-muted)]">Выберите способ входа</p>
           </div>
 
-          <!-- Табы — сегмент-контрол -->
-          <div class="flex mb-6 p-1 rounded-xl border" style="background: var(--glass-bg); border-color: var(--glass-border);">
+          <!-- Desktop: табы — сегмент-контрол -->
+          <div class="hidden md:flex mb-6 p-1 rounded-xl border" style="background: var(--glass-bg); border-color: var(--glass-border);">
             <button
               @click="setAuthMethod('telegram')"
               type="button"
@@ -348,34 +348,93 @@ onUnmounted(() => {
             </button>
           </div>
 
+          <!-- Mobile: основной способ (Telegram) + «Другие способы» -->
+          <div class="md:hidden space-y-4 mb-5">
+            <button
+              type="button"
+              :disabled="telegramLoading"
+              class="w-full py-4 px-4 rounded-2xl font-semibold text-white text-left flex items-center gap-4 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+              :class="authMethod === 'telegram'
+                ? 'bg-[#0088cc] shadow-lg ring-2 ring-[#0088cc]/30'
+                : 'bg-[#0088cc]/90 hover:bg-[#0088cc]'"
+              @click="setAuthMethod('telegram'); startTelegramAuth()"
+            >
+              <span class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Icon
+                  :name="telegramLoading ? 'heroicons:arrow-path' : 'simple-icons:telegram'"
+                  :class="['w-7 h-7', telegramLoading && 'animate-spin']"
+                />
+              </span>
+              <span>
+                <span class="block text-base">{{ telegramLoading ? 'Подключение...' : 'Войти через Telegram' }}</span>
+                <span class="block text-sm font-normal text-white/80 mt-0.5">Быстро и без пароля</span>
+              </span>
+            </button>
+
+            <div class="flex items-center gap-3">
+              <span class="flex-1 h-px" style="background: var(--glass-border);" />
+              <span class="text-xs text-[var(--text-muted)]">или другой способ</span>
+              <span class="flex-1 h-px" style="background: var(--glass-border);" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                @click="setAuthMethod('contract')"
+                type="button"
+                class="py-3 px-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-1.5 border"
+                :class="authMethod === 'contract'
+                  ? 'bg-primary/15 text-primary border-primary/40'
+                  : 'text-[var(--text-secondary)] border-[var(--glass-border)] hover:bg-[var(--glass-bg)]'"
+                style="background: var(--glass-bg);"
+              >
+                <Icon name="heroicons:document-text" class="w-5 h-5" />
+                <span>По договору</span>
+              </button>
+              <button
+                @click="setAuthMethod('call')"
+                type="button"
+                class="py-3 px-3 rounded-xl text-sm font-medium transition-all flex flex-col items-center gap-1.5 border"
+                :class="authMethod === 'call'
+                  ? 'bg-accent/15 text-accent border-accent/40'
+                  : 'text-[var(--text-secondary)] border-[var(--glass-border)] hover:bg-[var(--glass-bg)]'"
+                style="background: var(--glass-bg);"
+              >
+                <Icon name="heroicons:phone" class="w-5 h-5" />
+                <span>По звонку</span>
+              </button>
+            </div>
+          </div>
+
           <!-- -----------------------------------------------------------------
                TELEGRAM — авторизация через deeplink
                Состояния: idle → waiting → verified/expired
                ----------------------------------------------------------------- -->
-          <div v-if="authMethod === 'telegram'" class="space-y-4">
+          <div v-if="authMethod === 'telegram'" class="space-y-3 md:space-y-4">
 
-            <!-- Шаг 1: Начальный экран — кнопка входа -->
+            <!-- Шаг 1: Начальный экран — на мобилке одна кнопка уже в карточке выше, здесь только подсказка -->
             <template v-if="telegramStatus === 'idle'">
-              <p class="text-sm text-[var(--text-muted)] text-center">
-                Нажмите кнопку для входа через Telegram
-              </p>
+              <!-- Текст и кнопка только на десктопе; на мобилке CTA — большая карточка «Войти через Telegram» -->
+              <div class="hidden md:block space-y-3">
+                <p class="text-sm text-[var(--text-muted)] text-center">
+                  Нажмите кнопку для входа через Telegram
+                </p>
+                <UiButton
+                  variant="primary"
+                  block
+                  :loading="telegramLoading"
+                  class="!bg-[#0088cc] hover:!bg-[#0077b5]"
+                  @click="startTelegramAuth"
+                >
+                  <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
+                  Войти через Telegram
+                </UiButton>
+              </div>
 
-              <UiButton
-                variant="primary"
-                block
-                :loading="telegramLoading"
-                class="!bg-[#0088cc] hover:!bg-[#0077b5]"
-                @click="startTelegramAuth"
-              >
-                <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
-                Войти через Telegram
-              </UiButton>
-
-              <!-- Подсказка для новых пользователей -->
-              <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
+              <!-- Подсказка для новых пользователей (и мобилка, и десктоп) -->
+              <div class="p-2.5 md:p-3 rounded-lg text-xs md:text-sm" style="background: var(--glass-bg);">
                 <p class="text-[var(--text-muted)]">
-                  <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
-                  Если ваш Telegram не привязан к аккаунту, войдите по номеру договора и привяжите его в профиле.
+                  <Icon name="heroicons:information-circle" class="w-3.5 h-3.5 md:w-4 md:h-4 inline mr-1 align-middle" />
+                  Если Telegram не привязан — войдите по договору и привяжите в профиле.
                 </p>
               </div>
             </template>
@@ -443,7 +502,7 @@ onUnmounted(() => {
           <!-- -----------------------------------------------------------------
                ДОГОВОР — авторизация по номеру договора + ФИО
                ----------------------------------------------------------------- -->
-          <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
+          <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-4 md:space-y-5">
             <UiInput
               v-model="form.contractNumber"
               type="text"
@@ -475,28 +534,28 @@ onUnmounted(() => {
                ЗВОНОК — верификация по входящему звонку
                Состояния: idle → waiting → verified/expired
                ----------------------------------------------------------------- -->
-          <div v-else-if="authMethod === 'call'" class="space-y-4">
+          <div v-else-if="authMethod === 'call'" class="space-y-3 md:space-y-4">
 
             <!-- Шаг 1: Ввод номера телефона -->
             <template v-if="callStatus === 'idle'">
-              <p class="text-sm text-[var(--text-muted)] text-center">
+              <p class="text-xs md:text-sm text-[var(--text-muted)] text-center">
                 Введите номер телефона из договора
               </p>
 
               <!-- Поле телефона с маской IMask (+7 формат) -->
               <div class="w-full">
-                <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                <label class="block text-xs md:text-sm font-medium text-[var(--text-secondary)] mb-1.5 md:mb-2">
                   Номер телефона <span class="text-primary">*</span>
                 </label>
                 <input
                   ref="phoneInputRef"
                   type="tel"
                   required
-                  class="w-full px-4 py-4 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 border-[var(--glass-border)]"
+                  class="w-full px-4 py-3 md:py-4 rounded-xl text-base md:text-inherit text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 border-[var(--glass-border)]"
                   style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
                   placeholder="+7 (___) ___-__-__"
                 />
-                <p v-if="callPhone && !callPhoneValid" class="mt-1.5 text-sm text-red-400">
+                <p v-if="callPhone && !callPhoneValid" class="mt-1 md:mt-1.5 text-xs md:text-sm text-red-400">
                   Введите корректный номер телефона
                 </p>
               </div>
@@ -512,10 +571,10 @@ onUnmounted(() => {
               </UiButton>
 
               <!-- Подсказка о бесплатном звонке -->
-              <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
+              <div class="p-2.5 md:p-3 rounded-lg text-xs md:text-sm" style="background: var(--glass-bg);">
                 <p class="text-[var(--text-muted)]">
-                  <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
-                  Мы покажем номер, на который нужно позвонить. Звонок бесплатный.
+                  <Icon name="heroicons:information-circle" class="w-3.5 h-3.5 md:w-4 md:h-4 inline mr-1 align-middle" />
+                  Покажем номер для звонка. Звонок бесплатный.
                 </p>
               </div>
             </template>
@@ -586,8 +645,8 @@ onUnmounted(() => {
           </p>
 
           <!-- Ссылка на главную страницу сайта -->
-          <div class="mt-6 pt-6 text-center" style="border-top: 1px solid var(--glass-border);">
-            <a href="https://pg19.doka.team" class="text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
+          <div class="mt-4 md:mt-6 pt-4 md:pt-6 text-center" style="border-top: 1px solid var(--glass-border);">
+            <a href="https://pg19.doka.team" class="text-xs md:text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
               Вернуться на главную
             </a>
           </div>
@@ -597,10 +656,10 @@ onUnmounted(() => {
     </main>
 
     <!-- =====================================================================
-         FOOTER — копирайт
+         FOOTER — копирайт (мобилка: компактнее)
          ===================================================================== -->
-    <footer class="py-6 text-center text-gray-500 text-sm">
-      <p>&copy; {{ new Date().getFullYear() }} ПЖ19. Все права защищены.</p>
+    <footer class="py-4 md:py-6 text-center text-gray-500 text-xs md:text-sm">
+      <p>&copy; {{ new Date().getFullYear() }} ПЖ19</p>
     </footer>
 
   </div>
