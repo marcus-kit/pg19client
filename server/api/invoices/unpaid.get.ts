@@ -1,12 +1,12 @@
 // GET /api/invoices/unpaid
-// Возвращает неоплаченные счета для dashboard из billing.invoices
+// Возвращает неоплаченные счета для dashboard из invoices_view
 
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 
 interface InvoiceRow {
   id: string
   invoice_number: string
-  account_id: string
+  user_id: string
   contract_id: string | null
   status: InvoiceStatus
   amount: number
@@ -31,10 +31,9 @@ export default defineEventHandler(async (event) => {
 
   // Неоплаченные статусы: pending, sent, viewed, expired
   const { data, error } = await supabase
-    .schema('billing')
-    .from('invoices')
+    .from('invoices_view')
     .select('*')
-    .eq('account_id', sessionUser.accountId)
+    .eq('user_id', sessionUser.id)
     .in('status', ['pending', 'sent', 'viewed', 'expired'])
     .order('due_date', { ascending: true, nullsFirst: false })
 
@@ -47,7 +46,7 @@ export default defineEventHandler(async (event) => {
   const invoices: Invoice[] = (data as InvoiceRow[]).map(row => ({
     id: row.id,
     invoiceNumber: row.invoice_number,
-    accountId: row.account_id,
+    accountId: row.user_id,
     contractId: row.contract_id,
     status: row.status,
     amount: row.amount,

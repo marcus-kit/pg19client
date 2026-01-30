@@ -1,21 +1,17 @@
 // GET /api/services
-// Возвращает список доступных услуг
+// Возвращает список доступных услуг из services_view
 
 import type { Service } from '~/types/service'
 
 interface ServiceRow {
-  id: number
+  id: string
   name: string
-  slug: string | null
   description: string | null
   price_monthly: number
-  price_connection: number | null
-  icon: string | null
-  color: string | null
-  features: any | null
-  equipment: any | null
-  sort_order: number
+  speed_down: number | null
+  speed_up: number | null
   is_active: boolean
+  sort_order: number
 }
 
 export default defineEventHandler(async (event) => {
@@ -27,9 +23,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
 
-  // Получаем активные услуги
+  // Получаем активные услуги из services_view
   const { data, error } = await supabase
-    .from('services')
+    .from('services_view')
     .select('*')
     .eq('is_active', true)
     .order('sort_order', { ascending: true })
@@ -41,16 +37,16 @@ export default defineEventHandler(async (event) => {
 
   // Маппинг в camelCase
   const services: Service[] = (data as ServiceRow[]).map(row => ({
-    id: row.id,
+    id: Number(row.id),
     name: row.name,
-    slug: row.slug,
+    slug: null,
     description: row.description,
     priceMonthly: row.price_monthly,
-    priceConnection: row.price_connection,
-    icon: row.icon,
-    color: row.color,
-    features: row.features,
-    equipment: row.equipment,
+    priceConnection: null,
+    icon: null,
+    color: null,
+    features: null,
+    equipment: null,
     sortOrder: row.sort_order,
     isActive: row.is_active
   }))

@@ -1,33 +1,21 @@
 // GET /api/account/subscriptions
-// Возвращает подписки (подключенные услуги) пользователя
+// Возвращает подписки (подключенные услуги) пользователя из subscriptions_view
 
-import type { Subscription, SubscriptionStatus, Service } from '~/types/service'
+import type { Subscription, SubscriptionStatus } from '~/types/service'
 
 interface SubscriptionRow {
   id: string
-  account_id: string
+  object_id: string
   service_id: string
+  contract_id: string
+  user_id: string
   status: SubscriptionStatus
+  price: number
   started_at: string
-  expires_at: string | null
-  custom_price: number | null
-  is_primary: boolean
-  date_created: string
-  date_updated: string
-  service: {
-    id: string
-    name: string
-    slug: string | null
-    description: string | null
-    price_monthly: number
-    price_connection: number | null
-    icon: string | null
-    color: string | null
-    features: any | null
-    equipment: any | null
-    sort_order: number
-    is_active: boolean
-  }
+  ended_at: string | null
+  service_name: string
+  speed_down: number | null
+  speed_up: number | null
 }
 
 export default defineEventHandler(async (event) => {
@@ -39,16 +27,13 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
 
-  // Получаем подписки с информацией об услугах
+  // Получаем подписки из subscriptions_view
   const { data, error } = await supabase
-    .from('subscriptions')
-    .select(`
-      *,
-      service:services!subscriptions_service_id_fkey(*)
-    `)
-    .eq('account_id', sessionUser.accountId)
+    .from('subscriptions_view')
+    .select('*')
+    .eq('user_id', sessionUser.id)
     .in('status', ['active', 'paused'])
-    .order('is_primary', { ascending: false })
+    .order('started_at', { ascending: false })
 
   if (error) {
     console.error('Error fetching subscriptions:', error)
@@ -56,35 +41,32 @@ export default defineEventHandler(async (event) => {
   }
 
   // Маппинг в camelCase
-  const subscriptions: Subscription[] = (data as SubscriptionRow[]).map(row => {
-    const svc = row.service
-    return {
-      id: row.id,
-      accountId: row.account_id,
-      serviceId: row.service_id,
-      status: row.status,
-      startedAt: row.started_at,
-      expiresAt: row.expires_at,
-      customPrice: row.custom_price,
-      isPrimary: row.is_primary,
-      createdAt: row.date_created,
-      updatedAt: row.date_updated,
-      service: svc ? {
-        id: svc.id,
-        name: svc.name,
-        slug: svc.slug,
-        description: svc.description,
-        priceMonthly: svc.price_monthly,
-        priceConnection: svc.price_connection,
-        icon: svc.icon,
-        color: svc.color,
-        features: svc.features,
-        equipment: svc.equipment,
-        sortOrder: svc.sort_order,
-        isActive: svc.is_active
-      } : undefined
+  const subscriptions: Subscription[] = (data as SubscriptionRow[]).map(row => ({
+    id: Number(row.id),
+    accountId: Number(row.user_id),
+    serviceId: Number(row.service_id),
+    status: row.status,
+    startedAt: row.started_at,
+    expiresAt: row.ended_at,
+    customPrice: row.price,
+    isPrimary: false,
+    createdAt: row.started_at,
+    updatedAt: row.started_at,
+    service: {
+      id: Number(row.service_id),
+      name: row.service_name,
+      slug: null,
+      description: null,
+      priceMonthly: row.price,
+      priceConnection: null,
+      icon: null,
+      color: null,
+      features: null,
+      equipment: null,
+      sortOrder: 0,
+      isActive: true
     }
-  })
+  }))
 
   return { subscriptions }
 })

@@ -1,12 +1,12 @@
 // GET /api/invoices
-// Возвращает счета пользователя из billing.invoices
+// Возвращает счета пользователя из invoices_view
 
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 
 interface InvoiceRow {
   id: string
   invoice_number: string
-  account_id: string
+  user_id: string
   contract_id: string | null
   status: InvoiceStatus
   amount: number
@@ -34,12 +34,11 @@ export default defineEventHandler(async (event) => {
   const status = query.status as InvoiceStatus | undefined
   const limit = Number(query.limit) || 50
 
-  // Запрос счетов из billing.invoices
+  // Запрос счетов из invoices_view
   let dbQuery = supabase
-    .schema('billing')
-    .from('invoices')
+    .from('invoices_view')
     .select('*')
-    .eq('account_id', sessionUser.accountId)
+    .eq('user_id', sessionUser.id)
     .order('created_at', { ascending: false })
     .limit(limit)
 
@@ -58,7 +57,7 @@ export default defineEventHandler(async (event) => {
   const invoices: Invoice[] = (data as InvoiceRow[]).map(row => ({
     id: row.id,
     invoiceNumber: row.invoice_number,
-    accountId: row.account_id,
+    accountId: row.user_id,
     contractId: row.contract_id,
     status: row.status,
     amount: row.amount,
