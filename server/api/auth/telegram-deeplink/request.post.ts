@@ -70,21 +70,21 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Получаем account_id по user_id
-    const { data: account, error: accountError } = await supabase
-      .from('accounts')
+    // Получаем contract_id по user_id
+    const { data: contract, error: contractError } = await supabase
+      .from('contracts_view')
       .select('id')
       .eq('user_id', body.userId)
       .single()
 
-    if (accountError || !account) {
+    if (contractError || !contract) {
       throw createError({
         statusCode: 404,
-        message: 'Аккаунт не найден'
+        message: 'Контракт не найден'
       })
     }
 
-    accountId = account.id
+    accountId = contract.id
   }
 
   // Отменяем предыдущие pending запросы для этого IP (для login)

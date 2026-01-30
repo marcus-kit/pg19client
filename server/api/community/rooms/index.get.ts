@@ -29,22 +29,22 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
 
-  // Получаем аккаунт с адресом
-  const { data: account } = await supabase
-    .from('accounts')
+  // Получаем контракт с адресом
+  const { data: contract } = await supabase
+    .from('contracts_view')
     .select('id, address_city, address_district, address_building')
     .eq('id', sessionUser.accountId)
     .single()
 
-  if (!account?.address_city) {
+  if (!contract?.address_city) {
     throw createError({ statusCode: 400, message: 'Адрес не указан в профиле' })
   }
 
   // Обеспечиваем существование комнат для адреса
   await supabase.rpc('ensure_community_rooms', {
-    p_city: account.address_city,
-    p_district: account.address_district || null,
-    p_building: account.address_building || null
+    p_city: contract.address_city,
+    p_district: contract.address_district || null,
+    p_building: contract.address_building || null
   })
 
   // Строим условия для получения комнат
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
   let query = supabase
     .from('community_rooms')
     .select('*')
-    .eq('city', account.address_city)
+    .eq('city', contract.address_city)
     .eq('is_active', true)
 
   const { data: allRooms, error } = await query.order('level', { ascending: true })
@@ -68,10 +68,10 @@ export default defineEventHandler(async (event) => {
   const accessibleRooms = (allRooms as RoomRow[]).filter(room => {
     if (room.level === 'city') return true
     if (room.level === 'district') {
-      return room.district === account.address_district
+      return room.district === contract.address_district
     }
     if (room.level === 'building') {
-      return room.district === account.address_district && room.building === account.address_building
+      return room.district === contract.address_district && room.building === contract.address_building
     }
     return false
   })

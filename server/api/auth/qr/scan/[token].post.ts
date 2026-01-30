@@ -105,17 +105,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Получаем account
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
+  // Получаем контракт
+  const { data: contract, error: contractError } = await supabase
+    .from('contracts_view')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
-  if (accountError || !account) {
+  if (contractError || !contract) {
     throw createError({
       statusCode: 500,
-      message: 'Ошибка загрузки данных аккаунта'
+      message: 'Ошибка загрузки данных контракта'
     })
   }
 
@@ -125,7 +125,7 @@ export default defineEventHandler(async (event) => {
     .update({
       status: 'scanned',
       user_id: user.id,
-      account_id: account.id,
+      account_id: contract.id,
       telegram_id: telegramUser.id.toString(),
       telegram_username: telegramUser.username || null,
       scanned_at: new Date().toISOString()

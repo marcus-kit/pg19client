@@ -84,9 +84,9 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
     })
   }
 
-  // Загружаем данные аккаунта
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
+  // Загружаем данные контракта
+  const { data: contract, error: contractError } = await supabase
+    .from('contracts_view')
     .select(`
       id,
       contract_number,
@@ -98,30 +98,27 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
     .eq('user_id', user.id)
     .single()
 
-  if (accountError || !account) {
+  if (contractError || !contract) {
     throw createError({
       statusCode: 500,
-      message: 'Ошибка загрузки данных аккаунта'
+      message: 'Ошибка загрузки данных контракта'
     })
   }
 
   // Получаем подписки для определения тарифа
   const { data: subscriptions } = await supabase
-    .from('subscriptions')
+    .from('subscriptions_view')
     .select(`
       id,
       status,
-      services (
-        id,
-        name,
-        type
-      )
+      service_name,
+      service_type
     `)
-    .eq('account_id', account.id)
+    .eq('contract_id', contract.id)
     .eq('status', 'active')
 
-  const internetSub = subscriptions?.find((s: any) => s.services?.type === 'internet')
-  const tariffName = internetSub?.services?.name || 'Не подключен'
+  const internetSub = subscriptions?.find((s: any) => s.service_type === 'internet')
+  const tariffName = internetSub?.service_name || 'Не подключен'
 
   // Обновляем telegram_username если изменился
   if (authRequest.telegram_username && authRequest.telegram_username !== user.telegram_username) {
@@ -135,7 +132,7 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
   await createUserSession(
     event,
     user.id,
-    account.id,
+    contract.id,
     'telegram',
     authRequest.telegram_id.toString(),
     {
@@ -165,12 +162,12 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
       role: 'user'
     },
     account: {
-      contractNumber: account.contract_number,
-      balance: account.balance,
-      status: account.status,
+      contractNumber: contract.contract_number,
+      balance: contract.balance,
+      status: contract.status,
       tariff: tariffName,
-      address: account.address_full || '',
-      startDate: account.start_date
+      address: contract.address_full || '',
+      startDate: contract.start_date
     }
   }
 }

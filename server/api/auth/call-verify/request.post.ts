@@ -58,17 +58,17 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Ищем аккаунт пользователя
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
+  // Ищем контракт пользователя
+  const { data: contract, error: contractError } = await supabase
+    .from('contracts_view')
     .select('id')
     .eq('user_id', user.id)
     .single()
 
-  if (accountError || !account) {
+  if (contractError || !contract) {
     throw createError({
       statusCode: 404,
-      message: 'Аккаунт не найден'
+      message: 'Контракт не найден'
     })
   }
 
@@ -90,7 +90,7 @@ export default defineEventHandler(async (event) => {
       token,
       phone: normalizedPhone,
       user_id: user.id,
-      account_id: account.id,
+      account_id: contract.id,
       expires_at: expiresAt.toISOString(),
       ip_address: getClientIdentifier(event)
     })

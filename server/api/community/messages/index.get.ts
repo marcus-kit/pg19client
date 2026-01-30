@@ -59,20 +59,20 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, message: 'Комната не найдена' })
   }
 
-  const { data: account } = await supabase
-    .from('accounts')
+  const { data: contract } = await supabase
+    .from('contracts_view')
     .select('address_city, address_district, address_building')
     .eq('id', sessionUser.accountId)
     .single()
 
   // Проверка доступа по географии
-  if (account?.address_city !== room.city) {
+  if (contract?.address_city !== room.city) {
     throw createError({ statusCode: 403, message: 'Нет доступа к этой комнате' })
   }
-  if (room.district && account?.address_district !== room.district) {
+  if (room.district && contract?.address_district !== room.district) {
     throw createError({ statusCode: 403, message: 'Нет доступа к этой комнате' })
   }
-  if (room.building && account?.address_building !== room.building) {
+  if (room.building && contract?.address_building !== room.building) {
     throw createError({ statusCode: 403, message: 'Нет доступа к этой комнате' })
   }
 

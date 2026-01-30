@@ -18,9 +18,9 @@ export default defineEventHandler(async (event) => {
   // Используем shared Supabase client
   const supabase = useSupabaseServer()
 
-  // Ищем аккаунт по номеру договора
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
+  // Ищем контракт по номеру договора
+  const { data: contract, error: contractError } = await supabase
+    .from('contracts_view')
     .select(`
       id,
       user_id,
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     .eq('contract_number', parseInt(body.contractNumber))
     .single()
 
-  if (accountError || !account) {
+  if (contractError || !contract) {
     throw createError({
       statusCode: 404,
       message: 'Договор не найден'
@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
       vk_id,
       status
     `)
-    .eq('id', account.user_id)
+    .eq('id', contract.user_id)
     .single()
 
   if (userError || !user) {
@@ -89,25 +89,22 @@ export default defineEventHandler(async (event) => {
 
   // Получаем подписки с тарифами
   const { data: subscriptions } = await supabase
-    .from('subscriptions')
+    .from('subscriptions_view')
     .select(`
       id,
       status,
-      services (
-        id,
-        name,
-        type
-      )
+      service_name,
+      service_type
     `)
-    .eq('account_id', account.id)
+    .eq('contract_id', contract.id)
     .eq('status', 'active')
 
   // Определяем основной тариф (интернет)
-  const internetSub = subscriptions?.find(s => s.services?.type === 'internet')
-  const tariffName = internetSub?.services?.name || 'Не подключен'
+  const internetSub = subscriptions?.find((s: any) => s.service_type === 'internet')
+  const tariffName = internetSub?.service_name || 'Не подключен'
 
   // Создаём сессию с httpOnly cookie
-  await createUserSession(event, user.id, account.id, 'contract', body.contractNumber, {
+  await createUserSession(event, user.id, contract.id, 'contract', body.contractNumber, {
     last_name: body.lastName,
     first_name: body.firstName
   })
@@ -130,12 +127,12 @@ export default defineEventHandler(async (event) => {
       role: 'user'
     },
     account: {
-      contractNumber: account.contract_number,
-      balance: account.balance, // в копейках
-      status: account.status,
+      contractNumber: contract.contract_number,
+      balance: contract.balance, // в копейках
+      status: contract.status,
       tariff: tariffName,
-      address: account.address_full || '',
-      startDate: account.start_date
+      address: contract.address_full || '',
+      startDate: contract.start_date
     }
   }
 })
