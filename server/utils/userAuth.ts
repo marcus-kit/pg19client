@@ -105,7 +105,7 @@ export async function createUserSession(
   event: H3Event,
   userId: string,
   accountId: string,
-  method: 'telegram' | 'contract' | 'phone',
+  method: 'telegram' | 'contract' | 'phone' | 'qr',
   identifier: string,
   metadata?: Record<string, unknown>
 ): Promise<string> {

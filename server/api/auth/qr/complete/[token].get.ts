@@ -108,7 +108,7 @@ export default defineEventHandler(async (event) => {
     event,
     user.id,
     contract.id,
-    'telegram',
+    'qr',
     qrRequest.telegram_id,
     {
       telegram_username: qrRequest.telegram_username,
