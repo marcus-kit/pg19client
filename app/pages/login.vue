@@ -2,7 +2,7 @@
 /**
  * Страница авторизации — три метода входа:
  * 1. Telegram — через deeplink (открывает Telegram → /start → Realtime подписка)
- * 2. Договор — по номеру договора + ФИО (синхронный API запрос)
+ * 2. Договор — по номеру договора + пароль (синхронный API запрос)
  * 3. Звонок — верификация по входящему звонку (Realtime подписка)
  *
  * layout: false — страница без обёртки, header/footer инлайн
@@ -55,12 +55,15 @@ const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
 // Форма авторизации по договору
 const form = reactive({
   contractNumber: '',
-  lastName: '',
-  firstName: ''
+  password: ''
 })
 
 const isLoading = ref(false)  // Загрузка формы договора
 const error = ref('')         // Общая ошибка (для договора)
+
+// Модальное окно «Зарегистрировать»
+const showRegisterModal = ref(false)
+const showWhyDetails = ref(false)
 
 // Телефон с маской IMask
 const callPhone = ref('')
@@ -117,7 +120,7 @@ async function startCallVerification(): Promise<void> {
 async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
-  if (!form.contractNumber || !form.lastName || !form.firstName) {
+  if (!form.contractNumber || !form.password) {
     error.value = 'Заполните все поля'
     return
   }
@@ -133,8 +136,7 @@ async function handleContractSubmit(): Promise<void> {
       method: 'POST',
       body: {
         contractNumber: form.contractNumber,
-        lastName: form.lastName,
-        firstName: form.firstName
+        password: form.password
       }
     })
 
@@ -500,7 +502,7 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               ДОГОВОР — авторизация по номеру договора + ФИО
+               ДОГОВОР — авторизация по номеру договора + пароль
                ----------------------------------------------------------------- -->
           <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-4 md:space-y-5">
             <UiInput
@@ -512,17 +514,11 @@ onUnmounted(() => {
             />
 
             <UiInput
-              v-model="form.lastName"
-              type="text"
-              label="Фамилия"
-              placeholder="Иванов"
-            />
-
-            <UiInput
-              v-model="form.firstName"
-              type="text"
-              label="Имя"
-              placeholder="Иван"
+              v-model="form.password"
+              type="password"
+              label="Пароль"
+              placeholder="Введите пароль"
+              autocomplete="current-password"
             />
 
             <UiButton type="submit" variant="primary" block :loading="isLoading">
@@ -644,9 +640,16 @@ onUnmounted(() => {
             {{ error || telegramError || callError }}
           </p>
 
-          <!-- Ссылка на главную страницу сайта -->
-          <div class="mt-4 md:mt-6 pt-4 md:pt-6 text-center" style="border-top: 1px solid var(--glass-border);">
-            <a href="https://pg19.doka.team" class="text-xs md:text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
+          <!-- Ссылки внизу карточки -->
+          <div class="mt-4 md:mt-6 pt-4 md:pt-6 space-y-3 text-center" style="border-top: 1px solid var(--glass-border);">
+            <button
+              type="button"
+              class="block w-full text-sm font-medium text-primary hover:text-primary/80 transition-colors"
+              @click="showRegisterModal = true; showWhyDetails = false"
+            >
+              Зарегистрировать
+            </button>
+            <a href="https://pg19.doka.team" class="block text-xs md:text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
               Вернуться на главную
             </a>
           </div>
@@ -662,5 +665,111 @@ onUnmounted(() => {
       <p>&copy; {{ new Date().getFullYear() }} ПЖ19</p>
     </footer>
 
+    <!-- =====================================================================
+         Модальное окно «Зарегистрировать»
+         ===================================================================== -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showRegisterModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto"
+          style="background-color: var(--modal-backdrop);"
+          @click.self="showRegisterModal = false"
+        >
+          <div
+            class="w-full max-w-lg rounded-2xl p-6 my-8 transition-all duration-300"
+            style="background: var(--bg-surface); border: 1px solid var(--glass-border);"
+            :class="showWhyDetails ? 'max-h-[90vh] overflow-y-auto' : ''"
+          >
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4">
+              <h3 class="text-lg font-semibold text-[var(--text-primary)]">Регистрация</h3>
+              <button
+                class="p-1 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+                @click="showRegisterModal = false"
+              >
+                <Icon name="heroicons:x-mark" class="w-5 h-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+
+            <!-- Основной текст -->
+            <div class="space-y-4 text-sm text-[var(--text-secondary)]">
+              <p class="font-medium text-[var(--text-primary)]">
+                Вам необходимо заключить договор на аренду сети
+              </p>
+              <p class="font-semibold text-[var(--text-primary)]">
+                Мы больше не принимаем платежи
+              </p>
+              <p>
+                Уважаемые члены кооператива ПЖ19, с 01.12.2025 потребительский интернет кооператив расторгает договора на аренду сети с собственниками и более не принимает членские взносы, в связи с чем, для возобновления стабильной работы, вам необходимо самостоятельно заключить договор на аренду сети с собственником. Вы продолжите пользоваться интернетом от ПЖ19 на безвозмездной основе на правах члена кооператива.
+              </p>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="flex flex-col sm:flex-row gap-3 mt-6">
+              <button
+                type="button"
+                class="flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-colors border"
+                style="border-color: var(--glass-border); background: var(--glass-bg); color: var(--text-primary);"
+                @click="showWhyDetails = !showWhyDetails"
+              >
+                {{ showWhyDetails ? 'Скрыть подробности' : 'Почему так происходит?' }}
+              </button>
+              <button
+                type="button"
+                class="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-center bg-primary text-white hover:bg-primary/90 transition-colors"
+                @click="showRegisterModal = false; navigateTo('/register')"
+              >
+                Заключить договор
+              </button>
+            </div>
+
+            <!-- Дополнительный текст (раскрывается по клику) -->
+            <Transition
+              enter-active-class="transition-all duration-300 ease-out"
+              leave-active-class="transition-all duration-200 ease-in"
+              enter-from-class="opacity-0 max-h-0 overflow-hidden"
+              enter-to-class="opacity-100 max-h-[2000px]"
+              leave-from-class="opacity-100 max-h-[2000px]"
+              leave-to-class="opacity-0 max-h-0 overflow-hidden"
+            >
+              <div v-if="showWhyDetails" class="mt-6 pt-6 space-y-4 text-sm text-[var(--text-secondary)]" style="border-top: 1px solid var(--glass-border);">
+                <p class="font-medium text-[var(--text-primary)]">
+                  Уважаемые пайщики!
+                </p>
+                <p>
+                  ПЖ-19 с момента создания и по сей день работает исключительно для удовлетворения Ваших потребностей в получении быстрого и качественного интернета без границ. Наше добровольное некоммерческое объединение позволило сделать интернет доступнее как с точки зрения стоимости, так и географии.
+                </p>
+                <p>
+                  Законом РФ "О потребительской кооперации (потребительских обществах, их союзах) в Российской Федерации" от 19.06.1992 N 3085-1, установлено, что потребительское общество действует на основе принципов демократичности управления, взаимопомощи и доступности информации для всех пайщиков.
+                </p>
+                <p>
+                  Доводим до Вашего сведения, что налоговыми органами проведена выездная налоговая проверка кооператива, по результатам которой проверяющие пришли к выводу о том, что все денежные средства, поступавшие на счет «ПЖ-19», должны облагаться налогом. Общая сумма претензий налогового органа составила более 140 миллионов рублей.
+                </p>
+                <p>
+                  С данным решением мы не согласны, в связи с чем намерены обжаловать его в Арбитражный суд Ростовской области.
+                </p>
+                <p>
+                  Вместе с тем, мы не можем не подчиниться требованиям налогового органа, в связи с чем, кооперативом, за счет собственных денежных средств было произведено погашение задолженности.
+                </p>
+                <p>
+                  В свете произошедших событий, мы вынуждены внести ряд изменений в работу кооператива:
+                </p>
+                <ol class="list-decimal list-inside space-y-2 pl-2">
+                  <li>Стоимость членских взносов снизиться до 0 рублей.</li>
+                  <li>С 01.12.2025 «ПЖ-19» перестанет принимать платежи. Оплата будет производится непосредственно собственнику сетей, на основании заключенного договора аренды сетей, в зависимости от выбранного технического оборудования. Это позволит избежать «лишних» затрат в виде оплаты работы кооператива или наценки интернет-провайдера.</li>
+                  <li>Работа кооператива станет еще более прозрачной. «ПЖ-19» по-прежнему будет гарантировать для Вас получение быстрого и качественного интернета без границ. При этом с 01.12.2025 Вы сможете видеть состав стоимости вашего интернета и в перспективе даже сможете выбрать с кем заключать договор аренды сетей в зависимости от Ваших потребностей.</li>
+                </ol>
+              </div>
+            </Transition>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

@@ -1,14 +1,15 @@
+import bcrypt from 'bcryptjs'
+
 interface ContractAuthData {
   contractNumber: string
-  lastName: string
-  firstName: string
+  password: string
 }
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ContractAuthData>(event)
 
   // Проверяем наличие обязательных полей
-  if (!body.contractNumber || !body.lastName || !body.firstName) {
+  if (!body.contractNumber || !body.password) {
     throw createError({
       statusCode: 400,
       message: 'Заполните все поля'
@@ -18,13 +19,14 @@ export default defineEventHandler(async (event) => {
   // Используем shared Supabase client
   const supabase = useSupabaseServer()
 
-  // Ищем аккаунт по номеру договора
+  // Ищем аккаунт по номеру договора (включая password_hash для проверки)
   const { data: account, error: accountError } = await supabase
     .from('accounts')
     .select(`
       id,
       user_id,
       contract_number,
+      password_hash,
       balance,
       status,
       address_full,
@@ -37,6 +39,23 @@ export default defineEventHandler(async (event) => {
     throw createError({
       statusCode: 404,
       message: 'Договор не найден'
+    })
+  }
+
+  // Проверяем пароль
+  const passwordHash = (account as { password_hash?: string | null }).password_hash
+  if (!passwordHash) {
+    throw createError({
+      statusCode: 401,
+      message: 'Для входа по договору необходимо установить пароль. Обратитесь в поддержку.'
+    })
+  }
+
+  const passwordValid = await bcrypt.compare(body.password, passwordHash)
+  if (!passwordValid) {
+    throw createError({
+      statusCode: 401,
+      message: 'Неверный пароль'
     })
   }
 
@@ -68,17 +87,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Проверяем ФИ (регистронезависимо)
-  const lastNameMatch = user.last_name?.toLowerCase() === body.lastName.toLowerCase()
-  const firstNameMatch = user.first_name?.toLowerCase() === body.firstName.toLowerCase()
-
-  if (!lastNameMatch || !firstNameMatch) {
-    throw createError({
-      statusCode: 401,
-      message: 'Неверные данные. Проверьте фамилию и имя.'
-    })
-  }
-
   // Проверяем статус пользователя
   if (user.status === 'suspended' || user.status === 'terminated') {
     throw createError({
@@ -107,10 +115,7 @@ export default defineEventHandler(async (event) => {
   const tariffName = internetSub?.services?.name || 'Не подключен'
 
   // Создаём сессию с httpOnly cookie
-  await createUserSession(event, user.id, account.id, 'contract', body.contractNumber, {
-    last_name: body.lastName,
-    first_name: body.firstName
-  })
+  await createUserSession(event, user.id, account.id, 'contract', body.contractNumber, {})
 
   // Возвращаем данные для клиента
   return {
