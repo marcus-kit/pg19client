@@ -15,7 +15,6 @@
 
 const userStore = useUserStore()
 const accountStore = useAccountStore()
-const communityUiStore = useCommunityUiStore()
 const { logout } = useAuthInit()
 const route = useRoute()
 const colorMode = useColorMode()
@@ -30,18 +29,14 @@ const { startHeartbeat, stopHeartbeat } = usePresenceHeartbeat()
 // Desktop навигация — все пункты в шапке
 const navigation = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
-  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
-  { name: 'Услуги', href: '/services', icon: 'heroicons:squares-2x2' },
   { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' },
   { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' },
   { name: 'Профиль', href: '/profile', icon: 'heroicons:user' }
 ]
 
-// Mobile навигация — 4 основных пункта в нижней панели
+// Mobile навигация — основные пункты в нижней панели
 const mobileMainNav = [
   { name: 'Главная', href: '/dashboard', icon: 'heroicons:home' },
-  { name: 'Услуги', href: '/services', icon: 'heroicons:squares-2x2' },
-  { name: 'Соседи', href: '/community', icon: 'heroicons:user-group' },
   { name: 'Счета', href: '/invoices', icon: 'heroicons:document-text' }
 ]
 
@@ -57,13 +52,15 @@ const isActive = (href: string) => route.path === href || route.path.startsWith(
 // Подсветка кнопки "Ещё" если активен один из её пунктов
 const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.href)))
 
+// Страницы-мессенджеры (Поддержка) — на десктопе контент на всю высоту
+const isChatRoute = computed(() => route.path.startsWith('/support'))
+
 // -----------------------------------------------------------------------------
 // Состояние UI
 // -----------------------------------------------------------------------------
 
 const isScrolled = ref(false)    // true когда страница прокручена > 20px
 const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
-const hasCommunityUnread = computed(() => communityUiStore.hasUnread)
 
 // Переключение темы light/dark
 function toggleTheme(): void {
@@ -129,14 +126,7 @@ onUnmounted(() => {
                 ? 'text-primary bg-primary/10 hover:bg-primary/15 active:bg-primary/20'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--glass-bg)] active:bg-white/10'"
             >
-              <span class="relative">
-                <Icon :name="item.icon" class="w-5 h-5" />
-                <span
-                  v-if="item.href === '/community' && hasCommunityUnread"
-                  class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-[var(--header-blur-bg)]"
-                  aria-hidden="true"
-                />
-              </span>
+              <Icon :name="item.icon" class="w-5 h-5" />
               {{ item.name }}
             </NuxtLink>
           </nav>
@@ -229,14 +219,7 @@ onUnmounted(() => {
               : 'text-[var(--text-muted)] active:bg-white/10'"
             @click="showMoreMenu = false"
           >
-            <span class="relative">
-              <Icon :name="item.icon" class="w-6 h-6" />
-              <span
-                v-if="item.href === '/community' && hasCommunityUnread"
-                class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-[var(--header-blur-bg)]"
-                aria-hidden="true"
-              />
-            </span>
+            <Icon :name="item.icon" class="w-6 h-6" />
             <span class="text-xs font-medium">{{ item.name }}</span>
           </NuxtLink>
 

@@ -77,7 +77,7 @@ function handlePayClick(): void {
   <UiCard hover padding="compact">
     <div class="flex items-start justify-between mb-3 md:mb-4">
       <div>
-        <p class="text-xs md:text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+        <p class="text-xs md:text-sm text-[var(--text-muted)] mb-1">Статус договора</p>
         <div class="flex items-center gap-2 md:gap-3 mt-1 md:mt-2">
           <span class="relative flex h-3 w-3">
             <span

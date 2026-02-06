@@ -130,17 +130,6 @@ export function createRateLimiter(
   }
 }
 
-// Pre-configured limiters для community chat
-export const communityMessageLimiter = createRateLimiter('community:messages', {
-  windowMs: 60000, // 1 минута
-  maxRequests: 10  // 10 сообщений в минуту
-})
-
-export const communityImageLimiter = createRateLimiter('community:images', {
-  windowMs: 300000, // 5 минут
-  maxRequests: 5    // 5 изображений за 5 минут
-})
-
 // ==================================================
 // Helper functions для API endpoints
 // ==================================================

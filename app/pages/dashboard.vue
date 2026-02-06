@@ -2,8 +2,6 @@
 /**
  * Главная страница (дашборд) — обзор состояния аккаунта:
  * - Баланс и состояние подключения
- * - Реферальная программа
- * - Специальные предложения
  * - Новости сообщества
  */
 import type { NewsCategory } from '~/types/news'
@@ -85,38 +83,9 @@ function closeNewsModal(): void {
     </div>
 
     <!-- =====================================================================
-         REFERRAL PROMO — карточка реферальной программы
+         CONNECTED INVOICES — подключенные счета
          ===================================================================== -->
-    <DashboardReferralCard />
-
-    <!-- =====================================================================
-         SPECIAL OFFER — специальное предложение
-         ===================================================================== -->
-    <section>
-      <UiCard class="p-0 overflow-hidden border border-primary/20 bg-gradient-to-br from-primary/5 to-secondary/5">
-        <div class="p-3 md:p-5 flex flex-col md:flex-row md:items-center gap-3 md:gap-4">
-          <div class="flex-shrink-0 w-12 h-12 md:w-14 md:h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg shadow-primary/20">
-            <Icon name="heroicons:gift" class="w-6 h-6 md:w-7 md:h-7 text-white" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <span class="inline-block px-2.5 py-0.5 text-xs font-medium bg-primary/15 text-primary rounded-full mb-1 md:mb-2">
-              Специальное предложение
-            </span>
-            <h3 class="text-base md:text-lg font-semibold text-[var(--text-primary)] mb-0.5 md:mb-1">
-              ТВ Расширенный — месяц бесплатно
-            </h3>
-            <p class="text-xs md:text-sm text-[var(--text-muted)]">
-              191 канал + кинозалы. Подключите сейчас и смотрите бесплатно до 28 февраля!
-            </p>
-          </div>
-          <div class="flex-shrink-0">
-            <UiButton variant="primary" class="w-full md:w-auto" size="sm">
-              Подключить
-            </UiButton>
-          </div>
-        </div>
-      </UiCard>
-    </section>
+    <DashboardInvoicesBlock />
 
     <!-- =====================================================================
          COMMUNITY NEWS — блок новостей
