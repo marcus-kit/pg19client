@@ -28,18 +28,15 @@ const userStore = useUserStore()
 const route = useRoute()
 
 // Активная вкладка
-const activeTab = ref<'profile' | 'personal' | 'contract' | 'notifications' | 'security'>('profile')
+const activeTab = ref<'personal' | 'contract'>('personal')
 
 // Подсветка блока прогресса
 const highlightProgress = ref(false)
 
 // Конфигурация вкладок
 const tabs = [
-  { id: 'profile' as const, label: 'Профиль', icon: 'heroicons:user-circle' },
   { id: 'personal' as const, label: 'Персональные данные', icon: 'heroicons:identification' },
-  { id: 'contract' as const, label: 'Договор', icon: 'heroicons:document-text' },
-  { id: 'notifications' as const, label: 'Уведомления', icon: 'heroicons:bell' },
-  { id: 'security' as const, label: 'Безопасность', icon: 'heroicons:shield-check' }
+  { id: 'contract' as const, label: 'Договор', icon: 'heroicons:document-text' }
 ]
 
 // =============================================================================
@@ -147,74 +144,6 @@ onMounted(() => {
     </div>
 
     <!-- =====================================================================
-         PROFILE TAB — аватар, достижения, реферальная программа
-         ===================================================================== -->
-    <div v-if="activeTab === 'profile'" class="space-y-6">
-      <!-- Карточка прогресса заполнения профиля -->
-      <UiCard 
-        class="p-0 overflow-hidden transition-all duration-500"
-        :class="highlightProgress ? '!bg-[var(--glass-hover-bg)] !border-[var(--glass-hover-border)] translate-y-[-2px]' : ''"
-        :style="highlightProgress ? {
-          boxShadow: '0 20px 40px rgba(247, 148, 29, 0.15), 0 0 60px rgba(247, 148, 29, 0.1)'
-        } : {}"
-      >
-        <div class="px-5 py-4">
-          <div class="flex items-center gap-4">
-            <!-- Level Icon -->
-            <div :class="['w-10 h-10 rounded-xl bg-gradient-to-br flex items-center justify-center flex-shrink-0', levelInfo.color]">
-              <Icon :name="levelInfo.icon" class="w-5 h-5 text-white" />
-            </div>
-
-            <!-- Progress Section -->
-            <div class="flex-1 min-w-0">
-              <div class="flex items-center justify-between mb-1.5">
-                <span class="text-sm font-medium text-[var(--text-primary)]">{{ levelInfo.level }}</span>
-                <span class="text-sm font-bold text-primary">{{ completionPercent }}%</span>
-              </div>
-              <!-- Progress Bar -->
-              <div class="relative h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-white/10">
-                <div
-                  class="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500"
-                  :style="{ width: `${completionPercent}%` }"
-                />
-              </div>
-            </div>
-
-            <!-- Missing Fields (compact) -->
-            <div v-if="missingFields.length > 0" class="hidden sm:flex items-center gap-2 flex-shrink-0">
-              <span class="text-xs text-[var(--text-muted)]">Заполните:</span>
-              <div class="flex gap-1">
-                <span
-                  v-for="field in missingFields.slice(0, 3)"
-                  :key="field.name"
-                  class="px-2 py-0.5 text-xs rounded-full text-[var(--text-secondary)] hover:bg-primary/20 hover:text-primary cursor-pointer transition-colors bg-gray-100 dark:bg-white/5"
-                >
-                  {{ field.name }}
-                </span>
-                <span v-if="missingFields.length > 3" class="px-2 py-0.5 text-xs rounded-full text-[var(--text-muted)] bg-gray-100 dark:bg-white/5">
-                  +{{ missingFields.length - 3 }}
-                </span>
-              </div>
-            </div>
-            <div v-else class="hidden sm:flex items-center gap-1 text-accent flex-shrink-0">
-              <Icon name="heroicons:check-circle" class="w-4 h-4" />
-              <span class="text-xs font-medium">Заполнен</span>
-            </div>
-          </div>
-        </div>
-      </UiCard>
-
-      <!-- Avatar -->
-      <ProfileAvatar />
-
-      <!-- Achievements -->
-      <ProfileAchievements />
-
-      <!-- Referral Program -->
-      <ProfileReferral />
-    </div>
-
-    <!-- =====================================================================
          PERSONAL TAB — персональные данные
          ===================================================================== -->
     <div v-if="activeTab === 'personal'" class="space-y-6">
@@ -232,20 +161,6 @@ onMounted(() => {
     <div v-if="activeTab === 'contract'" class="space-y-6">
       <ProfileContractInfo />
       <ProfileAddressInfo />
-    </div>
-
-    <!-- =====================================================================
-         NOTIFICATIONS TAB — настройки уведомлений
-         ===================================================================== -->
-    <div v-if="activeTab === 'notifications'" class="space-y-6">
-      <ProfileNotifications />
-    </div>
-
-    <!-- =====================================================================
-         SECURITY TAB — сессии и безопасность
-         ===================================================================== -->
-    <div v-if="activeTab === 'security'" class="space-y-6">
-      <ProfileSecurity />
     </div>
   </div>
 </template>

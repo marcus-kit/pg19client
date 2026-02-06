@@ -54,11 +54,11 @@ const {
 // STATE — локальное состояние страницы
 // =============================================================================
 
-// Вкладки — определяем начальную из query параметра (?tab=tickets)
-const initialTab = (['tickets', 'faq', 'chat'].includes(route.query.tab as string)
+// Вкладки — определяем начальную из query параметра (?tab=faq)
+const initialTab = (['faq', 'chat'].includes(route.query.tab as string)
   ? route.query.tab
-  : 'chat') as 'tickets' | 'faq' | 'chat'
-const activeTab = ref<'tickets' | 'faq' | 'chat'>(initialTab)
+  : 'chat') as 'faq' | 'chat'
+const activeTab = ref<'faq' | 'chat'>(initialTab)
 
 // Чат
 const messageText = ref('')                              // Текст сообщения в поле ввода
@@ -350,144 +350,38 @@ watch(isOperatorTyping, (typing) => {
     </div>
 
     <!-- =====================================================================
-         Tabs — переключение между чатом, заявками и FAQ
+         Tabs — переключение между чатом и FAQ (горизонтально слева)
          ===================================================================== -->
-    <div class="grid grid-cols-3 gap-3 md:flex md:gap-2 md:overflow-x-auto">
+    <div class="flex gap-2 justify-start">
       <!-- Чат -->
       <button
         @click="activeTab = 'chat'"
-        class="w-full flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
         :class="activeTab === 'chat'
           ? 'bg-primary text-white'
           : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
         :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
       >
-        <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 md:mr-2 flex-shrink-0" />
-        <span class="text-center">Чат с поддержкой</span>
+        <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
+        <span>Чат с поддержкой</span>
         <!-- Badge непрочитанных сообщений -->
-        <span v-if="chatStore.unreadCount > 0" class="absolute top-1 right-1 md:relative md:top-0 md:right-0 md:ml-2 px-1.5 py-0.5 text-[10px] md:text-xs rounded-full bg-red-500 text-white">
+        <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
           {{ chatStore.unreadCount }}
-        </span>
-      </button>
-
-      <!-- Заявки -->
-      <button
-        @click="activeTab = 'tickets'"
-        class="w-full flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors relative"
-        :class="activeTab === 'tickets'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'tickets' ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon name="heroicons:ticket" class="w-4 h-4 md:mr-2 flex-shrink-0" />
-        <span class="text-center">Мои заявки</span>
-        <!-- Badge активных заявок -->
-        <span v-if="activeTicketsCount" class="absolute top-1 right-1 md:relative md:top-0 md:right-0 md:ml-2 px-1.5 py-0.5 text-[10px] md:text-xs rounded-full bg-white/20">
-          {{ activeTicketsCount }}
         </span>
       </button>
 
       <!-- FAQ -->
       <button
         @click="activeTab = 'faq'"
-        class="w-full flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
         :class="activeTab === 'faq'
           ? 'bg-primary text-white'
           : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
         :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
       >
-        <Icon name="heroicons:question-mark-circle" class="w-4 h-4 md:mr-2 flex-shrink-0" />
-        <span class="text-center">Частые вопросы</span>
+        <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
+        <span>Частые вопросы</span>
       </button>
-    </div>
-
-    <!-- =====================================================================
-         Tickets Tab — список заявок пользователя
-         ===================================================================== -->
-    <div v-if="activeTab === 'tickets'" class="space-y-4">
-      <!-- Loading skeleton -->
-      <div v-if="ticketsPending" class="space-y-3">
-        <UiCard v-for="i in 3" :key="i" class="animate-pulse">
-          <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
-            <div class="flex-1 space-y-2">
-              <div class="h-4 bg-[var(--glass-bg)] rounded w-1/4"></div>
-              <div class="h-4 bg-[var(--glass-bg)] rounded w-2/3"></div>
-            </div>
-          </div>
-        </UiCard>
-      </div>
-
-      <!-- Error state -->
-      <UiCard v-else-if="ticketsError" class="border-red-500/30">
-        <div class="text-center py-4">
-          <Icon name="heroicons:exclamation-triangle" class="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p class="text-red-400 mb-4">Ошибка загрузки заявок</p>
-          <UiButton @click="refreshTickets">Повторить</UiButton>
-        </div>
-      </UiCard>
-
-      <!-- Tickets List -->
-      <div v-else-if="tickets.length" class="space-y-3">
-        <UiCard
-          v-for="ticket in tickets"
-          :key="ticket.id"
-          hover
-          class="cursor-pointer"
-          @click="router.push(`/support/${ticket.id}`)"
-        >
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div class="flex items-start gap-4">
-              <!-- Иконка статуса -->
-              <div class="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10">
-                <Icon
-                  :name="ticket.status === 'resolved' ? 'heroicons:check-circle' : 'heroicons:chat-bubble-left-right'"
-                  class="w-6 h-6"
-                  :class="statusConfig[ticket.status]?.color || 'text-primary'"
-                />
-              </div>
-              <div>
-                <!-- Номер и статус -->
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="text-xs text-[var(--text-muted)]">{{ ticket.number }}</span>
-                  <UiBadge :variant="statusConfig[ticket.status]?.variant || 'neutral'" size="sm">
-                    {{ statusConfig[ticket.status]?.label || ticket.status }}
-                  </UiBadge>
-                </div>
-                <!-- Тема -->
-                <p class="font-medium text-[var(--text-primary)]">{{ ticket.subject }}</p>
-                <!-- Мета-информация -->
-                <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
-                  <span class="flex items-center gap-1">
-                    <Icon name="heroicons:clock" class="w-3.5 h-3.5" />
-                    {{ formatRelativeDate(ticket.updatedAt) }}
-                  </span>
-                  <span v-if="ticket.commentsCount" class="flex items-center gap-1">
-                    <Icon name="heroicons:chat-bubble-left" class="w-3.5 h-3.5" />
-                    {{ ticket.commentsCount }} сообщ.
-                  </span>
-                </div>
-              </div>
-            </div>
-            <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
-          </div>
-        </UiCard>
-      </div>
-
-      <!-- Empty State -->
-      <UiCard v-else class="p-8">
-        <div class="text-center">
-          <div class="w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-4">
-            <Icon name="heroicons:inbox" class="w-8 h-8 text-primary" />
-          </div>
-          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-2">Заявок пока нет</h3>
-          <p class="text-[var(--text-muted)] mb-4">Создайте заявку, если у вас есть вопрос или проблема</p>
-          <UiButton @click="showNewTicketModal = true">
-            <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
-            Создать заявку
-          </UiButton>
-        </div>
-      </UiCard>
     </div>
 
     <!-- =====================================================================
@@ -538,7 +432,7 @@ watch(isOperatorTyping, (typing) => {
             </div>
             <h3 class="text-base md:text-lg font-semibold text-[var(--text-primary)] mb-1 md:mb-2">Не нашли ответ?</h3>
             <p class="text-xs md:text-base text-[var(--text-muted)] mb-3 md:mb-4">Создайте заявку, и мы ответим в течение 15 минут</p>
-            <UiButton size="sm" @click="showNewTicketModal = true; activeTab = 'tickets'">
+            <UiButton size="sm" @click="showNewTicketModal = true">
               <Icon name="heroicons:pencil-square" class="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Создать заявку
             </UiButton>

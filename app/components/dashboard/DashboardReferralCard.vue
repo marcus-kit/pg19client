@@ -78,10 +78,10 @@ async function copyCode(): Promise<void> {
       <div class="flex-shrink-0 flex flex-col md:block items-end md:items-center gap-2">
         <UiBadge variant="success" size="sm" class="md:hidden">+300 ₽</UiBadge>
         <NuxtLink to="/profile">
-          <UiButton size="sm" variant="secondary">
-            Подробнее
-          </UiButton>
-        </NuxtLink>
+        <UiButton size="sm" variant="secondary">
+          Подробнее
+        </UiButton>
+      </NuxtLink>
       </div>
     </div>
   </UiCard>
