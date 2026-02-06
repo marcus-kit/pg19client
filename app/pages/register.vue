@@ -42,7 +42,6 @@ const formValid = computed(() => {
     form.firstName.trim() &&
     form.middleName.trim() &&
     phoneValid.value
-    // email не обязательный, поэтому не проверяем
   )
 })
 
@@ -81,16 +80,10 @@ function handleSubmit() {
   
   if (validate()) {
     // Здесь будет логика отправки формы
-    console.log('Форма отправлена:', { 
-      ...form, 
-      phone: phoneDigits.value 
-    })
+    console.log('Форма отправлена:', { ...form, phone: phoneDigits.value })
     
     // Пример перенаправления:
     // navigateTo('/success')
-    
-    // Временно показываем сообщение
-    alert('Договор заключен! В реальном приложении здесь будет отправка данных.')
   }
 }
 
@@ -120,7 +113,7 @@ watch(phoneValue, (val) => {
   }
 })
 
-// Валидация в реальном времени
+// Валидация в реальном времени (опционально)
 watch([() => form.lastName, () => form.firstName, () => form.middleName, phoneValid], () => {
   validate()
 })
@@ -254,14 +247,12 @@ onUnmounted(() => {
               </div>
             </div>
             
-            <!-- Кнопка заключения договора -->
+            <!-- Кнопка заключения договора (ИЗМЕНЕНО) -->
             <button
               :disabled="!formValid"
               :class="[
-                'w-full py-3 px-4 rounded-xl font-medium text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2 mt-4',
-                formValid 
-                  ? 'bg-primary text-white cursor-pointer hover:opacity-90 active:scale-[0.98] shadow-lg shadow-primary/20' 
-                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                'u-btn u-btn--primary u-btn--md u-btn--block mt-4 inline-flex items-center justify-center gap-2 transition-all duration-200',
+                !formValid ? 'opacity-50 cursor-not-allowed hover:opacity-50' : 'hover:opacity-90'
               ]"
               @click="handleSubmit"
             >
@@ -270,13 +261,9 @@ onUnmounted(() => {
                 name="heroicons:lock-closed" 
                 class="w-4 h-4" 
               />
-              <span>{{ formValid ? 'Заключить договор' : 'Заполните все поля' }}</span>
-              <Icon 
-                v-if="formValid" 
-                name="heroicons:arrow-right" 
-                class="w-4 h-4" 
-              />
+              {{ formValid ? 'Заключить договор' : 'Заполните все поля' }}
             </button>
+            
           </div>
 
           <!-- Ссылка на вход -->
