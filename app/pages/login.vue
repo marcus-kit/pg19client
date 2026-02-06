@@ -688,7 +688,7 @@ onUnmounted(() => {
           >
             <!-- Header -->
             <div class="flex items-center justify-between mb-4">
-              <h3 class="text-lg font-semibold text-[var(--text-primary)]">Регистрация</h3>
+              <h3 class="text-lg font-semibold text-[var(--text-primary)]"></h3>
               <button
                 class="p-1 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
                 @click="showRegisterModal = false"
