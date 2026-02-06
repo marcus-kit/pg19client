@@ -1,11 +1,10 @@
 <script setup lang="ts">
 /**
- * DashboardBalanceCard — карточка статуса услуги и оплаты
+ * DashboardBalanceCard — две карточки: статус услуги и подключение
  *
  * Особенности:
- * - Индикатор статуса (активен/заблокирован)
- * - Кнопка оплаты (открывает счёт или попап "все оплачено")
- * - Расчёт следующей даты оплаты
+ * - Левая карточка: индикатор статуса (активен/заблокирован), дата оплаты, кнопка оплаты
+ * - Правая карточка: статус подключения, услуга активна, адрес
  */
 
 // =============================================================================
@@ -59,6 +58,11 @@ const statusConfig = computed(() => {
   }
 })
 
+// Статус подключения (если нет тарифа - "Не подключен")
+const connectionStatus = computed(() => {
+  return accountStore.account?.tariff || 'Не подключен'
+})
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -77,44 +81,85 @@ function handlePayClick(): void {
 </script>
 
 <template>
-  <UiCard hover>
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
-        <div class="flex items-center gap-3 mt-2">
+  <div class="grid md:grid-cols-2 gap-4">
+    <!-- Левая карточка: Статус услуги -->
+    <UiCard hover>
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+          <div class="flex items-center gap-3 mt-2">
+            <span class="relative flex h-3 w-3">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                :class="statusConfig.color"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-3 w-3"
+                :class="statusConfig.color"
+              ></span>
+            </span>
+            <span class="text-xl font-semibold text-[var(--text-primary)]">
+              {{ statusConfig.text }}
+            </span>
+          </div>
+        </div>
+        <div class="icon-container">
+          <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-[var(--text-muted)]">
+          <Icon name="heroicons:calendar" class="w-4 h-4" />
+          <span class="text-sm">
+            Следующая оплата
+            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+          </span>
+        </div>
+        <UiButton size="sm" variant="secondary" @click="handlePayClick">
+          Оплатить сейчас
+        </UiButton>
+      </div>
+    </UiCard>
+
+    <!-- Правая карточка: Подключение -->
+    <UiCard hover>
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <p class="text-sm text-[var(--text-muted)] mb-1">Подключение</p>
+          <p class="text-xl font-semibold text-[var(--text-primary)] mt-2">
+            {{ connectionStatus }}
+          </p>
+        </div>
+        <div class="icon-container">
+          <Icon name="heroicons:wifi" class="w-6 h-6 text-primary" />
+        </div>
+      </div>
+
+      <div class="space-y-3">
+        <div class="flex items-center gap-3">
           <span class="relative flex h-3 w-3">
             <span
               class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="statusConfig.color"
+              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
             ></span>
             <span
               class="relative inline-flex rounded-full h-3 w-3"
-              :class="statusConfig.color"
+              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
             ></span>
           </span>
-          <span class="text-xl font-semibold text-[var(--text-primary)]">
-            {{ statusConfig.text }}
+          <span class="text-sm text-[var(--text-secondary)]">
+            {{ accountStore.isBlocked ? 'Услуга приостановлена' : 'Услуга активна' }}
           </span>
         </div>
-      </div>
-      <div class="icon-container">
-        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-      </div>
-    </div>
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 text-[var(--text-muted)]">
-        <Icon name="heroicons:calendar" class="w-4 h-4" />
-        <span class="text-sm">
-          Следующая оплата
-          <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
-        </span>
+        <div class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
+          <Icon name="heroicons:map-pin" class="w-4 h-4" />
+          <span class="line-clamp-1">{{ accountStore.account?.address || '—' }}</span>
+        </div>
       </div>
-      <UiButton size="sm" variant="secondary" @click="handlePayClick">
-        Оплатить сейчас
-      </UiButton>
-    </div>
-  </UiCard>
+    </UiCard>
+  </div>
 
   <!-- Модальное окно "Все счета оплачены" -->
   <Teleport to="body">

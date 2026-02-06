@@ -70,17 +70,12 @@ function closeNewsModal(): void {
     <!-- =====================================================================
          MAIN CARDS — баланс и состояние подключения
          ===================================================================== -->
-    <div class="grid md:grid-cols-2 gap-4">
-      <DashboardConnectionProfile />
-      <DashboardBalanceCard />
-      <!-- <DashboardConnectionCard /> -->
-    </div>
+    <DashboardBalanceCard />
 
     <!-- =====================================================================
          REFERRAL PROMO — карточка реферальной программы
          ===================================================================== -->
     <DashboardConnectedServices />
-    <DashboardReferralCard />
 
     <!-- =====================================================================
          SPECIAL OFFER — специальное предложение

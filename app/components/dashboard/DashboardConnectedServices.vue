@@ -7,23 +7,29 @@
  * - Статус (активна/приостановлена/отменена)
  * - Цена
  * - Кнопка "Подробнее"
+ *
+ * Если нет подключенных услуг, показывает счета и ссылку "Перейти к счетам"
  */
 
 import type { Service, Subscription, SubscriptionStatus } from '~/types/service'
 import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
-import { formatKopeks } from '~/composables/useFormatters'
+import type { InvoiceStatus } from '~/types/invoice'
+import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
+import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
 
 // =============================================================================
 // STORES & COMPOSABLES
 // =============================================================================
 
 const { fetchSubscriptions } = useServices()
+const { fetchInvoices } = useInvoices()
 
 // =============================================================================
-// DATA — загрузка подписок
+// DATA — загрузка подписок и счетов
 // =============================================================================
 
 const { subscriptions } = await fetchSubscriptions()
+const { invoices } = await fetchInvoices()
 
 // =============================================================================
 // METHODS
@@ -49,53 +55,89 @@ function getStatusColor(status: SubscriptionStatus): string {
 function getServiceIcon(service: Service | undefined): string {
   return service?.icon || 'heroicons:cube'
 }
+
+// Открыть счёт в новой вкладке (на invoice.doka.team)
+function openInvoice(invoiceId: string): void {
+  window.open(`https://invoice.doka.team/invoice/${invoiceId}`, '_blank')
+}
+
+// Получить CSS-класс для бейджа статуса счёта
+function getStatusBadgeClass(status: InvoiceStatus): string {
+  const colorMap: Record<string, string> = {
+    gray: 'bg-gray-600/20 text-gray-400',
+    primary: 'bg-primary/20 text-primary',
+    blue: 'bg-blue-500/20 text-blue-400',
+    green: 'bg-accent/20 text-accent',
+    red: 'bg-red-500/20 text-red-400'
+  }
+  const color = invoiceStatusColors[status] as string
+  return (color in colorMap ? colorMap[color] : colorMap.gray) as string
+}
 </script>
 
 <template>
   <section>
-    <!-- <h2 class="text-lg font-semibold text-[var(--text-primary)] mb-4">Подключенные услуги</h2> -->
-    <div v-if="subscriptions.length" class="grid gap-4">
-      <UiCard v-for="sub in subscriptions" :key="sub.id" class="p-0 overflow-hidden">
-        <div class="flex items-start gap-4 p-5">
-          <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
-            <Icon :name="getServiceIcon(sub.service)" class="w-6 h-6 text-primary" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h3 class="font-semibold text-[var(--text-primary)]">{{ sub.service?.name || 'Услуга' }}</h3>
-                <p class="text-sm text-[var(--text-muted)] mt-0.5">{{ sub.service?.description || '' }}</p>
+    <!-- Ссылка "Перейти к счетам" -->
+    <div class="flex justify-end mb-4">
+      <NuxtLink
+        to="/invoices"
+        class="flex items-center gap-2 text-sm font-medium text-[var(--text-primary)] hover:text-primary transition-colors"
+      >
+        <span>Перейти к счетам</span>
+        <Icon name="heroicons:arrow-right" class="w-4 h-4" />
+      </NuxtLink>
+    </div>
+
+    <!-- Список счетов -->
+    <div class="space-y-4">
+      <UiCard
+        v-for="invoice in invoices"
+        :key="invoice.id"
+        hover
+        class="cursor-pointer"
+        @click="openInvoice(invoice.id)"
+      >
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+              <Icon
+                :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:document-text'"
+                class="w-6 h-6"
+                :class="invoice.status === 'paid' ? 'text-accent' : 'text-primary'"
+              />
+            </div>
+            <div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="text-xs text-[var(--text-muted)]">{{ invoice.invoiceNumber }}</span>
+                <UiBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
+                  {{ invoiceStatusLabels[invoice.status] }}
+                </UiBadge>
               </div>
-              <UiBadge :class="getStatusColor(sub.status)">
-                {{ subscriptionStatusLabels[sub.status] }}
-              </UiBadge>
+              <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
+              <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                <span v-if="invoice.issuedAt">Выставлен: {{ formatDateShort(invoice.issuedAt) }}</span>
+                <span v-if="invoice.paidAt">Оплачен: {{ formatDateShort(invoice.paidAt) }}</span>
+                <span v-else-if="invoice.dueDate">Срок: {{ formatDateShort(invoice.dueDate) }}</span>
+              </div>
             </div>
-            <div class="flex items-center justify-between mt-4">
-              <span class="text-lg font-bold text-[var(--text-primary)]">
-                {{ formatKopeks(getSubscriptionPrice(sub)) }}
-                <span class="text-sm font-normal text-[var(--text-muted)]">руб/мес</span>
-              </span>
-              <NuxtLink to="/services">
-                <button class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                  Подробнее
-                </button>
-              </NuxtLink>
-            </div>
+          </div>
+          <div class="flex items-center gap-4">
+            <span class="text-lg font-bold text-[var(--text-primary)]">
+              {{ formatKopeks(invoice.amount) }}
+              <span class="text-sm font-normal text-[var(--text-muted)]">₽</span>
+            </span>
+            <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
           </div>
         </div>
       </UiCard>
+
+      <!-- Empty State -->
+      <UiCard v-if="invoices.length === 0" padding="lg">
+        <UiEmptyState
+          icon="heroicons:document-text"
+          title="Счетов не найдено"
+        />
+      </UiCard>
     </div>
-    <UiCard v-else class="!p-4 md:!p-6">
-      <UiEmptyState
-        icon="heroicons:cube"
-        title="Нет подключенных услуг"
-      >
-        <NuxtLink to="/services">
-          <UiButton variant="secondary" size="sm" class="mt-2 md:mt-4 text-xs md:text-sm px-3 md:px-4 py-1.5 md:py-2">
-            Выберите услугу для подключения
-          </UiButton>
-        </NuxtLink>
-      </UiEmptyState>
-    </UiCard>
   </section>
 </template>

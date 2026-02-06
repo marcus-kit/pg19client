@@ -62,6 +62,10 @@ const form = reactive({
 const isLoading = ref(false)  // Загрузка формы договора
 const error = ref('')         // Общая ошибка (для договора)
 
+// Модальное окно регистрации
+const showRegisterModal = ref(false)
+const showFullRegisterInfo = ref(false)
+
 // Телефон с маской IMask
 const callPhone = ref('')
 const phoneInputRef = ref<HTMLInputElement | null>(null)
@@ -456,15 +460,8 @@ onUnmounted(() => {
             <UiInput
               v-model="form.lastName"
               type="text"
-              label="Фамилия"
-              placeholder="Иванов"
-            />
-
-            <UiInput
-              v-model="form.firstName"
-              type="text"
-              label="Имя"
-              placeholder="Иван"
+              label="Логин"
+              placeholder="Логин"
             />
 
             <UiButton type="submit" variant="primary" block :loading="isLoading">
@@ -587,10 +584,22 @@ onUnmounted(() => {
           </p>
 
           <!-- Ссылка на главную страницу сайта -->
-          <div class="mt-6 pt-6 text-center" style="border-top: 1px solid var(--glass-border);">
-            <a href="https://pg19.doka.team" class="text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
-              Вернуться на главную
-            </a>
+          <div class="mt-6 pt-6 space-y-3" style="border-top: 1px solid var(--glass-border);">
+            <div class="flex items-center gap-3 group">
+              <div class="flex-1 h-px bg-orange-500 group-hover:bg-orange-400 transition-colors"></div>
+              <button
+                @click="showRegisterModal = true"
+                class="text-sm text-orange-500 hover:text-orange-400 transition-colors whitespace-nowrap font-medium"
+              >
+                Зарегистрироваться
+              </button>
+              <div class="flex-1 h-px bg-orange-500 group-hover:bg-orange-400 transition-colors"></div>
+            </div>
+            <div class="text-center">
+              <a href="https://pg19.doka.team" class="text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
+                Вернуться на главную
+              </a>
+            </div>
           </div>
 
         </UiCard>
@@ -603,6 +612,120 @@ onUnmounted(() => {
     <footer class="py-6 text-center text-gray-500 text-sm">
       <p>&copy; {{ new Date().getFullYear() }} ПЖ19. Все права защищены.</p>
     </footer>
+
+    <!-- =====================================================================
+         Register Modal — модальное окно регистрации
+         ===================================================================== -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showRegisterModal"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style="background-color: rgba(0, 0, 0, 0.6);"
+          @click.self="showRegisterModal = false; showFullRegisterInfo = false"
+        >
+          <div class="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
+            <!-- Закрыть -->
+            <button
+              @click="showRegisterModal = false; showFullRegisterInfo = false"
+              class="absolute top-4 right-4 z-10 p-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+            >
+              <Icon name="heroicons:x-mark" class="w-5 h-5 text-[var(--text-muted)]" />
+            </button>
+
+            <!-- Контентная область (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-8">
+              <!-- Заголовок -->
+              <h2 class="font-bold text-orange-500 mb-4 pr-8">
+                Вам необходимо заключить договор на аренду сети
+              </h2>
+              
+              <!-- Основная информация -->
+              <div class="space-y-4 mb-6">
+                <div>
+                  <h3 class=" text-2xl font-semibold text-[var(--text-primary)] mb-2">Мы больше не принимаем платежи</h3>
+                  <p class="text-[var(--text-secondary)] leading-relaxed">
+                    Уважаемые члены кооператива ПЖ19, с 01.12.2025 потребительский интернет кооператив расторгает договора на аренду сети с собственниками и более не принимает членские взносы, в связи с чем, для возобновления стабильной работы, вам необходимо самостоятельно заключить договор на аренду сети с собственником. Вы продолжите пользоваться интернетом от ПЖ19 на безвозмездной основе на правах члена кооператива.
+                  </p>
+                </div>
+              </div>
+
+              <!-- Раскрывающаяся дополнительная информация -->
+              <Transition
+                enter-active-class="transition-all duration-300 ease-out"
+                leave-active-class="transition-all duration-300 ease-in"
+                enter-from-class="opacity-0 max-h-0"
+                enter-to-class="opacity-100 max-h-[2000px]"
+                leave-from-class="opacity-100 max-h-[2000px]"
+                leave-to-class="opacity-0 max-h-0"
+              >
+                <div v-if="showFullRegisterInfo" class="mb-6 overflow-hidden">
+                  <div class="space-y-4">
+                    <div>
+                      <div class="mb-4">
+                        <div class="inline-block">
+                          <h3 class="text-lg font-semibold text-[var(--text-primary)] mb-1">Почему так происходит</h3>
+                          <div class="h-0.5 bg-orange-500 w-full"></div>
+                        </div>
+                      </div>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        Уважаемые пайщики!
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        ПЖ-19 с момента создания и по сей день работает исключительно для удовлетворения Ваших потребностей в получении быстрого и качественного интернета без границ. Наше добровольное некоммерческое объединение позволило сделать интернет доступнее как с точки зрения стоимости, так и географии.
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        Законом РФ "О потребительской кооперации (потребительских обществах, их союзах) в Российской Федерации" от 19.06.1992 N 3085-1, установлено, что потребительское общество действует на основе принципов демократичности управления, взаимопомощи и доступности информации для всех пайщиков.
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        Доводим до Вашего сведения, что налоговыми органами проведена выездная налоговая проверка кооператива, по результатам которой проверяющие пришли к выводу о том, что все денежные средства, поступавшие на счет «ПЖ-19», должны облагаться налогом. Общая сумма претензий налогового органа составила более 140 миллионов рублей.
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        С данным решением мы не согласны, в связи с чем намерены обжаловать его в Арбитражный суд Ростовской области.
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        Вместе с тем, мы не можем не подчиниться требованиям налогового органа, в связи с чем, кооперативом, за счет собственных денежных средств было произведено погашение задолженности.
+                      </p>
+                      <p class="text-[var(--text-secondary)] leading-relaxed mb-4">
+                        В свете произошедших событий, мы вынуждены внести ряд изменений в работу кооператива:
+                      </p>
+                      <ul class="list-disc list-inside text-[var(--text-secondary)] leading-relaxed space-y-2 mb-4">
+                        <li>Стоимость членских взносов снизиться до 0 рублей.</li>
+                        <li>С 01.12.2025 «ПЖ-19» перестанет принимать платежи. ОПлата будет производится непосредственно собственнику сетей, на основании заключенного договора аренды сетей, в зависимости от выбранного технического оборудования. Это позволит избежать «лишних» затрат в виде оплаты работы кооператива или наценки интернет-провайдера.</li>
+                        <li>Работа кооператива станет еще более прозрачной. «ПЖ-19» по-прежнему будет гарантировать для Вас получение быстрого и качественного интернета без границ. При этом с 01.12.2025 Вы сможете видеть состав стоимости вашего интернета и в перспективе даже сможете выбрать с кем заключать договор аренды сетей в зависимости от Ваших потребностей.</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </Transition>
+            </div>
+
+            <!-- Кнопки (зафиксированы внизу) -->
+            <div class="flex flex-col-reverse md:flex-row gap-3 p-8 pt-4 border-t" style="border-color: var(--glass-border);">
+              <UiButton
+                variant="secondary"
+                @click="showFullRegisterInfo = !showFullRegisterInfo"
+                class="w-full md:flex-1"
+              >
+                {{ showFullRegisterInfo ? 'Скрыть' : 'Почему так происходит' }}
+              </UiButton>
+              <UiButton
+                variant="primary"
+                @click="navigateTo('/contract')"
+                class="w-full md:flex-1"
+              >
+                Заключить договор
+              </UiButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
   </div>
 </template>
