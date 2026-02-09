@@ -88,23 +88,6 @@ const contractStatusVariant = computed(() => (accountStore.isBlocked ? 'danger' 
             </div>
           </div>
         </div>
-
-        <div class="flex flex-wrap gap-2 mt-4 pt-4" style="border-top: 1px solid var(--glass-border);">
-          <button
-            class="px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
-            style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-            @click="activeTab = 'personal'"
-          >
-            Редактировать данные
-          </button>
-          <button
-            class="px-3 py-2 rounded-xl text-sm font-medium transition-colors duration-200 hover:bg-primary/10 hover:text-primary"
-            style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-            @click="activeTab = 'contract'"
-          >
-            Договор и адрес
-          </button>
-        </div>
       </div>
     </UiCard>
 
