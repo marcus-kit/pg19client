@@ -5,6 +5,7 @@
  * Особенности:
  * - Редактирование email и VK ID
  * - Телефон только для чтения (изменение через поддержку)
+ * - Привязка Telegram
  * - Бейджи верификации контактов
  */
 
@@ -13,6 +14,18 @@
 // =============================================================================
 
 const userStore = useUserStore()
+
+const {
+  isLoading: telegramLoading,
+  error: telegramError,
+  status: telegramStatus,
+  deeplink: telegramDeeplink,
+  remainingSeconds: telegramRemainingSeconds,
+  verifiedData: telegramVerifiedData,
+  botUsername,
+  requestAuth: requestTelegramAuth,
+  reset: resetTelegram
+} = useTelegramDeeplink()
 
 // =============================================================================
 // STATE — реактивное состояние
@@ -32,6 +45,10 @@ const isMobile = ref(false)
 // =============================================================================
 // COMPUTED
 // =============================================================================
+
+// Telegram привязан
+const isTelegramLinked = computed(() => !!userStore.user?.telegramId)
+const telegramUsername = computed(() => userStore.user?.telegram || '')
 
 // Конфигурация полей контактов
 const contacts = computed(() => [
@@ -54,6 +71,17 @@ const contacts = computed(() => [
     type: 'email',
     placeholder: 'example@mail.ru',
     readonly: false
+  },
+  {
+    key: 'telegram',
+    label: 'Telegram',
+    value: isTelegramLinked.value ? telegramUsername.value : null,
+    icon: 'simple-icons:telegram',
+    verified: isTelegramLinked.value,
+    type: 'text',
+    placeholder: '@username',
+    readonly: true,
+    isTelegram: true
   },
   {
     key: 'vkId',
@@ -124,6 +152,19 @@ async function saveChanges(): Promise<void> {
   }
 }
 
+// Запуск привязки Telegram
+async function startTelegramLink(): Promise<void> {
+  if (!userStore.user?.id) return
+  await requestTelegramAuth('link', userStore.user.id)
+}
+
+// Форматирование таймера Telegram
+function formatTelegramTimer(seconds: number): string {
+  const mins = Math.floor(seconds / 60)
+  const secs = String(seconds % 60).padStart(2, '0')
+  return `${mins}:${secs}`
+}
+
 onMounted(() => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
@@ -131,10 +172,24 @@ onMounted(() => {
   }
 })
 
+// Обновление store после успешной привязки Telegram
+watch(telegramStatus, (newStatus) => {
+  if (newStatus === 'verified' && telegramVerifiedData.value) {
+    const data = telegramVerifiedData.value as any
+    if (data.telegramId) {
+      userStore.updateUser({
+        telegramId: data.telegramId,
+        telegram: data.telegramUsername ? `@${data.telegramUsername}` : ''
+      })
+    }
+  }
+})
+
 onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateIsMobile)
   }
+  resetTelegram()
 })
 </script>
 
@@ -177,26 +232,65 @@ onUnmounted(() => {
         class="flex items-center justify-between py-2 last:border-0"
         style="border-bottom: 1px solid var(--glass-border);"
       >
-        <div class="flex items-center gap-2">
-          <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
+        <div class="flex items-center gap-2 flex-1 min-w-0">
+          <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex-shrink-0">
             <Icon :name="contact.icon" class="w-4 h-4 text-primary" />
           </div>
-          <div>
+          <div class="min-w-0 flex-1">
             <p class="text-xs text-[var(--text-muted)]">{{ contact.label }}</p>
             <p
-              class="text-sm text-[var(--text-primary)]"
+              v-if="contact.value"
+              class="text-sm text-[var(--text-primary)] truncate"
               :title="contact.value || ''"
             >
               {{ formatContactValue(contact) }}
             </p>
+            <p v-else class="text-sm text-[var(--text-muted)]">Не указан</p>
           </div>
         </div>
-        <UiBadge v-if="contact.value && contact.verified" variant="success" size="sm">
-          Подтверждён
-        </UiBadge>
-        <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
-          Не подтверждён
-        </UiBadge>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <!-- Кнопка привязки Telegram -->
+          <UiButton
+            v-if="contact.isTelegram && !isTelegramLinked"
+            size="sm"
+            variant="primary"
+            :loading="telegramLoading"
+            class="!bg-[#0088cc] hover:!bg-[#0077b5] text-xs px-3 py-1"
+            @click="startTelegramLink"
+          >
+            <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1" />
+            Привязать
+          </UiButton>
+          <!-- Статус Telegram привязки -->
+          <template v-else-if="contact.isTelegram && telegramStatus === 'waiting'">
+            <div class="flex flex-col items-end gap-1">
+              <a
+                :href="telegramDeeplink"
+                target="_blank"
+                class="text-xs text-[#0088cc] hover:text-[#0077b5] flex items-center gap-1"
+              >
+                <Icon name="simple-icons:telegram" class="w-3 h-3" />
+                Открыть бота
+              </a>
+              <span class="text-xs text-[var(--text-muted)] font-mono">
+                {{ formatTelegramTimer(telegramRemainingSeconds) }}
+              </span>
+            </div>
+          </template>
+          <!-- Бейджи статуса -->
+          <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
+            Подтверждён
+          </UiBadge>
+          <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
+            Не подтверждён
+          </UiBadge>
+        </div>
+      </div>
+      
+      <!-- Сообщение об ошибке Telegram -->
+      <div v-if="telegramError" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
+        <Icon name="heroicons:exclamation-circle" class="w-4 h-4" />
+        {{ telegramError }}
       </div>
     </div>
 
@@ -208,8 +302,12 @@ onUnmounted(() => {
           <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
             <Icon :name="contact.icon" class="w-4 h-4 text-primary" />
           </div>
+          <!-- Telegram - только просмотр, не редактируется -->
+          <div v-if="contact.isTelegram" class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-muted)] cursor-not-allowed">
+            {{ contact.value || 'Не привязан' }}
+          </div>
           <input
-            v-if="contact.readonly"
+            v-else-if="contact.readonly"
             :value="contact.value || ''"
             :type="contact.type"
             readonly
@@ -228,7 +326,7 @@ onUnmounted(() => {
       <!-- Hint about readonly fields -->
       <div class="text-xs text-[var(--text-muted)] flex items-center gap-1 pt-1">
         <Icon name="heroicons:information-circle" class="w-3.5 h-3.5" />
-        Телефон можно изменить только через поддержку
+        Телефон и Telegram можно изменить только через поддержку / привязку
       </div>
     </div>
   </UiCard>
