@@ -133,8 +133,14 @@ const selectedInvoiceId = ref<string | null>(null)
 // Суммы оплаты для каждого счета
 const paymentAmounts = ref<Record<string, number>>({})
 
-// Проверяем query параметр для открытия модального окна
+// Проверяем query параметр для открытия модального окна и установки фильтра
 onMounted(() => {
+  // Устанавливаем фильтр из query параметра
+  const filterParam = route.query.filter as string
+  if (filterParam && ['all', 'unpaid', 'paid'].includes(filterParam)) {
+    filter.value = filterParam as 'all' | 'unpaid' | 'paid'
+  }
+  
   const invoiceId = route.query.id as string
   if (invoiceId) {
     const invoice = invoices.value.find(inv => inv.id === invoiceId)
@@ -212,7 +218,7 @@ function closeServicesModal(): void {
   selectedInvoiceForServices.value = null
 }
 
-// Открыть страницу счета на оплату
+// Открыть модальное окно счета на оплату
 function openInvoiceModal(invoiceId: string, event?: Event): void {
   if (event) {
     event.stopPropagation()
@@ -225,8 +231,9 @@ function openInvoiceModal(invoiceId: string, event?: Event): void {
     selectedInvoiceForServices.value = null
   }
   
-  // Переход на страницу счета на оплату
-  router.push(`/invoices/${invoiceId}/payment`)
+  // Открываем модальное окно счета на оплату
+  selectedInvoiceId.value = invoiceId
+  showInvoiceModal.value = true
 }
 
 // Закрыть модальное окно
@@ -269,7 +276,7 @@ function saveInvoiceAsJpeg(): void {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'Счет_101533.jpg'
+    link.download = `Счет_${selectedInvoiceId.value}.jpg`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -277,11 +284,15 @@ function saveInvoiceAsJpeg(): void {
   }, 'image/jpeg', 0.95)
 }
 
-// Скачать изображение (уже в формате JPEG)
+// Скачать изображение
 function downloadInvoiceJpeg(): void {
+  if (!selectedInvoiceId.value) return
+  const img = document.getElementById(`invoice-image-${selectedInvoiceId.value}`) as HTMLImageElement
+  if (!img) return
+  
   const link = document.createElement('a')
-  link.href = '/Счет_101533.jpg'
-  link.download = 'Счет_101533.jpg'
+  link.href = img.src
+  link.download = `Счет_${selectedInvoiceId.value}.jpg`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

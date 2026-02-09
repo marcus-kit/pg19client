@@ -90,10 +90,8 @@ const visibleAddresses = computed(() => {
 // Обработчик клика на кнопку оплаты
 function handlePayClick(): void {
   if (unpaidInvoices.value.length > 0) {
-    const first = unpaidInvoices.value[0]
-    if (first) {
-      window.open(`https://invoice.doka.team/invoice/${first.id}`, '_blank')
-    }
+    // Переходим на страницу счетов с фильтром "К оплате"
+    navigateTo('/invoices?filter=unpaid')
   } else {
     showAllPaidModal.value = true
   }
@@ -101,8 +99,8 @@ function handlePayClick(): void {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 gap-4">
-    <!-- Левая карточка: Статус услуги -->
+  <div class="space-y-4">
+    <!-- Карточка: Статус услуги -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
@@ -142,7 +140,7 @@ function handlePayClick(): void {
       </div>
     </UiCard>
 
-    <!-- Правая карточка: Подключение (полная ширина снизу) -->
+    <!-- Карточка: Подключение (ниже Статуса услуги) -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
