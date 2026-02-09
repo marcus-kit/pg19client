@@ -116,12 +116,60 @@ async function startCallVerification(): Promise<void> {
   await requestVerification(callPhone.value)
 }
 
+// Временная заглушка для входа без API: договор 061671, пароль 1234567890
+const STUB_CONTRACT = '061671'
+const STUB_PASSWORD = '1234567890'
+
 // Обработка формы авторизации по договору
 async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
   if (!form.contractNumber || !form.password) {
     error.value = 'Заполните все поля'
+    return
+  }
+
+  // Заглушка: при вводе 061671 / 1234567890 — вход в ЛК без запроса к API
+  const contractTrimmed = form.contractNumber.trim()
+  if (contractTrimmed === STUB_CONTRACT && form.password === STUB_PASSWORD) {
+    isLoading.value = true
+    const stubUser = {
+      id: 'stub-061671',
+      firstName: 'Личный',
+      lastName: 'Кабинет',
+      middleName: '',
+      phone: '',
+      email: '',
+      telegram: '',
+      telegramId: null as string | null,
+      vkId: '',
+      avatar: null as string | null,
+      birthDate: null as string | null,
+      role: 'user' as const
+    }
+    const stubAccount = {
+      contractNumber: 61671,
+      balance: 0,
+      status: 'active' as const,
+      tariff: '',
+      address: '',
+      startDate: ''
+    }
+    try {
+      await authInit(stubUser, stubAccount)
+      await nextTick()
+      await navigateTo('/dashboard')
+    } catch {
+      // Доп. данные (уведомления, сессии и т.д.) могут не загрузиться — всё равно пускаем в ЛК
+      const userStore = useUserStore()
+      const accountStore = useAccountStore()
+      userStore.setUser(stubUser)
+      accountStore.setAccount(stubAccount)
+      await nextTick()
+      await navigateTo('/dashboard')
+    } finally {
+      isLoading.value = false
+    }
     return
   }
 
