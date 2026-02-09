@@ -9,31 +9,156 @@
  * - paid — оплаченный
  * - expired — просроченный
  */
-import type { InvoiceStatus } from '~/types/invoice'
+import type { Invoice, InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
+import { useInvoiceServices } from '~/composables/useInvoiceServices'
 
 definePageMeta({
   middleware: 'auth'
 })
 
 // =============================================================================
-// STORES & COMPOSABLES
+// MOCK DATA — моковые данные счетов
 // =============================================================================
 
-const { fetchInvoices } = useInvoices()
+// Функция для создания дат периодов
+function getMonthDates(year: number, month: number) {
+  const start = new Date(year, month - 1, 1)
+  const end = new Date(year, month, 0)
+  return {
+    start: start.toISOString().split('T')[0] || null,
+    end: end.toISOString().split('T')[0] || null
+  }
+}
 
-// =============================================================================
-// DATA — загрузка счетов
-// =============================================================================
+// Получаем текущую дату
+const now = new Date()
+const currentYear = now.getFullYear()
+const currentMonth = now.getMonth() + 1
 
-const { invoices, pending, error, refresh } = await fetchInvoices()
+// Импортируем данные услуг
+const invoiceServices = useInvoiceServices()
+const invoiceDetailsData = invoiceServices.getInvoiceDetails('')
+
+// Создаём массив из 10 счетов (9 оплаченных + 1 неоплаченный)
+const generateMockInvoices = (): Invoice[] => {
+  const mockInvoices: Invoice[] = []
+  
+  // 1 неоплаченный счёт за будущий месяц (с полной суммой 3095₽)
+  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
+  const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear
+  const nextMonthDates = getMonthDates(nextMonthYear, nextMonth)
+  
+  mockInvoices.push({
+    id: `mock-invoice-${nextMonthYear}-${String(nextMonth).padStart(2, '0')}`,
+    invoiceNumber: `INV-${nextMonthYear}${String(nextMonth).padStart(2, '0')}-001`,
+    accountId: 'mock-account-id',
+    contractId: null,
+    status: 'pending',
+    amount: invoiceDetailsData.totalToPay, // 3095.00 ₽
+    description: 'Ежемесячная плата за интернет',
+    periodStart: nextMonthDates.start,
+    periodEnd: nextMonthDates.end,
+    issuedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
+    dueDate: new Date(nextMonthYear, nextMonth, 0).toISOString(),
+    paidAt: null,
+    createdAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
+    updatedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString()
+  })
+  
+  // 9 оплаченных счетов за предыдущие месяцы (с полной суммой 3095₽)
+  for (let i = 0; i < 9; i++) {
+    let month = currentMonth - i - 1
+    let year = currentYear
+    
+    // Обработка перехода через год
+    while (month <= 0) {
+      month += 12
+      year -= 1
+    }
+    
+    const monthDates = getMonthDates(year, month)
+    const paidDate = new Date(year, month - 1, 10 + (i % 20)) // Разные даты оплаты
+    
+    mockInvoices.push({
+      id: `mock-invoice-${year}-${String(month).padStart(2, '0')}`,
+      invoiceNumber: `INV-${year}${String(month).padStart(2, '0')}-001`,
+      accountId: 'mock-account-id',
+      contractId: null,
+      status: 'paid',
+      amount: invoiceDetailsData.totalToPay, // 3095.00 ₽
+      description: 'Ежемесячная плата за интернет',
+      periodStart: monthDates.start,
+      periodEnd: monthDates.end,
+      issuedAt: new Date(year, month - 1, 1).toISOString(),
+      dueDate: new Date(year, month, 0).toISOString(),
+      paidAt: paidDate.toISOString(),
+      createdAt: new Date(year, month - 1, 1).toISOString(),
+      updatedAt: paidDate.toISOString()
+    })
+  }
+  
+  return mockInvoices
+}
+
+const invoices = ref<Invoice[]>(generateMockInvoices())
+const pending = ref(false)
+const error = ref<string | null>(null)
+
+// Функция для обновления (для совместимости с UI)
+function refresh() {
+  // Можно обновить данные, если нужно
+}
 
 // =============================================================================
 // STATE — фильтр
 // =============================================================================
 
 const filter = ref<'all' | 'unpaid' | 'paid'>('all')
+const route = useRoute()
+const router = useRouter()
+
+// Открытый счет для показа деталей
+const expandedInvoiceId = ref<string | null>(null)
+
+// Модальное окно с составом услуг
+const showServicesModal = ref(false)
+const selectedInvoiceForServices = ref<Invoice | null>(null)
+
+// Модальное окно счета на оплату
+const showInvoiceModal = ref(false)
+const selectedInvoiceId = ref<string | null>(null)
+
+// Суммы оплаты для каждого счета
+const paymentAmounts = ref<Record<string, number>>({})
+
+// Проверяем query параметр для открытия модального окна
+onMounted(() => {
+  const invoiceId = route.query.id as string
+  if (invoiceId) {
+    const invoice = invoices.value.find(inv => inv.id === invoiceId)
+    if (invoice) {
+      selectedInvoiceForServices.value = invoice
+      showServicesModal.value = true
+      // Прокручиваем к счету
+      nextTick(() => {
+        const element = document.getElementById(`invoice-${invoiceId}`)
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      })
+    }
+  }
+  
+  // Инициализируем суммы оплаты для неоплаченных счетов
+  invoices.value.forEach(invoice => {
+    if (!unpaidStatuses.includes(invoice.status)) return
+    if (!paymentAmounts.value[invoice.id]) {
+      paymentAmounts.value[invoice.id] = invoice.amount / 100 // в рублях
+    }
+  })
+})
 
 // =============================================================================
 // COMPUTED
@@ -48,6 +173,12 @@ const filteredInvoices = computed(() => {
     return invoices.value.filter(inv => inv.status === 'paid')
   }
   return invoices.value
+})
+
+// Путь к изображению счета
+const invoiceImageSrc = computed(() => {
+  // Используем encodeURI для правильной обработки кириллицы в URL
+  return encodeURI('/Счет_101533.jpg')
 })
 
 // =============================================================================
@@ -68,9 +199,92 @@ const filters = [
 // METHODS
 // =============================================================================
 
-// Открыть счёт в новой вкладке (на invoice.doka.team)
-function openInvoice(invoiceId: string): void {
-  window.open(`https://invoice.doka.team/invoice/${invoiceId}`, '_blank')
+// Открыть модальное окно с составом услуг
+function openServicesModal(invoice: Invoice, event: Event): void {
+  event.stopPropagation()
+  selectedInvoiceForServices.value = invoice
+  showServicesModal.value = true
+}
+
+// Закрыть модальное окно с составом услуг
+function closeServicesModal(): void {
+  showServicesModal.value = false
+  selectedInvoiceForServices.value = null
+}
+
+// Открыть страницу счета на оплату
+function openInvoiceModal(invoiceId: string, event?: Event): void {
+  if (event) {
+    event.stopPropagation()
+    event.preventDefault()
+  }
+  
+  // Закрываем модальное окно с услугами, если оно открыто
+  if (showServicesModal.value) {
+    showServicesModal.value = false
+    selectedInvoiceForServices.value = null
+  }
+  
+  // Переход на страницу счета на оплату
+  router.push(`/invoices/${invoiceId}/payment`)
+}
+
+// Закрыть модальное окно
+function closeInvoiceModal(): void {
+  showInvoiceModal.value = false
+  selectedInvoiceId.value = null
+}
+
+// Обработчик ошибки загрузки изображения
+function handleImageError(event: Event): void {
+  const img = event.target as HTMLImageElement
+  console.error('Ошибка загрузки изображения:', img.src)
+  // Можно показать сообщение об ошибке или использовать fallback изображение
+}
+
+// Обработчик успешной загрузки изображения
+function handleImageLoad(event: Event): void {
+  console.log('Изображение успешно загружено')
+}
+
+// Сохранить изображение как JPEG
+function saveInvoiceAsJpeg(): void {
+  if (!selectedInvoiceId.value) return
+  const img = document.getElementById(`invoice-image-${selectedInvoiceId.value}`) as HTMLImageElement
+  if (!img) {
+    console.error('Изображение не найдено')
+    return
+  }
+  
+  const canvas = document.createElement('canvas')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return
+  
+  canvas.width = img.naturalWidth
+  canvas.height = img.naturalHeight
+  ctx.drawImage(img, 0, 0)
+  
+  canvas.toBlob((blob) => {
+    if (!blob) return
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'Счет_101533.jpg'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }, 'image/jpeg', 0.95)
+}
+
+// Скачать изображение (уже в формате JPEG)
+function downloadInvoiceJpeg(): void {
+  const link = document.createElement('a')
+  link.href = '/Счет_101533.jpg'
+  link.download = 'Счет_101533.jpg'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
 }
 
 // Получить CSS-класс для бейджа статуса
@@ -118,9 +332,9 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
     </div>
 
     <!-- =====================================================================
-         LOADING — скелетон загрузки
+         LOADING — скелетон загрузки (отключен для моковых данных)
          ===================================================================== -->
-    <div v-if="pending" class="space-y-4">
+    <div v-if="false" class="space-y-4">
       <UiCard v-for="i in 3" :key="i" class="animate-pulse">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
@@ -147,46 +361,155 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
          INVOICES LIST — список счетов
          ===================================================================== -->
     <div v-else class="space-y-4">
-      <UiCard
+      <div
         v-for="invoice in filteredInvoices"
         :key="invoice.id"
-        hover
-        class="cursor-pointer"
-        @click="openInvoice(invoice.id)"
+        :id="`invoice-${invoice.id}`"
       >
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
-              <Icon
-                :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:document-text'"
-                class="w-6 h-6"
-                :class="invoice.status === 'paid' ? 'text-accent' : 'text-primary'"
+        <UiCard hover class="cursor-pointer" @click="openServicesModal(invoice, $event)">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div class="flex items-start gap-4">
+              <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+                <Icon
+                  :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:document-text'"
+                  class="w-6 h-6"
+                  :class="invoice.status === 'paid' ? 'text-accent' : 'text-primary'"
+                />
+              </div>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="text-xs text-[var(--text-muted)]">{{ invoice.invoiceNumber }}</span>
+                  <UiBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
+                    {{ invoiceStatusLabels[invoice.status] }}
+                  </UiBadge>
+                </div>
+                <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
+                <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
+                  <span v-if="invoice.issuedAt">Выставлен: {{ formatDateShort(invoice.issuedAt) }}</span>
+                  <span v-if="invoice.paidAt">Оплачен: {{ formatDateShort(invoice.paidAt) }}</span>
+                  <span v-else-if="invoice.dueDate">Срок: {{ formatDateShort(invoice.dueDate) }}</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <span class="text-lg font-bold text-[var(--text-primary)]">
+                {{ formatKopeks(invoice.amount) }}
+                <span class="text-sm font-normal text-[var(--text-muted)]">₽</span>
+              </span>
+              <Icon 
+                name="heroicons:chevron-right" 
+                class="w-5 h-5 text-[var(--text-muted)]" 
               />
             </div>
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs text-[var(--text-muted)]">{{ invoice.invoiceNumber }}</span>
-                <UiBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
-                  {{ invoiceStatusLabels[invoice.status] }}
-                </UiBadge>
+          </div>
+        </UiCard>
+
+        <!-- Выпадающее меню с составом услуг -->
+        <Transition
+          enter-active-class="transition-all duration-300 ease-out"
+          leave-active-class="transition-all duration-300 ease-in"
+          enter-from-class="opacity-0 max-h-0"
+          enter-to-class="opacity-100 max-h-[2000px]"
+          leave-from-class="opacity-100 max-h-[2000px]"
+          leave-to-class="opacity-0 max-h-0"
+        >
+          <UiCard v-if="expandedInvoiceId === invoice.id" class="mt-2 border-t-0 rounded-t-none">
+            <div class="space-y-6">
+              <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Состав услуг:</h3>
+              
+              <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
+                <!-- Адрес -->
+                <div class="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/5 border-l-4 border-primary">
+                  <p class="text-sm font-semibold text-[var(--text-primary)] leading-relaxed">{{ address.address }}</p>
+                </div>
+                
+                <!-- Услуги для адреса -->
+                <div class="space-y-3 pl-2">
+                  <div
+                    v-for="(service, serviceIdx) in address.services"
+                    :key="serviceIdx"
+                    class="flex items-start justify-between gap-4 p-3 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+                    :style="serviceIdx < address.services.length - 1 ? 'border-bottom: 1px solid var(--glass-border);' : ''"
+                  >
+                    <div class="flex-1 min-w-0 pr-4">
+                      <p class="text-sm text-[var(--text-primary)] leading-relaxed">
+                        {{ service.name }}
+                      </p>
+                    </div>
+                    <div class="flex-shrink-0 text-right">
+                      <span class="text-base font-bold text-[var(--text-primary)] whitespace-nowrap">
+                        {{ formatKopeks(service.price) }} ₽
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- Итого по адресу -->
+                  <div class="flex items-center justify-between gap-4 pt-2 mt-2 border-t-2" style="border-color: var(--glass-border);">
+                    <span class="text-sm font-semibold text-[var(--text-secondary)]">Итого по адресу:</span>
+                    <span class="text-lg font-bold text-primary whitespace-nowrap">
+                      {{ formatKopeks(address.services.reduce((sum, s) => sum + s.price, 0)) }} ₽
+                    </span>
+                  </div>
+                </div>
+                
+                <!-- Разделитель между адресами -->
+                <div v-if="idx < invoiceDetailsData.addresses.length - 1" class="my-6 border-t-2" style="border-color: var(--glass-border);"></div>
               </div>
-              <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
-              <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
-                <span v-if="invoice.issuedAt">Выставлен: {{ formatDateShort(invoice.issuedAt) }}</span>
-                <span v-if="invoice.paidAt">Оплачен: {{ formatDateShort(invoice.paidAt) }}</span>
-                <span v-else-if="invoice.dueDate">Срок: {{ formatDateShort(invoice.dueDate) }}</span>
+
+              <div class="pt-4 border-t" style="border-color: var(--glass-border);">
+                <div class="space-y-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-[var(--text-muted)]">Сумма услуг в следующем месяце:</span>
+                    <span class="text-base font-bold text-[var(--text-primary)]">
+                      {{ formatKopeks(invoiceDetailsData.totalAmount) }} ₽
+                    </span>
+                  </div>
+                  <div class="flex justify-between items-center">
+                    <span class="text-sm text-[var(--text-muted)]">Баланс счета:</span>
+                    <span class="text-base font-bold text-[var(--text-primary)]">
+                      {{ formatKopeks(invoiceDetailsData.balance) }} ₽
+                    </span>
+                  </div>
+                  <div class="flex justify-between items-center pt-2 border-t" style="border-color: var(--glass-border);">
+                    <span class="text-base font-bold text-[var(--text-primary)]">Итого к оплате:</span>
+                    <span class="text-lg font-bold text-primary">
+                      {{ formatKopeks(invoiceDetailsData.totalToPay) }} ₽
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Инпут и кнопка оплаты для неоплаченных счетов -->
+              <div v-if="unpaidStatuses.includes(invoice.status)" class="pt-4 border-t" style="border-color: var(--glass-border);">
+                <div class="space-y-4">
+                  <div>
+                    <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                      Введите сумму, которую хотите оплатить
+                    </label>
+                    <input
+                      v-model.number="paymentAmounts[invoice.id]"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                      style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                      placeholder="3095"
+                      @click.stop
+                    />
+                  </div>
+                  <UiButton
+                    variant="primary"
+                    block
+                    @click="openInvoiceModal(invoice.id, $event)"
+                  >
+                    Счет на оплату
+                  </UiButton>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <span class="text-lg font-bold text-[var(--text-primary)]">
-              {{ formatKopeks(invoice.amount) }}
-              <span class="text-sm font-normal text-[var(--text-muted)]">₽</span>
-            </span>
-            <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
-          </div>
-        </div>
-      </UiCard>
+          </UiCard>
+        </Transition>
+      </div>
 
       <!-- Empty State -->
       <UiCard v-if="filteredInvoices.length === 0" padding="lg">
@@ -196,5 +519,215 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
         />
       </UiCard>
     </div>
+
+    <!-- =====================================================================
+         MODAL — модальное окно с составом услуг
+         ===================================================================== -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showServicesModal && selectedInvoiceForServices"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm"
+          style="background-color: rgba(0, 0, 0, 0.6);"
+          @click.self="closeServicesModal"
+        >
+          <div class="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
+            <!-- Заголовок -->
+            <div class="flex items-center justify-between p-6 border-b" style="border-color: var(--glass-border);">
+              <div>
+                <h2 class="text-xl font-bold text-[var(--text-primary)]">Состав услуг</h2>
+                <p class="text-sm text-[var(--text-muted)] mt-1">{{ selectedInvoiceForServices.invoiceNumber }} • {{ formatInvoicePeriod(selectedInvoiceForServices) }}</p>
+              </div>
+              <button
+                @click="closeServicesModal"
+                class="p-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+              >
+                <Icon name="heroicons:x-mark" class="w-5 h-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+
+            <!-- Контентная область (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6">
+              <div class="space-y-6">
+                <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
+                  <!-- Адрес -->
+                  <div class="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/5 border-l-4 border-primary">
+                    <p class="text-sm font-semibold text-[var(--text-primary)] leading-relaxed">{{ address.address }}</p>
+                  </div>
+                  
+                  <!-- Услуги для адреса -->
+                  <div class="space-y-3 pl-2">
+                    <div
+                      v-for="(service, serviceIdx) in address.services"
+                      :key="serviceIdx"
+                      class="flex items-start justify-between gap-4 p-3 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+                      :style="serviceIdx < address.services.length - 1 ? 'border-bottom: 1px solid var(--glass-border);' : ''"
+                    >
+                      <div class="flex-1 min-w-0 pr-4">
+                        <p class="text-sm text-[var(--text-primary)] leading-relaxed">
+                          {{ service.name }}
+                        </p>
+                      </div>
+                      <div class="flex-shrink-0 text-right">
+                        <span class="text-base font-bold text-[var(--text-primary)] whitespace-nowrap">
+                          {{ formatKopeks(service.price) }} ₽
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <!-- Итого по адресу -->
+                    <div class="flex items-center justify-between gap-4 pt-2 mt-2 border-t-2" style="border-color: var(--glass-border);">
+                      <span class="text-sm font-semibold text-[var(--text-secondary)]">Итого по адресу:</span>
+                      <span class="text-lg font-bold text-primary whitespace-nowrap">
+                        {{ formatKopeks(address.services.reduce((sum, s) => sum + s.price, 0)) }} ₽
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- Разделитель между адресами -->
+                  <div v-if="idx < invoiceDetailsData.addresses.length - 1" class="my-6 border-t-2" style="border-color: var(--glass-border);"></div>
+                </div>
+
+                <!-- Итоговые суммы -->
+                <div class="pt-4 border-t" style="border-color: var(--glass-border);">
+                  <div class="space-y-2">
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-[var(--text-muted)]">Сумма услуг в следующем месяце:</span>
+                      <span class="text-base font-bold text-[var(--text-primary)]">
+                        {{ formatKopeks(invoiceDetailsData.totalAmount) }} ₽
+                      </span>
+                    </div>
+                    <div class="flex justify-between items-center">
+                      <span class="text-sm text-[var(--text-muted)]">Баланс счета:</span>
+                      <span class="text-base font-bold text-[var(--text-primary)]">
+                        {{ formatKopeks(invoiceDetailsData.balance) }} ₽
+                      </span>
+                    </div>
+                    <div class="flex justify-between items-center pt-2 border-t" style="border-color: var(--glass-border);">
+                      <span class="text-base font-bold text-[var(--text-primary)]">Итого к оплате:</span>
+                      <span class="text-lg font-bold text-primary">
+                        {{ formatKopeks(invoiceDetailsData.totalToPay) }} ₽
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Инпут и кнопка оплаты для неоплаченных счетов -->
+                <div v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)" class="pt-4 border-t" style="border-color: var(--glass-border);">
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                        Введите сумму, которую хотите оплатить
+                      </label>
+                      <input
+                        v-model.number="paymentAmounts[selectedInvoiceForServices.id]"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                        style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                        placeholder="3095"
+                      />
+                    </div>
+                    <UiButton
+                      variant="primary"
+                      block
+                      @click="openInvoiceModal(selectedInvoiceForServices.id, $event)"
+                    >
+                      Счет на оплату
+                    </UiButton>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Кнопка закрытия -->
+            <div class="flex justify-end p-6 border-t" style="border-color: var(--glass-border);">
+              <UiButton
+                variant="primary"
+                @click="closeServicesModal"
+              >
+                Закрыть
+              </UiButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- =====================================================================
+         MODAL — модальное окно счета на оплату
+         ===================================================================== -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition-opacity duration-200"
+        leave-active-class="transition-opacity duration-200"
+        enter-from-class="opacity-0"
+        leave-to-class="opacity-0"
+      >
+        <div
+          v-if="showInvoiceModal"
+          class="fixed inset-0 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+          style="background-color: rgba(0, 0, 0, 0.6);"
+          @click.self="closeInvoiceModal"
+        >
+          <div class="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);">
+            <!-- Заголовок -->
+            <div class="flex items-center justify-between p-6 border-b" style="border-color: var(--glass-border);">
+              <h2 class="text-xl font-bold text-[var(--text-primary)]">Счет на оплату</h2>
+              <button
+                @click="closeInvoiceModal"
+                class="p-2 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
+              >
+                <Icon name="heroicons:x-mark" class="w-5 h-5 text-[var(--text-muted)]" />
+              </button>
+            </div>
+
+            <!-- Контентная область (scrollable) -->
+            <div class="flex-1 overflow-y-auto p-6 flex items-center justify-center min-h-[400px]">
+              <img
+                :id="`invoice-image-${selectedInvoiceId}`"
+                :src="`/Счет_101533.jpg?t=${Date.now()}`"
+                alt="Счет на оплату"
+                class="max-w-full h-auto rounded-lg shadow-lg"
+                style="display: block;"
+                @error="(e) => console.error('Ошибка загрузки изображения:', e)"
+                @load="() => console.log('Изображение загружено успешно')"
+              />
+            </div>
+
+            <!-- Кнопки -->
+            <div class="flex flex-col sm:flex-row gap-3 p-6 border-t" style="border-color: var(--glass-border);">
+              <UiButton
+                variant="secondary"
+                @click="downloadInvoiceJpeg"
+                class="w-full sm:flex-1"
+              >
+                Сохранено в формате JPEG
+              </UiButton>
+              <UiButton
+                variant="secondary"
+                @click="saveInvoiceAsJpeg"
+                class="w-full sm:flex-1"
+              >
+                Сохранить как JPEG
+              </UiButton>
+              <UiButton
+                variant="primary"
+                @click="closeInvoiceModal"
+                class="w-full sm:flex-1"
+              >
+                Закрыть
+              </UiButton>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>

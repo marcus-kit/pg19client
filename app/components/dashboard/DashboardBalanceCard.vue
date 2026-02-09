@@ -101,8 +101,8 @@ function handlePayClick(): void {
 </script>
 
 <template>
-  <div class="space-y-4">
-    <!-- Левая карточка: Статус услуги (компактная) -->
+  <div class="grid md:grid-cols-2 gap-4">
+    <!-- Левая карточка: Статус услуги -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
