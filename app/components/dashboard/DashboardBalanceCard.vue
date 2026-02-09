@@ -63,6 +63,14 @@ const connectionStatus = computed(() => {
   return accountStore.account?.tariff || 'Не подключен'
 })
 
+// Список адресов подключения
+const connectionAddresses = [
+  'обл Ростовская, г Таганрог, ул Ломоносова, д. 47',
+  'обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16',
+  'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
+  'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74'
+]
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -81,8 +89,8 @@ function handlePayClick(): void {
 </script>
 
 <template>
-  <div class="grid md:grid-cols-2 gap-4">
-    <!-- Левая карточка: Статус услуги -->
+  <div class="space-y-4">
+    <!-- Левая карточка: Статус услуги (компактная) -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
@@ -122,7 +130,7 @@ function handlePayClick(): void {
       </div>
     </UiCard>
 
-    <!-- Правая карточка: Подключение -->
+    <!-- Правая карточка: Подключение (полная ширина снизу) -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
@@ -136,26 +144,28 @@ function handlePayClick(): void {
         </div>
       </div>
 
-      <div class="space-y-3">
-        <div class="flex items-center gap-3">
-          <span class="relative flex h-3 w-3">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-3 w-3"
-              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
-            ></span>
-          </span>
-          <span class="text-sm text-[var(--text-secondary)]">
-            {{ accountStore.isBlocked ? 'Услуга приостановлена' : 'Услуга активна' }}
-          </span>
-        </div>
-
-        <div class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-          <Icon name="heroicons:map-pin" class="w-4 h-4" />
-          <span class="line-clamp-1">{{ accountStore.account?.address || '—' }}</span>
+      <div class="space-y-4">
+        <!-- Список адресов подключения -->
+        <div v-for="(address, index) in connectionAddresses" :key="index" class="space-y-2">
+          <div class="flex items-start gap-3">
+            <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
+            <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
+          </div>
+          <div class="flex items-center gap-3 pl-7">
+            <span class="relative flex h-3 w-3">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-accent"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-3 w-3 bg-accent"
+              ></span>
+            </span>
+            <span class="text-sm text-[var(--text-secondary)]">
+              Услуга активна
+            </span>
+          </div>
+          <!-- Разделитель между адресами (кроме последнего) -->
+          <div v-if="index < connectionAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
         </div>
       </div>
     </UiCard>

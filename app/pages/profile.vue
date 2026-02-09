@@ -1,11 +1,8 @@
 <script setup lang="ts">
 /**
- * Страница профиля — 5 вкладок:
- * 1. Профиль — аватар, достижения, реферальная программа
- * 2. Персональные данные — ФИО, контакты, Telegram
- * 3. Договор — информация о договоре и адресе
- * 4. Уведомления — настройки оповещений
- * 5. Безопасность — сессии, выход
+ * Страница профиля — объединённые данные:
+ * - Персональные данные — ФИО, контакты, Telegram
+ * - Договор — информация о договоре и адресе
  *
  * Особенности:
  * - Прогресс-бар заполненности профиля
@@ -27,17 +24,8 @@ const userStore = useUserStore()
 
 const route = useRoute()
 
-// Активная вкладка
-const activeTab = ref<'personal' | 'contract'>('personal')
-
 // Подсветка блока прогресса
 const highlightProgress = ref(false)
-
-// Конфигурация вкладок
-const tabs = [
-  { id: 'personal' as const, label: 'Персональные данные', icon: 'heroicons:identification' },
-  { id: 'contract' as const, label: 'Договор', icon: 'heroicons:document-text' }
-]
 
 // =============================================================================
 // COMPUTED — прогресс заполнения профиля
@@ -125,40 +113,16 @@ onMounted(() => {
     </div>
 
     <!-- =====================================================================
-         TABS — переключение между разделами (одинаково на всех устройствах)
+         PROFILE CONTENT — объединённые данные профиля
          ===================================================================== -->
-    <div class="flex gap-2 overflow-x-auto pb-2">
-      <button
-        v-for="tab in tabs"
-        :key="tab.id"
-        @click="activeTab = tab.id"
-        class="px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 md:gap-2 flex-shrink-0"
-        :class="activeTab === tab.id
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== tab.id ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon :name="tab.icon" class="w-4 h-4" />
-        <span>{{ tab.label }}</span>
-      </button>
-    </div>
-
-    <!-- =====================================================================
-         PERSONAL TAB — персональные данные
-         ===================================================================== -->
-    <div v-if="activeTab === 'personal'" class="space-y-6">
+    <div class="space-y-6">
+      <!-- Персональные данные -->
       <!-- ФИО, дата рождения -->
       <ProfilePersonalInfo />
-      <!-- Телефон, email -->
+      <!-- Телефон, email, Telegram -->
       <ProfileContactInfo />
-      <!-- Привязка Telegram -->
-      <ProfileTelegramLink />
-    </div>
-
-    <!-- =====================================================================
-         CONTRACT TAB — информация о договоре
-         ===================================================================== -->
-    <div v-if="activeTab === 'contract'" class="space-y-6">
+      
+      <!-- Информация о договоре -->
       <ProfileContractInfo />
       <ProfileAddressInfo />
     </div>
