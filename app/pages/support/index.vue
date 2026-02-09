@@ -433,35 +433,46 @@ watch(isOperatorTyping, (typing) => {
     <!-- =====================================================================
          Tabs — переключение между чатом и FAQ (desktop, как было изначально)
          ===================================================================== -->
-    <div class="hidden md:flex gap-2 justify-start">
-      <!-- Чат -->
-      <button
-        @click="activeTab = 'chat'"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
-        :class="activeTab === 'chat'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
-      >
-        <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
-        <span>Чат с поддержкой</span>
-        <!-- Badge непрочитанных сообщений -->
-        <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
-          {{ chatStore.unreadCount }}
-        </span>
-      </button>
+    <div class="hidden md:flex items-center gap-2 justify-between">
+      <div class="flex gap-2">
+        <!-- Чат -->
+        <button
+          @click="activeTab = 'chat'"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
+          :class="activeTab === 'chat'
+            ? 'bg-primary text-white'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+          :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
+        >
+          <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
+          <span>Чат с поддержкой</span>
+          <!-- Badge непрочитанных сообщений -->
+          <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
+            {{ chatStore.unreadCount }}
+          </span>
+        </button>
 
-      <!-- FAQ -->
+        <!-- FAQ -->
+        <button
+          @click="activeTab = 'faq'"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          :class="activeTab === 'faq'
+            ? 'bg-primary text-white'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+          :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
+        >
+          <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
+          <span>Частые вопросы</span>
+        </button>
+      </div>
+
+      <!-- Создать заявку (desktop) -->
       <button
-        @click="activeTab = 'faq'"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
-        :class="activeTab === 'faq'
-          ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
+        @click="showNewTicketModal = true"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-[var(--glass-bg)] text-[var(--text-primary)] hover:text-primary"
       >
-        <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
-        <span>Частые вопросы</span>
+        <span class="text-sm font-medium">Создать заявку</span>
+        <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
       </button>
     </div>
 
