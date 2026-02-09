@@ -218,6 +218,23 @@ function closeServicesModal(): void {
   selectedInvoiceForServices.value = null
 }
 
+// Прокрутить к форме оплаты в модальном окне
+function scrollToPaymentForm(): void {
+  nextTick(() => {
+    const paymentForm = document.getElementById('payment-form')
+    if (paymentForm) {
+      paymentForm.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      // Небольшая задержка для фокуса на инпут
+      setTimeout(() => {
+        const input = paymentForm.querySelector('input[type="number"]') as HTMLInputElement
+        if (input) {
+          input.focus()
+        }
+      }, 300)
+    }
+  })
+}
+
 // Открыть модальное окно счета на оплату
 function openInvoiceModal(invoiceId: string, event?: Event): void {
   if (event) {
@@ -300,6 +317,12 @@ function downloadInvoiceJpeg(): void {
 
 // Получить CSS-класс для бейджа статуса
 function getStatusBadgeClass(status: InvoiceStatus): string {
+  // Неоплаченные счета - красный фон
+  const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
+  if (unpaidStatuses.includes(status)) {
+    return 'bg-red-500/20 text-red-400'
+  }
+  
   const colorMap: Record<string, string> = {
     gray: 'bg-gray-600/20 text-gray-400',
     primary: 'bg-primary/20 text-primary',
@@ -563,28 +586,36 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
             </div>
 
             <!-- Контентная область (scrollable) -->
-            <div class="flex-1 overflow-y-auto p-6">
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
               <div class="space-y-6">
                 <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
                   <!-- Адрес -->
                   <div class="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/5 border-l-4 border-primary">
-                    <p class="text-sm font-semibold text-[var(--text-primary)] leading-relaxed">{{ address.address }}</p>
+                    <div class="flex items-center gap-2 mb-1">
+                      <Icon name="heroicons:map-pin" class="w-4 h-4 text-primary flex-shrink-0" />
+                      <p class="text-sm font-semibold text-[var(--text-primary)] leading-relaxed">{{ address.address }}</p>
+                    </div>
                   </div>
                   
                   <!-- Услуги для адреса -->
-                  <div class="space-y-3 pl-2">
+                  <div class="space-y-2 pl-4">
                     <div
                       v-for="(service, serviceIdx) in address.services"
                       :key="serviceIdx"
-                      class="flex items-start justify-between gap-4 p-3 rounded-lg hover:bg-[var(--glass-bg)] transition-colors"
-                      :style="serviceIdx < address.services.length - 1 ? 'border-bottom: 1px solid var(--glass-border);' : ''"
+                      class="flex items-start justify-between gap-4 p-4 rounded-lg transition-all"
+                      :style="serviceIdx < address.services.length - 1 ? 'background: var(--glass-bg); border-bottom: 1px solid var(--glass-border);' : 'background: var(--glass-bg);'"
                     >
-                      <div class="flex-1 min-w-0 pr-4">
-                        <p class="text-sm text-[var(--text-primary)] leading-relaxed">
-                          {{ service.name }}
-                        </p>
+                      <div class="flex items-start gap-3 flex-1 min-w-0">
+                        <div class="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center mt-0.5">
+                          <Icon name="heroicons:check" class="w-3 h-3 text-primary" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm text-[var(--text-primary)] leading-relaxed">
+                            {{ service.name }}
+                          </p>
+                        </div>
                       </div>
-                      <div class="flex-shrink-0 text-right">
+                      <div class="flex-shrink-0 text-right ml-4">
                         <span class="text-base font-bold text-[var(--text-primary)] whitespace-nowrap">
                           {{ formatKopeks(service.price) }} ₽
                         </span>
@@ -592,8 +623,11 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                     </div>
                     
                     <!-- Итого по адресу -->
-                    <div class="flex items-center justify-between gap-4 pt-2 mt-2 border-t-2" style="border-color: var(--glass-border);">
-                      <span class="text-sm font-semibold text-[var(--text-secondary)]">Итого по адресу:</span>
+                    <div class="flex items-center justify-between gap-4 p-4 mt-3 rounded-lg bg-gradient-to-r from-primary/5 to-secondary/5 border-2" style="border-color: var(--glass-border);">
+                      <div class="flex items-center gap-2">
+                        <Icon name="heroicons:calculator" class="w-5 h-5 text-primary" />
+                        <span class="text-sm font-semibold text-[var(--text-primary)]">Итого по адресу:</span>
+                      </div>
                       <span class="text-lg font-bold text-primary whitespace-nowrap">
                         {{ formatKopeks(address.services.reduce((sum, s) => sum + s.price, 0)) }} ₽
                       </span>
@@ -605,23 +639,32 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                 </div>
 
                 <!-- Итоговые суммы -->
-                <div class="pt-4 border-t" style="border-color: var(--glass-border);">
-                  <div class="space-y-2">
-                    <div class="flex justify-between items-center">
-                      <span class="text-sm text-[var(--text-muted)]">Сумма услуг в следующем месяце:</span>
-                      <span class="text-base font-bold text-[var(--text-primary)]">
+                <div class="pt-6 mt-6 border-t-2" style="border-color: var(--glass-border);">
+                  <div class="space-y-3">
+                    <div class="flex justify-between items-center p-3 rounded-lg" style="background: var(--glass-bg);">
+                      <div class="flex items-center gap-2">
+                        <Icon name="heroicons:document-text" class="w-4 h-4 text-[var(--text-muted)]" />
+                        <span class="text-sm text-[var(--text-muted)]">Сумма услуг:</span>
+                      </div>
+                      <span class="text-base font-semibold text-[var(--text-primary)]">
                         {{ formatKopeks(invoiceDetailsData.totalAmount) }} ₽
                       </span>
                     </div>
-                    <div class="flex justify-between items-center">
-                      <span class="text-sm text-[var(--text-muted)]">Баланс счета:</span>
-                      <span class="text-base font-bold text-[var(--text-primary)]">
+                    <div class="flex justify-between items-center p-3 rounded-lg" style="background: var(--glass-bg);">
+                      <div class="flex items-center gap-2">
+                        <Icon name="heroicons:wallet" class="w-4 h-4 text-[var(--text-muted)]" />
+                        <span class="text-sm text-[var(--text-muted)]">Баланс счета:</span>
+                      </div>
+                      <span class="text-base font-semibold text-[var(--text-primary)]">
                         {{ formatKopeks(invoiceDetailsData.balance) }} ₽
                       </span>
                     </div>
-                    <div class="flex justify-between items-center pt-2 border-t" style="border-color: var(--glass-border);">
-                      <span class="text-base font-bold text-[var(--text-primary)]">Итого к оплате:</span>
-                      <span class="text-lg font-bold text-primary">
+                    <div class="flex justify-between items-center p-4 mt-2 rounded-lg bg-gradient-to-r from-primary/10 to-secondary/5 border-2" style="border-color: var(--glass-border);">
+                      <div class="flex items-center gap-2">
+                        <Icon name="heroicons:currency-ruble" class="w-5 h-5 text-primary" />
+                        <span class="text-base font-bold text-[var(--text-primary)]">Итого к оплате:</span>
+                      </div>
+                      <span class="text-xl font-bold text-primary">
                         {{ formatKopeks(invoiceDetailsData.totalToPay) }} ₽
                       </span>
                     </div>
@@ -629,9 +672,9 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                 </div>
 
                 <!-- Инпут и кнопка оплаты для неоплаченных счетов -->
-                <div v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)" class="pt-4 border-t" style="border-color: var(--glass-border);">
-                  <div class="space-y-4">
-                    <div>
+                <div id="payment-form" v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)" class="pt-4 border-t" style="border-color: var(--glass-border);">
+                  <div class="flex flex-col sm:flex-row gap-4 items-end">
+                    <div class="flex-1 w-full sm:w-auto">
                       <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                         Введите сумму, которую хотите оплатить
                       </label>
@@ -647,7 +690,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                     </div>
                     <UiButton
                       variant="primary"
-                      block
+                      class="w-full sm:w-auto sm:flex-shrink-0"
                       @click="openInvoiceModal(selectedInvoiceForServices.id, $event)"
                     >
                       Счет на оплату
@@ -657,9 +700,17 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
               </div>
             </div>
 
-            <!-- Кнопка закрытия -->
-            <div class="flex justify-end p-6 border-t" style="border-color: var(--glass-border);">
+            <!-- Кнопка оплаты -->
+            <div class="flex justify-center p-6 border-t" style="border-color: var(--glass-border);">
               <UiButton
+                v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)"
+                variant="primary"
+                @click="scrollToPaymentForm"
+              >
+                Оплатить
+              </UiButton>
+              <UiButton
+                v-else
                 variant="primary"
                 @click="closeServicesModal"
               >
@@ -716,13 +767,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
             <div class="flex flex-col sm:flex-row gap-3 p-6 border-t" style="border-color: var(--glass-border);">
               <UiButton
                 variant="secondary"
-                @click="downloadInvoiceJpeg"
-                class="w-full sm:flex-1"
-              >
-                Сохранено в формате JPEG
-              </UiButton>
-              <UiButton
-                variant="secondary"
                 @click="saveInvoiceAsJpeg"
                 class="w-full sm:flex-1"
               >
@@ -742,3 +786,31 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+/* Кастомный скроллбар для модального окна */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.3) var(--bg-surface);
+}
+
+/* Для WebKit браузеров (Chrome, Safari, Edge) */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+  border: 2px solid var(--bg-surface);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+</style>

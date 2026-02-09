@@ -177,6 +177,12 @@ function openInvoice(invoiceId: string): void {
 
 // Получить CSS-класс для бейджа статуса счёта
 function getStatusBadgeClass(status: InvoiceStatus): string {
+  // Неоплаченные счета - красный фон
+  const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
+  if (unpaidStatuses.includes(status)) {
+    return 'bg-red-500/20 text-red-400'
+  }
+  
   const colorMap: Record<string, string> = {
     gray: 'bg-gray-600/20 text-gray-400',
     primary: 'bg-primary/20 text-primary',

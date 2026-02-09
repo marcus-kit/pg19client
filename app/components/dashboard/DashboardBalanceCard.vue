@@ -90,8 +90,10 @@ const visibleAddresses = computed(() => {
 // Обработчик клика на кнопку оплаты
 function handlePayClick(): void {
   if (unpaidInvoices.value.length > 0) {
-    // Переходим на страницу счетов с фильтром "К оплате"
-    navigateTo('/invoices?filter=unpaid')
+    const first = unpaidInvoices.value[0]
+    if (first) {
+      window.open(`https://invoice.doka.team/invoice/${first.id}`, '_blank')
+    }
   } else {
     showAllPaidModal.value = true
   }
@@ -102,45 +104,45 @@ function handlePayClick(): void {
   <div class="space-y-4">
     <!-- Карточка: Статус услуги -->
     <UiCard hover>
-      <div class="flex items-start justify-between mb-4">
-        <div>
-          <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
-          <div class="flex items-center gap-3 mt-2">
-            <span class="relative flex h-3 w-3">
-              <span
-                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                :class="statusConfig.color"
-              ></span>
-              <span
-                class="relative inline-flex rounded-full h-3 w-3"
-                :class="statusConfig.color"
-              ></span>
-            </span>
-            <span class="text-xl font-semibold text-[var(--text-primary)]">
-              {{ statusConfig.text }}
-            </span>
-          </div>
-        </div>
-        <div class="icon-container">
-          <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-[var(--text-muted)]">
-          <Icon name="heroicons:calendar" class="w-4 h-4" />
-          <span class="text-sm">
-            Следующая оплата
-            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+        <div class="flex items-center gap-3 mt-2">
+          <span class="relative flex h-3 w-3">
+            <span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+              :class="statusConfig.color"
+            ></span>
+            <span
+              class="relative inline-flex rounded-full h-3 w-3"
+              :class="statusConfig.color"
+            ></span>
+          </span>
+          <span class="text-xl font-semibold text-[var(--text-primary)]">
+            {{ statusConfig.text }}
           </span>
         </div>
-        <UiButton size="sm" variant="secondary" @click="handlePayClick">
-          Оплатить сейчас
-        </UiButton>
       </div>
+      <div class="icon-container">
+        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 text-[var(--text-muted)]">
+        <Icon name="heroicons:calendar" class="w-4 h-4" />
+        <span class="text-sm">
+            Следующая оплата
+            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+        </span>
+      </div>
+      <UiButton size="sm" variant="secondary" @click="handlePayClick">
+        Оплатить сейчас
+      </UiButton>
+    </div>
     </UiCard>
 
-    <!-- Карточка: Подключение (ниже Статуса услуги) -->
+    <!-- Карточка: Подключение -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
