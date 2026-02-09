@@ -106,7 +106,7 @@ function handlePayClick(): void {
     <UiCard hover>
     <div class="flex items-start justify-between mb-4">
       <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+        <p class="text-sm text-[var(--text-muted)] mb-1">Статус договора</p>
         <div class="flex items-center gap-3 mt-2">
           <span class="relative flex h-3 w-3">
             <span
