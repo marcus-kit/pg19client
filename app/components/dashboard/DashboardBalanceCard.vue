@@ -25,6 +25,7 @@ const { invoices: unpaidInvoices } = await fetchUnpaidInvoices()
 // =============================================================================
 
 const showAllPaidModal = ref(false)
+const showAllAddresses = ref(false) // Показывать все адреса или только первые 3
 
 // =============================================================================
 // COMPUTED
@@ -70,6 +71,17 @@ const connectionAddresses = [
   'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
   'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74'
 ]
+
+// Показывать стрелку, если адресов больше 3
+const showExpandButton = computed(() => connectionAddresses.length > 3)
+
+// Видимые адреса (первые 3 или все)
+const visibleAddresses = computed(() => {
+  if (showAllAddresses.value || connectionAddresses.length <= 3) {
+    return connectionAddresses
+  }
+  return connectionAddresses.slice(0, 3)
+})
 
 // =============================================================================
 // METHODS
@@ -146,7 +158,7 @@ function handlePayClick(): void {
 
       <div class="space-y-4">
         <!-- Список адресов подключения -->
-        <div v-for="(address, index) in connectionAddresses" :key="index" class="space-y-2">
+        <div v-for="(address, index) in visibleAddresses" :key="index" class="space-y-2">
           <div class="flex items-start gap-3">
             <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
             <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
@@ -164,9 +176,23 @@ function handlePayClick(): void {
               Услуга активна
             </span>
           </div>
-          <!-- Разделитель между адресами (кроме последнего) -->
-          <div v-if="index < connectionAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
+          <!-- Разделитель между адресами (кроме последнего видимого) -->
+          <div v-if="index < visibleAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
         </div>
+
+        <!-- Кнопка разворачивания/сворачивания -->
+        <button
+          v-if="showExpandButton"
+          @click="showAllAddresses = !showAllAddresses"
+          class="w-full flex items-center justify-center gap-2 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <span>{{ showAllAddresses ? 'Свернуть' : `Показать ещё ${connectionAddresses.length - 3}` }}</span>
+          <Icon 
+            name="heroicons:chevron-down" 
+            class="w-4 h-4 transition-transform duration-200"
+            :class="{ 'rotate-180': showAllAddresses }"
+          />
+        </button>
       </div>
     </UiCard>
   </div>

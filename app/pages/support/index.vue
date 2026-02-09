@@ -382,12 +382,12 @@ watch(isOperatorTyping, (typing) => {
     </div>
 
     <!-- =====================================================================
-         Action Bar — иконки чата, FAQ и создания заявки на одном уровне
+         Action Bar — иконки чата, FAQ и создания заявки на одном уровне (mobile)
          ===================================================================== -->
     <div 
-      class="flex items-center gap-2"
+      class="md:hidden flex items-center gap-2"
       :class="{
-        'fixed top-16 left-0 right-0 px-4 py-2 z-50 md:relative md:z-auto': activeTab === 'chat' && isMobile
+        'fixed top-16 left-0 right-0 px-4 py-2 z-50': activeTab === 'chat' && isMobile
       }"
       :style="activeTab === 'chat' && isMobile ? 'background: var(--bg-base);' : ''"
     >
@@ -427,6 +427,41 @@ watch(isOperatorTyping, (typing) => {
       >
         <span class="text-sm font-medium">Создать заявку</span>
         <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
+      </button>
+    </div>
+
+    <!-- =====================================================================
+         Tabs — переключение между чатом и FAQ (desktop, как было изначально)
+         ===================================================================== -->
+    <div class="hidden md:flex gap-2 justify-start">
+      <!-- Чат -->
+      <button
+        @click="activeTab = 'chat'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
+        :class="activeTab === 'chat'
+          ? 'bg-primary text-white'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
+      >
+        <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
+        <span>Чат с поддержкой</span>
+        <!-- Badge непрочитанных сообщений -->
+        <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
+          {{ chatStore.unreadCount }}
+        </span>
+      </button>
+
+      <!-- FAQ -->
+      <button
+        @click="activeTab = 'faq'"
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+        :class="activeTab === 'faq'
+          ? 'bg-primary text-white'
+          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
+      >
+        <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
+        <span>Частые вопросы</span>
       </button>
     </div>
 
@@ -516,7 +551,7 @@ watch(isOperatorTyping, (typing) => {
             <!-- Messages Area -->
             <div
               ref="messagesContainer"
-              class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0"
+              class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 custom-scrollbar"
             >
             <!-- Welcome message (если нет сообщений) -->
             <div v-if="messages.length === 0" class="text-center py-12">
