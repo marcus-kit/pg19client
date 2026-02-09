@@ -121,76 +121,6 @@ async function startCallVerification(): Promise<void> {
 async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
-  // ВРЕМЕННЫЙ ОБХОД: если поля пустые, используем дефолтные данные
-  const contractNumber = form.contractNumber || '12345'
-  const lastName = form.lastName || 'Тестовый'
-  const firstName = form.firstName || 'Пользователь'
-
-  // Если все поля пустые, используем обход авторизации
-  if (!form.contractNumber && !form.lastName && !form.firstName) {
-    isLoading.value = true
-    try {
-      // Пытаемся авторизоваться через API с дефолтными данными
-      try {
-        const response = await $fetch<{
-          success: boolean
-          user: any
-          account: any
-        }>('/api/auth/contract', {
-          method: 'POST',
-          body: {
-            contractNumber: contractNumber,
-            lastName: lastName,
-            firstName: firstName
-          }
-        })
-
-        await authInit(response.user, response.account)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      } catch (apiError: any) {
-        // Если API не работает, используем прямой обход
-        console.warn('API авторизация не удалась, используем обход:', apiError)
-        
-        const defaultUser = {
-          id: 'temp-user-id',
-          firstName: 'Тестовый',
-          lastName: 'Пользователь',
-          middleName: 'Временный',
-          phone: '+79001234567',
-          email: 'test@example.com',
-          telegram: '',
-          telegramId: null,
-          vkId: '',
-          avatar: null,
-          birthDate: null,
-          role: 'user' as const
-        }
-
-        const defaultAccount = {
-          contractNumber: 12345,
-          balance: 0,
-          status: 'active' as const,
-          tariff: 'ИНТЕРНЕТ ПЖ19',
-          address: 'обл Ростовская, г Таганрог, пер Комсомольский, д. 27',
-          startDate: new Date().toISOString()
-        }
-
-        await authInit(defaultUser, defaultAccount)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      }
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Ошибка авторизации'
-    } finally {
-      isLoading.value = false
-    }
-    return
-  }
-
-  // Обычная авторизация с заполненными полями
   if (!form.contractNumber || !form.lastName || !form.firstName) {
     error.value = 'Заполните все поля'
     return
@@ -534,6 +464,14 @@ onUnmounted(() => {
               placeholder="Логин"
             />
 
+            <UiInput
+              v-model="form.firstName"
+              type="text"
+              label="Логин"
+              placeholder="Логин"
+            />
+
+
             <UiButton type="submit" variant="primary" block :loading="isLoading">
               Войти
             </UiButton>
@@ -666,9 +604,9 @@ onUnmounted(() => {
               <div class="flex-1 h-px bg-orange-500 group-hover:bg-orange-400 transition-colors"></div>
             </div>
             <div class="text-center">
-              <a href="https://pg19.doka.team" class="text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
-                Вернуться на главную
-              </a>
+            <a href="https://pg19.doka.team" class="text-sm text-[var(--text-muted)] hover:text-primary transition-colors">
+              Вернуться на главную
+            </a>
             </div>
           </div>
 
