@@ -83,44 +83,44 @@ function handlePayClick(): void {
 <template>
   <div class="grid md:grid-cols-2 gap-4">
     <!-- Левая карточка: Статус услуги -->
-    <UiCard hover>
-      <div class="flex items-start justify-between mb-4">
-        <div>
-          <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
-          <div class="flex items-center gap-3 mt-2">
-            <span class="relative flex h-3 w-3">
-              <span
-                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-                :class="statusConfig.color"
-              ></span>
-              <span
-                class="relative inline-flex rounded-full h-3 w-3"
-                :class="statusConfig.color"
-              ></span>
-            </span>
-            <span class="text-xl font-semibold text-[var(--text-primary)]">
-              {{ statusConfig.text }}
-            </span>
-          </div>
-        </div>
-        <div class="icon-container">
-          <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-        </div>
-      </div>
-
-      <div class="flex items-center justify-between">
-        <div class="flex items-center gap-2 text-[var(--text-muted)]">
-          <Icon name="heroicons:calendar" class="w-4 h-4" />
-          <span class="text-sm">
-            Следующая оплата
-            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+  <UiCard hover>
+    <div class="flex items-start justify-between mb-4">
+      <div>
+        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+        <div class="flex items-center gap-3 mt-2">
+          <span class="relative flex h-3 w-3">
+            <span
+              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+              :class="statusConfig.color"
+            ></span>
+            <span
+              class="relative inline-flex rounded-full h-3 w-3"
+              :class="statusConfig.color"
+            ></span>
+          </span>
+          <span class="text-xl font-semibold text-[var(--text-primary)]">
+            {{ statusConfig.text }}
           </span>
         </div>
-        <UiButton size="sm" variant="secondary" @click="handlePayClick">
-          Оплатить сейчас
-        </UiButton>
       </div>
-    </UiCard>
+      <div class="icon-container">
+        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-2 text-[var(--text-muted)]">
+        <Icon name="heroicons:calendar" class="w-4 h-4" />
+        <span class="text-sm">
+            Следующая оплата
+            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+        </span>
+      </div>
+      <UiButton size="sm" variant="secondary" @click="handlePayClick">
+        Оплатить сейчас
+      </UiButton>
+    </div>
+  </UiCard>
 
     <!-- Правая карточка: Подключение -->
     <UiCard hover>

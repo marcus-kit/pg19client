@@ -144,7 +144,7 @@ async function initChatSession() {
   if (savedSessionId) {
     try {
       await initSession({ chatId: savedSessionId, userId: userStore.user?.id })
-        if (session.value) {
+      if (session.value) {
           chatStore.setSessionId((session.value as { id: string }).id)
         scrollToBottom()
       }
@@ -157,7 +157,7 @@ async function initChatSession() {
   // Создаём новую сессию если нет существующей
   if (!savedSessionId && !session.value && userStore.isAuthenticated) {
     await initSession({ userId: userStore.user?.id })
-      if (session.value) {
+    if (session.value) {
         chatStore.setSessionId((session.value as { id: string }).id)
       scrollToBottom()
     }
