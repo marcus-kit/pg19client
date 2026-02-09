@@ -25,6 +25,7 @@ const { invoices: unpaidInvoices } = await fetchUnpaidInvoices()
 // =============================================================================
 
 const showAllPaidModal = ref(false)
+const showAllAddresses = ref(false) // Показывать все адреса или только первые 3
 
 // =============================================================================
 // COMPUTED
@@ -63,6 +64,25 @@ const connectionStatus = computed(() => {
   return accountStore.account?.tariff || 'Не подключен'
 })
 
+// Список адресов подключения
+const connectionAddresses = [
+  'обл Ростовская, г Таганрог, ул Ломоносова, д. 47',
+  'обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16',
+  'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
+  'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74'
+]
+
+// Показывать стрелку, если адресов больше 3
+const showExpandButton = computed(() => connectionAddresses.length > 3)
+
+// Видимые адреса (первые 3 или все)
+const visibleAddresses = computed(() => {
+  if (showAllAddresses.value || connectionAddresses.length <= 3) {
+    return connectionAddresses
+  }
+  return connectionAddresses.slice(0, 3)
+})
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -83,46 +103,46 @@ function handlePayClick(): void {
 <template>
   <div class="grid md:grid-cols-2 gap-4">
     <!-- Левая карточка: Статус услуги -->
-  <UiCard hover>
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
-        <div class="flex items-center gap-3 mt-2">
-          <span class="relative flex h-3 w-3">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="statusConfig.color"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-3 w-3"
-              :class="statusConfig.color"
-            ></span>
-          </span>
-          <span class="text-xl font-semibold text-[var(--text-primary)]">
-            {{ statusConfig.text }}
-          </span>
+    <UiCard hover>
+      <div class="flex items-start justify-between mb-4">
+        <div>
+          <p class="text-sm text-[var(--text-muted)] mb-1">Статус услуги</p>
+          <div class="flex items-center gap-3 mt-2">
+            <span class="relative flex h-3 w-3">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
+                :class="statusConfig.color"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-3 w-3"
+                :class="statusConfig.color"
+              ></span>
+            </span>
+            <span class="text-xl font-semibold text-[var(--text-primary)]">
+              {{ statusConfig.text }}
+            </span>
+          </div>
+        </div>
+        <div class="icon-container">
+          <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
         </div>
       </div>
-      <div class="icon-container">
-        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-      </div>
-    </div>
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 text-[var(--text-muted)]">
-        <Icon name="heroicons:calendar" class="w-4 h-4" />
-        <span class="text-sm">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-[var(--text-muted)]">
+          <Icon name="heroicons:calendar" class="w-4 h-4" />
+          <span class="text-sm">
             Следующая оплата
             <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
-        </span>
+          </span>
+        </div>
+        <UiButton size="sm" variant="secondary" @click="handlePayClick">
+          Оплатить сейчас
+        </UiButton>
       </div>
-      <UiButton size="sm" variant="secondary" @click="handlePayClick">
-        Оплатить сейчас
-      </UiButton>
-    </div>
-  </UiCard>
+    </UiCard>
 
-    <!-- Правая карточка: Подключение -->
+    <!-- Правая карточка: Подключение (полная ширина снизу) -->
     <UiCard hover>
       <div class="flex items-start justify-between mb-4">
         <div>
@@ -136,27 +156,43 @@ function handlePayClick(): void {
         </div>
       </div>
 
-      <div class="space-y-3">
-        <div class="flex items-center gap-3">
-          <span class="relative flex h-3 w-3">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-3 w-3"
-              :class="accountStore.isBlocked ? 'bg-red-500' : 'bg-accent'"
-            ></span>
-          </span>
-          <span class="text-sm text-[var(--text-secondary)]">
-            {{ accountStore.isBlocked ? 'Услуга приостановлена' : 'Услуга активна' }}
-          </span>
+      <div class="space-y-4">
+        <!-- Список адресов подключения -->
+        <div v-for="(address, index) in visibleAddresses" :key="index" class="space-y-2">
+          <div class="flex items-start gap-3">
+            <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
+            <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
+          </div>
+          <div class="flex items-center gap-3 pl-7">
+            <span class="relative flex h-3 w-3">
+              <span
+                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-accent"
+              ></span>
+              <span
+                class="relative inline-flex rounded-full h-3 w-3 bg-accent"
+              ></span>
+            </span>
+            <span class="text-sm text-[var(--text-secondary)]">
+              Услуга активна
+            </span>
+          </div>
+          <!-- Разделитель между адресами (кроме последнего видимого) -->
+          <div v-if="index < visibleAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
         </div>
 
-        <div class="flex items-center gap-3 text-sm text-[var(--text-muted)]">
-          <Icon name="heroicons:map-pin" class="w-4 h-4" />
-          <span class="line-clamp-1">{{ accountStore.account?.address || '—' }}</span>
-        </div>
+        <!-- Кнопка разворачивания/сворачивания -->
+        <button
+          v-if="showExpandButton"
+          @click="showAllAddresses = !showAllAddresses"
+          class="w-full flex items-center justify-center gap-2 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+        >
+          <span>{{ showAllAddresses ? 'Свернуть' : `Показать ещё ${connectionAddresses.length - 3}` }}</span>
+          <Icon 
+            name="heroicons:chevron-down" 
+            class="w-4 h-4 transition-transform duration-200"
+            :class="{ 'rotate-180': showAllAddresses }"
+          />
+        </button>
       </div>
     </UiCard>
   </div>

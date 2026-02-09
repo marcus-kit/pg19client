@@ -298,11 +298,45 @@ async function submitTicket() {
 // LIFECYCLE
 // =============================================================================
 
+// Предотвращение скролла страницы на мобильных при открытом чате
+const isMobile = ref(false)
+
+function updateIsMobile() {
+  if (typeof window === 'undefined') return
+  isMobile.value = window.innerWidth < 768
+}
+
+function preventBodyScroll(prevent: boolean) {
+  if (typeof document === 'undefined') return
+  if (prevent && isMobile.value) {
+    document.body.style.overflow = 'hidden'
+    document.body.style.position = 'fixed'
+    document.body.style.width = '100%'
+  } else {
+    document.body.style.overflow = ''
+    document.body.style.position = ''
+    document.body.style.width = ''
+  }
+}
+
 // Инициализация чата при загрузке страницы (если чат — активная вкладка)
 onMounted(() => {
+  updateIsMobile()
+  if (typeof window !== 'undefined') {
+    window.addEventListener('resize', updateIsMobile)
+  }
+  
   if (activeTab.value === 'chat') {
     initChatSession()
+    preventBodyScroll(true)
   }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('resize', updateIsMobile)
+  }
+  preventBodyScroll(false)
 })
 
 // =============================================================================
@@ -320,7 +354,12 @@ watch(lastMessage, (newMsg) => {
 // Инициализация чата при переключении на вкладку
 watch(activeTab, async (tab) => {
   if (tab === 'chat') {
-    initChatSession()
+    if (!chatInitialized.value) {
+      await initChatSession()
+    }
+    preventBodyScroll(true)
+  } else {
+    preventBodyScroll(false)
   }
 })
 
@@ -334,53 +373,106 @@ watch(isOperatorTyping, (typing) => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-4 md:space-y-6">
     <!-- =====================================================================
          Page Header
          ===================================================================== -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-[var(--text-primary)]">Поддержка</h1>
-        <p class="text-[var(--text-muted)] mt-1">Задайте вопрос или найдите ответ</p>
-      </div>
-      <UiButton @click="showNewTicketModal = true">
-        <Icon name="heroicons:plus" class="w-5 h-5 mr-2" />
-        Создать заявку
-      </UiButton>
+    <div>
+      <h1 class="text-xl md:text-2xl font-bold text-[var(--text-primary)]">Поддержка</h1>
     </div>
 
     <!-- =====================================================================
-         Tabs — переключение между чатом и FAQ (горизонтально слева)
+         Action Bar — иконки чата, FAQ и создания заявки на одном уровне (mobile)
          ===================================================================== -->
-    <div class="flex gap-2 justify-start">
+    <div 
+      class="md:hidden flex items-center gap-2"
+      :class="{
+        'fixed top-16 left-0 right-0 px-4 py-2 z-50': activeTab === 'chat' && isMobile
+      }"
+      :style="activeTab === 'chat' && isMobile ? 'background: var(--bg-base);' : ''"
+    >
       <!-- Чат -->
       <button
         @click="activeTab = 'chat'"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors relative"
         :class="activeTab === 'chat'
           ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
+          : 'bg-[var(--glass-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        title="Чат с поддержкой"
       >
-        <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
-        <span>Чат с поддержкой</span>
+        <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 flex-shrink-0" />
         <!-- Badge непрочитанных сообщений -->
-        <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
-          {{ chatStore.unreadCount }}
+        <span v-if="chatStore.unreadCount > 0" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
+          {{ chatStore.unreadCount > 9 ? '9+' : chatStore.unreadCount }}
         </span>
       </button>
 
       <!-- FAQ -->
       <button
         @click="activeTab = 'faq'"
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors"
         :class="activeTab === 'faq'
           ? 'bg-primary text-white'
-          : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
-        :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
+          : 'bg-[var(--glass-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+        title="Частые вопросы"
       >
-        <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
-        <span>Частые вопросы</span>
+        <Icon name="heroicons:question-mark-circle" class="w-4 h-4 flex-shrink-0" />
+      </button>
+
+      <!-- Создать заявку -->
+      <button
+        @click="showNewTicketModal = true"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-[var(--glass-bg)] text-[var(--text-primary)] hover:text-primary ml-auto"
+        title="Создать заявку"
+      >
+        <span class="text-sm font-medium">Создать заявку</span>
+        <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
+      </button>
+    </div>
+
+    <!-- =====================================================================
+         Tabs — переключение между чатом и FAQ (desktop, как было изначально)
+         ===================================================================== -->
+    <div class="hidden md:flex items-center gap-2 justify-between">
+      <div class="flex gap-2">
+        <!-- Чат -->
+        <button
+          @click="activeTab = 'chat'"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors relative"
+          :class="activeTab === 'chat'
+            ? 'bg-primary text-white'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+          :style="activeTab !== 'chat' ? 'background: var(--glass-bg);' : ''"
+        >
+          <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
+          <span>Чат с поддержкой</span>
+          <!-- Badge непрочитанных сообщений -->
+          <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
+            {{ chatStore.unreadCount }}
+          </span>
+        </button>
+
+        <!-- FAQ -->
+        <button
+          @click="activeTab = 'faq'"
+          class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors"
+          :class="activeTab === 'faq'
+            ? 'bg-primary text-white'
+            : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'"
+          :style="activeTab !== 'faq' ? 'background: var(--glass-bg);' : ''"
+        >
+          <Icon name="heroicons:question-mark-circle" class="w-5 h-5 flex-shrink-0" />
+          <span>Частые вопросы</span>
+        </button>
+      </div>
+
+      <!-- Создать заявку (desktop) -->
+      <button
+        @click="showNewTicketModal = true"
+        class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-[var(--glass-bg)] text-[var(--text-primary)] hover:text-primary"
+      >
+        <span class="text-sm font-medium">Создать заявку</span>
+        <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
       </button>
     </div>
 
@@ -444,40 +536,41 @@ watch(isOperatorTyping, (typing) => {
     <!-- =====================================================================
          Chat Tab — realtime чат с поддержкой
          ===================================================================== -->
-    <div v-if="activeTab === 'chat'" class="space-y-4">
-      <UiCard class="overflow-hidden">
+    <div v-if="activeTab === 'chat'" class="flex flex-col md:h-[calc(100vh-280px)] min-h-[500px] fixed inset-x-0 top-[120px] bottom-20 md:relative md:inset-x-auto md:bottom-auto md:top-0">
+      <div class="flex flex-col flex-1 h-full" style="background: var(--bg-surface);">
         <!-- Chat Header -->
-        <div class="flex items-center gap-3 pb-4 border-b border-[var(--glass-border)]">
-          <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
-            <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 text-primary" />
+        <div class="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0" style="border-color: var(--glass-border);">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--glass-bg);">
+            <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 text-primary" />
           </div>
-          <div>
-            <h3 class="font-semibold text-[var(--text-primary)]">Чат с поддержкой</h3>
-            <p class="text-xs text-[var(--text-muted)]">
+          <div class="flex-1 min-w-0">
+            <h3 class="text-sm font-semibold text-[var(--text-primary)]">Чат с поддержкой</h3>
+            <p class="text-xs text-[var(--text-muted)] truncate">
               {{ session?.status === 'closed' ? 'Чат закрыт' : session ? 'Оператор онлайн' : 'Подключение...' }}
             </p>
           </div>
         </div>
 
         <!-- Chat Loading -->
-        <div v-if="chatLoading" class="py-16 flex items-center justify-center">
+        <div v-if="chatLoading" class="flex-1 flex items-center justify-center">
           <Icon name="heroicons:arrow-path" class="w-8 h-8 text-primary animate-spin" />
         </div>
 
         <!-- Chat Content -->
         <template v-else>
-          <!-- Messages Area -->
-          <div
-            ref="messagesContainer"
-            class="h-[400px] overflow-y-auto py-4 space-y-3"
-          >
+          <div class="flex flex-col flex-1 min-h-0">
+            <!-- Messages Area -->
+            <div
+              ref="messagesContainer"
+              class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 custom-scrollbar"
+            >
             <!-- Welcome message (если нет сообщений) -->
             <div v-if="messages.length === 0" class="text-center py-12">
-              <div class="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
-                <Icon name="heroicons:sparkles" class="w-8 h-8 text-primary" />
+              <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background: var(--glass-bg);">
+                <Icon name="heroicons:chat-bubble-left-right" class="w-6 h-6 text-primary" />
               </div>
-              <h4 class="font-semibold text-[var(--text-primary)] mb-2">Добро пожаловать!</h4>
-              <p class="text-sm text-[var(--text-muted)]">
+              <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-1">Добро пожаловать!</h4>
+              <p class="text-xs text-[var(--text-muted)]">
                 Напишите ваш вопрос и наш оператор ответит вам
               </p>
             </div>
@@ -491,16 +584,16 @@ watch(isOperatorTyping, (typing) => {
             >
               <!-- Аватар отправителя -->
               <div
-                class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center"
+                class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
                 :class="{
                   'bg-primary/20': msgIsUser(msg),
                   'bg-accent/20': msgIsOperator(msg),
-                  'bg-white/10': msgIsSystem(msg)
+                  'bg-white/5': msgIsSystem(msg)
                 }"
               >
                 <Icon
                   :name="msgIsUser(msg) ? 'heroicons:user' : msgIsOperator(msg) ? 'heroicons:user-circle' : 'heroicons:information-circle'"
-                  class="w-4 h-4"
+                  class="w-3.5 h-3.5"
                   :class="{
                     'text-primary': msgIsUser(msg),
                     'text-accent': msgIsOperator(msg),
@@ -511,10 +604,10 @@ watch(isOperatorTyping, (typing) => {
 
               <!-- Блок сообщения -->
               <div
-                class="max-w-[75%] rounded-2xl px-4 py-2"
+                class="max-w-[75%] rounded-xl px-3 py-2"
                 :class="{
-                  'bg-primary text-white rounded-br-md': msgIsUser(msg),
-                  'bg-white/10 text-[var(--text-primary)] rounded-bl-md': !msgIsUser(msg)
+                  'bg-primary text-white': msgIsUser(msg),
+                  'bg-[var(--glass-bg)] text-[var(--text-primary)]': !msgIsUser(msg)
                 }"
               >
                 <!-- Имя отправителя (только для не-пользователя) -->
@@ -575,21 +668,21 @@ watch(isOperatorTyping, (typing) => {
 
             <!-- Typing indicator -->
             <div v-if="isOperatorTyping" class="flex gap-2">
-              <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20">
-                <Icon name="heroicons:user-circle" class="w-4 h-4 text-accent" />
+              <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20">
+                <Icon name="heroicons:user-circle" class="w-3.5 h-3.5 text-accent" />
               </div>
-              <div class="bg-white/10 rounded-2xl rounded-bl-md px-4 py-3">
+              <div class="bg-[var(--glass-bg)] rounded-xl px-3 py-2">
                 <div class="flex items-center gap-1">
-                  <span class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                  <span class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                  <span class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 300ms"></span>
+                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 0ms"></span>
+                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 150ms"></span>
+                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 300ms"></span>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Input Area -->
-          <div class="pt-4 border-t border-[var(--glass-border)]">
+          <div class="px-4 py-3 border-t flex-shrink-0" style="border-color: var(--glass-border);">
             <!-- Error message -->
             <div v-if="chatError" class="text-red-400 text-sm mb-2">{{ chatError }}</div>
 
@@ -630,11 +723,11 @@ watch(isOperatorTyping, (typing) => {
               <button
                 @click="openFileDialog"
                 :disabled="isSending || isUploading"
-                class="w-12 h-12 rounded-xl flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/10"
+                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/5"
                 style="background: var(--glass-bg);"
                 title="Прикрепить файл"
               >
-                <Icon name="heroicons:paper-clip" class="w-5 h-5 text-[var(--text-muted)]" />
+                <Icon name="heroicons:paper-clip" class="w-4 h-4 text-[var(--text-muted)]" />
               </button>
 
               <!-- Text input -->
@@ -652,18 +745,19 @@ watch(isOperatorTyping, (typing) => {
               <button
                 @click="handleSendMessage"
                 :disabled="(!messageText.trim() && !pendingFile) || isSending || isUploading"
-                class="w-12 h-12 rounded-xl bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
+                class="w-10 h-10 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
               >
                 <Icon
                   :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
-                  class="w-5 h-5"
+                  class="w-4 h-4"
                   :class="{ 'animate-spin': isSending || isUploading }"
                 />
               </button>
             </div>
           </div>
+          </div>
         </template>
-      </UiCard>
+      </div>
     </div>
 
     <!-- =====================================================================
