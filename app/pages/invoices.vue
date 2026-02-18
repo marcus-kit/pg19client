@@ -218,6 +218,33 @@ function closeServicesModal(): void {
   selectedInvoiceForServices.value = null
 }
 
+// Блокировать/разблокировать прокрутку body
+function lockBodyScroll(lock: boolean): void {
+  if (typeof document === 'undefined') return
+  if (lock) {
+    document.body.style.overflow = 'hidden'
+  } else {
+    document.body.style.overflow = ''
+  }
+}
+
+// Обработчик прокрутки в модальном окне
+function handleModalWheel(event: WheelEvent): void {
+  const target = event.currentTarget as HTMLElement
+  const { scrollTop, scrollHeight, clientHeight } = target
+  
+  // Если прокрутка вниз и достигнут конец
+  if (event.deltaY > 0 && scrollTop + clientHeight >= scrollHeight - 1) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+  // Если прокрутка вверх и достигнуто начало
+  else if (event.deltaY < 0 && scrollTop <= 1) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
+}
+
 // Прокрутить к форме оплаты в модальном окне
 function scrollToPaymentForm(): void {
   nextTick(() => {
@@ -258,6 +285,20 @@ function closeInvoiceModal(): void {
   showInvoiceModal.value = false
   selectedInvoiceId.value = null
 }
+
+// Отслеживание открытия/закрытия модальных окон для блокировки прокрутки
+watch(showServicesModal, (isOpen) => {
+  lockBodyScroll(isOpen)
+})
+
+watch(showInvoiceModal, (isOpen) => {
+  lockBodyScroll(isOpen)
+})
+
+// Разблокировать прокрутку при размонтировании
+onUnmounted(() => {
+  lockBodyScroll(false)
+})
 
 // Обработчик ошибки загрузки изображения
 function handleImageError(event: Event): void {
@@ -586,7 +627,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
             </div>
 
             <!-- Контентная область (scrollable) -->
-            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+            <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" @wheel="handleModalWheel">
               <div class="space-y-6">
                 <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
                   <!-- Адрес -->
@@ -670,52 +711,34 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                     </div>
                   </div>
                 </div>
-
-                <!-- Инпут и кнопка оплаты для неоплаченных счетов -->
-                <div id="payment-form" v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)" class="pt-4 border-t" style="border-color: var(--glass-border);">
-                  <div class="flex flex-col sm:flex-row gap-4 items-end">
-                    <div class="flex-1 w-full sm:w-auto">
-                      <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                        Введите сумму, которую хотите оплатить
-                      </label>
-                      <input
-                        v-model.number="paymentAmounts[selectedInvoiceForServices.id]"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
-                        style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-                        placeholder="3095"
-                      />
-                    </div>
-                    <UiButton
-                      variant="primary"
-                      class="w-full sm:w-auto sm:flex-shrink-0"
-                      @click="openInvoiceModal(selectedInvoiceForServices.id, $event)"
-                    >
-                      Счет на оплату
-                    </UiButton>
-                  </div>
-                </div>
               </div>
             </div>
 
-            <!-- Кнопка оплаты -->
-            <div class="flex justify-center p-6 border-t" style="border-color: var(--glass-border);">
-              <UiButton
-                v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)"
-                variant="primary"
-                @click="scrollToPaymentForm"
-              >
-                Оплатить
-              </UiButton>
-              <UiButton
-                v-else
-                variant="primary"
-                @click="closeServicesModal"
-              >
-                Закрыть
-              </UiButton>
+            <!-- Закрепленный блок с инпутом и кнопкой для неоплаченных счетов -->
+            <div id="payment-form" v-if="unpaidStatuses.includes(selectedInvoiceForServices.status)" class="p-6 border-t flex-shrink-0" style="border-color: var(--glass-border); background: var(--bg-surface);">
+              <div class="flex flex-col sm:flex-row gap-4 items-end">
+                <div class="flex-1 w-full sm:w-auto">
+                  <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                    Введите сумму, которую хотите оплатить
+                  </label>
+                  <input
+                    v-model.number="paymentAmounts[selectedInvoiceForServices.id]"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    class="w-full px-5 py-4 rounded-xl text-lg font-semibold text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/30 transition-all duration-200 shadow-lg"
+                    style="background: var(--bg-surface); border: 2px solid var(--glass-border);"
+                    placeholder="3095"
+                  />
+                </div>
+                <UiButton
+                  variant="primary"
+                  class="w-full sm:w-auto sm:flex-shrink-0"
+                  @click="openInvoiceModal(selectedInvoiceForServices.id, $event)"
+                >
+                  Счет на оплату
+                </UiButton>
+              </div>
             </div>
           </div>
         </div>
@@ -751,7 +774,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
             </div>
 
             <!-- Контентная область (scrollable) -->
-            <div class="flex-1 overflow-y-auto p-6 flex items-center justify-center min-h-[400px]">
+            <div class="flex-1 overflow-y-auto p-6 flex items-center justify-center min-h-[400px]" @wheel="handleModalWheel">
               <img
                 :id="`invoice-image-${selectedInvoiceId}`"
                 :src="`/Счет_101533.jpg?t=${Date.now()}`"

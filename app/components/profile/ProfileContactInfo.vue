@@ -225,16 +225,16 @@ onUnmounted(() => {
     </div>
 
     <!-- View Mode -->
-    <div v-if="!isEditing" class="space-y-2">
+    <div v-if="!isEditing" class="grid grid-cols-1 gap-y-2">
       <div
-        v-for="contact in contacts"
+        v-for="(contact, index) in contacts"
         :key="contact.key"
-        class="flex items-center justify-between py-2 last:border-0"
-        style="border-bottom: 1px solid var(--glass-border);"
+        class="flex items-center justify-between py-1.5"
+        :style="index < contacts.length - 1 ? 'border-bottom: 1px solid var(--glass-border);' : ''"
       >
         <div class="flex items-center gap-2 flex-1 min-w-0">
-          <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex-shrink-0">
-            <Icon :name="contact.icon" class="w-4 h-4 text-primary" />
+          <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center flex-shrink-0">
+            <Icon :name="contact.icon" class="w-full h-full text-primary" />
           </div>
           <div class="min-w-0 flex-1">
             <p class="text-xs text-[var(--text-muted)]">{{ contact.label }}</p>
@@ -265,7 +265,7 @@ onUnmounted(() => {
           <template v-else-if="contact.isTelegram && telegramStatus === 'waiting'">
             <div class="flex flex-col items-end gap-1">
               <a
-                :href="telegramDeeplink"
+                :href="telegramDeeplink || undefined"
                 target="_blank"
                 class="text-xs text-[#0088cc] hover:text-[#0077b5] flex items-center gap-1"
               >
@@ -299,8 +299,8 @@ onUnmounted(() => {
       <div v-for="contact in contacts" :key="contact.key">
         <label class="text-xs text-[var(--text-muted)] mb-1 block">{{ contact.label }}</label>
         <div class="flex items-center gap-2">
-          <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
-            <Icon :name="contact.icon" class="w-4 h-4 text-primary" />
+          <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+            <Icon :name="contact.icon" class="w-full h-full text-primary" />
           </div>
           <!-- Telegram - только просмотр, не редактируется -->
           <div v-if="contact.isTelegram" class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--glass-bg)] text-[var(--text-muted)] cursor-not-allowed">
