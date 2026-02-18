@@ -86,7 +86,7 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
 
   // Загружаем данные аккаунта
   const { data: account, error: accountError } = await supabase
-    .from('accounts')
+    .from('contracts')
     .select(`
       id,
       contract_number,

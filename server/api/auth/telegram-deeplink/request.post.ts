@@ -72,7 +72,7 @@ export default defineEventHandler(async (event) => {
 
     // Получаем account_id по user_id
     const { data: account, error: accountError } = await supabase
-      .from('accounts')
+      .from('contracts')
       .select('id')
       .eq('user_id', body.userId)
       .single()

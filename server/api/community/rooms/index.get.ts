@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
 
   // Получаем аккаунт с адресом
   const { data: account } = await supabase
-    .from('accounts')
+    .from('contracts')
     .select('id, address_city, address_district, address_building')
     .eq('id', sessionUser.accountId)
     .single()

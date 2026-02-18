@@ -18,9 +18,9 @@ export default defineEventHandler(async (event) => {
   // Используем shared Supabase client
   const supabase = useSupabaseServer()
 
-  // Ищем аккаунт по номеру договора
+  // Ищем аккаунт по номеру договора (в БД — таблица client.contracts)
   const { data: account, error: accountError } = await supabase
-    .from('accounts')
+    .from('contracts')
     .select(`
       id,
       user_id,

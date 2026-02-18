@@ -1,12 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
-
 interface CloseRequest {
   chatId: string
 }
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
   const body = await readBody<CloseRequest>(event)
+  const supabase = useSupabaseServer()
 
   if (!body.chatId) {
     throw createError({
@@ -14,11 +12,6 @@ export default defineEventHandler(async (event) => {
       message: 'chatId обязателен'
     })
   }
-
-  const supabase = createClient(
-    config.public.supabaseUrl,
-    config.supabaseSecretKey
-  )
 
   // Проверяем чат
   const { data: chat } = await supabase

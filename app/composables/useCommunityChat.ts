@@ -246,7 +246,7 @@ export function useCommunityChat() {
         'postgres_changes',
         {
           event: 'UPDATE',
-          schema: 'public',
+          schema: 'client',
           table: 'community_rooms'
         },
         (payload) => {
@@ -689,7 +689,7 @@ export function useCommunityChat() {
         'postgres_changes',
         {
           event: 'INSERT',
-          schema: 'public',
+          schema: 'client',
           table: 'community_messages',
           filter: `room_id=eq.${currentRoom.value.id}`
         },
@@ -716,7 +716,7 @@ export function useCommunityChat() {
         'postgres_changes',
         {
           event: 'UPDATE',
-          schema: 'public',
+          schema: 'client',
           table: 'community_messages',
           filter: `room_id=eq.${currentRoom.value.id}`
         },

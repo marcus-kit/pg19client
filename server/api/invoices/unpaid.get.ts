@@ -31,7 +31,6 @@ export default defineEventHandler(async (event) => {
 
   // Неоплаченные статусы: pending, sent, viewed, expired
   const { data, error } = await supabase
-    .schema('billing')
     .from('invoices')
     .select('*')
     .eq('account_id', sessionUser.accountId)

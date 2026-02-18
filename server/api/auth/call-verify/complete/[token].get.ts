@@ -58,7 +58,7 @@ export default defineEventHandler(async (event) => {
 
   // Загружаем данные аккаунта
   const { data: account, error: accountError } = await supabase
-    .from('accounts')
+    .from('contracts')
     .select(`
       id,
       contract_number,

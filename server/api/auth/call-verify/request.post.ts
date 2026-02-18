@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
 
   // Ищем аккаунт пользователя
   const { data: account, error: accountError } = await supabase
-    .from('accounts')
+    .from('contracts')
     .select('id')
     .eq('user_id', user.id)
     .single()

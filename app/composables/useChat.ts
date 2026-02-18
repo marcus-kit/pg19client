@@ -175,7 +175,7 @@ export function useChat() {
         'postgres_changes',
         {
           event: 'INSERT',
-          schema: 'public',
+          schema: 'client',
           table: 'chat_messages',
           filter: `chat_id=eq.${session.value.id}`
         },
@@ -196,7 +196,7 @@ export function useChat() {
         'postgres_changes',
         {
           event: 'UPDATE',
-          schema: 'public',
+          schema: 'client',
           table: 'chats',
           filter: `id=eq.${session.value.id}`
         },

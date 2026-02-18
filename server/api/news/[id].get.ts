@@ -1,7 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
-
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
   const id = getRouterParam(event, 'id')
 
   if (!id) {
@@ -11,25 +8,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const supabase = createClient(
-    config.public.supabaseUrl,
-    config.public.supabaseKey
-  )
+  const supabase = useSupabaseServer()
 
-  // Получаем новость с вложениями
+  // Получаем новость (вложения — опционально, если есть таблица news_attachments)
   const { data: newsItem, error: newsError } = await supabase
     .from('news')
-    .select(`
-      *,
-      news_attachments (
-        id,
-        file_name,
-        file_path,
-        file_size,
-        mime_type,
-        sort_order
-      )
-    `)
+    .select('*')
     .eq('id', id)
     .eq('status', 'published')
     .single()
@@ -39,6 +23,27 @@ export default defineEventHandler(async (event) => {
       statusCode: 404,
       message: 'Новость не найдена'
     })
+  }
+
+  let attachments: Array<{ id: number; fileName: string; filePath: string; fileSize: number; mimeType: string; sortOrder: number }> = []
+  try {
+    const { data: attData } = await supabase
+      .from('news_attachments')
+      .select('id, file_name, file_path, file_size, mime_type, sort_order')
+      .eq('news_id', id)
+      .order('sort_order')
+    if (Array.isArray(attData)) {
+      attachments = attData.map((att: any) => ({
+        id: att.id,
+        fileName: att.file_name,
+        filePath: att.file_path,
+        fileSize: att.file_size,
+        mimeType: att.mime_type,
+        sortOrder: att.sort_order ?? 0
+      }))
+    }
+  } catch {
+    // Таблица news_attachments может отсутствовать в client
   }
 
   return {
@@ -51,14 +56,7 @@ export default defineEventHandler(async (event) => {
       publishedAt: newsItem.published_at,
       isPinned: newsItem.is_pinned,
       createdAt: newsItem.date_created,
-      attachments: (newsItem.news_attachments || []).map((att: any) => ({
-        id: att.id,
-        fileName: att.file_name,
-        filePath: att.file_path,
-        fileSize: att.file_size,
-        mimeType: att.mime_type,
-        sortOrder: att.sort_order
-      }))
+      attachments
     }
   }
 })

@@ -29,6 +29,9 @@ export function useSupabaseServer(): SupabaseClient {
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      db: {
+        schema: 'client' // таблицы проекта в схеме client, не public
       }
     }
   )

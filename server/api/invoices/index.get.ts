@@ -36,7 +36,6 @@ export default defineEventHandler(async (event) => {
 
   // Запрос счетов из billing.invoices
   let dbQuery = supabase
-    .schema('billing')
     .from('invoices')
     .select('*')
     .eq('account_id', sessionUser.accountId)
