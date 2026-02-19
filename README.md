@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ПЖ19 — Личный кабинет (Next.js)
 
-## Getting Started
+Версия личного кабинета на **Next.js 16** (App Router), перенесённая с Nuxt 4.
 
-First, run the development server:
+## Стек
+
+- **Next.js 16** (App Router), React 19
+- **TypeScript**
+- **Tailwind CSS 4**
+- **Zustand** (состояние + persist в localStorage)
+- **next-themes** (светлая/тёмная тема)
+- **Supabase** (серверный клиент, схема `client`)
+
+## Запуск
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env   # заполнить переменные
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000](http://localhost:3000). Неавторизованных перенаправит на `/login`, после входа — на `/dashboard`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Переменные окружения
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+См. `.env.example`. Обязательны:
 
-## Learn More
+- `SUPABASE_URL` — URL проекта Supabase
+- `SUPABASE_KEY` — anon-ключ (если нужен на клиенте)
+- `SUPABASE_SECRET_KEY` или `SUPABASE_SERVICE_ROLE_KEY` — для серверных API
 
-To learn more about Next.js, take a look at the following resources:
+## Структура
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `src/app/` — страницы и API (App Router)
+- `src/app/(dashboard)/` — защищённые маршруты (дашборд, счета, профиль, поддержка)
+- `src/app/api/` — Route Handlers: `auth/contract`, `auth/logout`, `news`, `news/[id]`
+- `src/components/` — UI и блоки дашборда
+- `src/lib/` — Supabase (сервер), сессии (cookie)
+- `src/store/` — Zustand (user, account с persist)
+- `src/types/` — общие типы
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Отличия от Nuxt-версии (old)
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Вход по договору и логаут реализованы; Telegram и звонок — заглушки.
+- Реализованы: главная (редирект), логин, дашборд (баланс, новости), заглушки для «Счета», «Профиль», «Поддержка».
+- Остальные API (invoices, support, community, speedtest и т.д.) и страницы можно переносить по мере необходимости.

@@ -1,26 +1,268 @@
 @import "tailwindcss";
 
+/* -----------------------------------------------------------------------------
+   Шрифт Outfit (self-hosted)
+   ----------------------------------------------------------------------------- */
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-500.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-600.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Outfit';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/outfit-v15-latin_latin-ext-700.woff2') format('woff2');
+}
+
+/* -----------------------------------------------------------------------------
+   CSS-переменные: Светлая тема
+   ----------------------------------------------------------------------------- */
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --bg-base: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-elevated: #ffffff;
+  --bg-muted: #f1f5f9;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #6b7280;
+  --text-inverted: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.8);
+  --glass-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: rgba(0, 0, 0, 0.08);
+  --glass-hover-bg: rgba(255, 255, 255, 0.95);
+  --glass-hover-border: rgba(247, 148, 29, 0.3);
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --header-blur-bg: rgba(255, 255, 255, 0.95);
+  --header-border: rgba(0, 0, 0, 0.08);
+  --mesh-primary: rgba(247, 148, 29, 0.12);
+  --mesh-secondary: rgba(233, 30, 140, 0.08);
+  --mesh-accent: rgba(0, 84, 166, 0.06);
+  --mesh-base: #f8fafc;
+  --mesh-end: #f1f5f9;
+  --btn-secondary-border: rgba(0, 0, 0, 0.2);
+  --btn-secondary-text: #374151;
+  --btn-secondary-hover-bg: rgba(247, 148, 29, 0.1);
+}
+
+/* -----------------------------------------------------------------------------
+   CSS-переменные: Тёмная тема
+   ----------------------------------------------------------------------------- */
+.dark {
+  --background: #111827;
+  --foreground: #ffffff;
+  --bg-base: #111827;
+  --bg-surface: #1f2937;
+  --bg-elevated: #374151;
+  --bg-muted: #0f172a;
+  --text-primary: #ffffff;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --text-inverted: #111827;
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shadow: rgba(0, 0, 0, 0.12);
+  --glass-hover-bg: rgba(255, 255, 255, 0.06);
+  --glass-hover-border: rgba(247, 148, 29, 0.3);
+  --header-bg: rgba(17, 24, 39, 0.95);
+  --header-blur-bg: rgba(17, 24, 39, 0.98);
+  --header-border: rgba(255, 255, 255, 0.05);
+  --mesh-primary: rgba(247, 148, 29, 0.15);
+  --mesh-secondary: rgba(233, 30, 140, 0.12);
+  --mesh-accent: rgba(0, 84, 166, 0.08);
+  --mesh-base: #111827;
+  --mesh-end: #1f2937;
+  --btn-secondary-border: rgba(255, 255, 255, 0.2);
+  --btn-secondary-text: #ffffff;
+  --btn-secondary-hover-bg: rgba(247, 148, 29, 0.1);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --color-primary: #F7941D;
+  --color-secondary: #E91E8C;
+  --color-accent: #00A651;
+  --color-info: #0054A6;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  scrollbar-gutter: stable;
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  box-shadow:
+    0 8px 32px var(--glass-shadow),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+  background: var(--glass-hover-bg);
+  border-color: var(--glass-hover-border);
+  box-shadow:
+    0 20px 40px rgba(247, 148, 29, 0.15),
+    0 0 60px rgba(247, 148, 29, 0.1);
+  transform: translateY(-2px);
+}
+
+.mesh-gradient-hero {
+  background:
+    radial-gradient(at 20% 80%, var(--mesh-primary) 0%, transparent 50%),
+    radial-gradient(at 80% 20%, var(--mesh-secondary) 0%, transparent 50%),
+    radial-gradient(at 50% 50%, var(--mesh-accent) 0%, transparent 70%),
+    linear-gradient(to bottom, var(--mesh-base), var(--mesh-end));
+}
+
+.icon-container {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(247, 148, 29, 0.2) 0%, rgba(233, 30, 140, 0.1) 100%);
+  transition: all 0.3s ease;
+}
+
+.glass-card:hover .icon-container {
+  background: linear-gradient(135deg, rgba(247, 148, 29, 0.3) 0%, rgba(233, 30, 140, 0.2) 100%);
+  transform: scale(1.05);
+}
+
+.header-transparent {
+  background: var(--header-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--header-border);
+}
+
+.header-blur {
+  background: var(--header-blur-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--header-border);
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.theme-toggle:hover {
+  background: var(--glass-hover-bg);
+  color: #F7941D;
+  border-color: rgba(247, 148, 29, 0.3);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Кнопки */
+.u-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: none;
+  gap: 0.5rem;
+}
+
+.u-btn--sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.u-btn--md {
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+}
+
+.u-btn--lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+.u-btn--primary {
+  background: linear-gradient(to right, #F7941D, #E91E8C) !important;
+  color: white !important;
+  box-shadow: 0 10px 15px -3px rgba(247, 148, 29, 0.3);
+}
+
+.u-btn--primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 25px -5px rgba(247, 148, 29, 0.4);
+}
+
+.u-btn--secondary {
+  background: transparent;
+  color: var(--btn-secondary-text);
+  border: 2px solid var(--btn-secondary-border);
+}
+
+.u-btn--secondary:hover:not(:disabled) {
+  border-color: #F7941D;
+  color: #F7941D;
+  background: var(--btn-secondary-hover-bg);
+}
+
+.u-btn--block {
+  width: 100%;
+}
+
+.u-btn--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
