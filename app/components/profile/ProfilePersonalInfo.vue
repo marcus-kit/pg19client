@@ -68,10 +68,10 @@ const ageLabel = computed(() => {
     </div>
 
     <!-- View Mode -->
-    <div class="grid grid-cols-2 gap-x-4 gap-y-2">
+    <div class="grid grid-cols-1 gap-y-2">
       <div class="flex items-center gap-2 py-1.5" style="border-bottom: 1px solid var(--glass-border);">
-        <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
-          <Icon name="heroicons:user" class="w-4 h-4 text-primary" />
+        <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+          <Icon name="heroicons:user" class="w-full h-full text-primary" />
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Фамилия</p>
@@ -80,8 +80,8 @@ const ageLabel = computed(() => {
       </div>
 
       <div class="flex items-center gap-2 py-1.5" style="border-bottom: 1px solid var(--glass-border);">
-        <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
-          <Icon name="heroicons:user" class="w-4 h-4 text-primary" />
+        <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+          <Icon name="heroicons:user" class="w-full h-full text-primary" />
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Имя</p>
@@ -89,9 +89,9 @@ const ageLabel = computed(() => {
         </div>
       </div>
 
-      <div class="flex items-center gap-2 py-1.5">
-        <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
-          <Icon name="heroicons:user" class="w-4 h-4 text-primary" />
+      <div class="flex items-center gap-2 py-1.5" style="border-bottom: 1px solid var(--glass-border);">
+        <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+          <Icon name="heroicons:user" class="w-full h-full text-primary" />
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Отчество</p>
@@ -100,8 +100,8 @@ const ageLabel = computed(() => {
       </div>
 
       <div class="flex items-center gap-2 py-1.5">
-        <div class="p-1.5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10">
-          <Icon name="heroicons:cake" class="w-4 h-4 text-primary" />
+        <div class="w-5 h-5 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+          <Icon name="heroicons:cake" class="w-full h-full text-primary" />
         </div>
         <div>
           <p class="text-xs text-[var(--text-muted)]">Дата рождения</p>
