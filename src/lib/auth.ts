@@ -1,3 +1,12 @@
+/**
+ * Серверная логика авторизации и сессий.
+ * Управляет httpOnly-cookie (pg19_session) и таблицей auth_sessions в Supabase.
+ * Основные функции: createUserSession — создаёт сессию при входе,
+ * getUserFromSession — проверяет cookie и возвращает пользователя,
+ * requireUser — требует авторизацию (кидает 401),
+ * endUserSession — завершает сессию при выходе.
+ * Сессия живёт 30 дней.
+ */
 import { cookies } from 'next/headers'
 import crypto from 'crypto'
 import { getSupabaseServer } from './supabase-server'

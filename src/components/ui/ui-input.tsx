@@ -1,3 +1,10 @@
+/**
+ * Базовый UI-компонент текстового поля ввода.
+ *
+ * Поддерживает label, все стандартные HTML-атрибуты input.
+ * Стилизован в glassmorphism-стиле (glass-bg фон, glass-border рамка).
+ * Использует forwardRef для доступа к DOM-элементу.
+ */
 'use client'
 
 import { type InputHTMLAttributes, forwardRef } from 'react'

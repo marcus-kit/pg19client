@@ -1,3 +1,11 @@
+/**
+ * Базовый UI-компонент кнопки.
+ *
+ * Варианты: primary, secondary, ghost, danger, success.
+ * Размеры: sm, md, lg.
+ * Поддерживает loading-состояние (спиннер), block (на всю ширину), disabled.
+ * Стили через CSS-классы u-btn.
+ */
 'use client'
 
 import { type ButtonHTMLAttributes, type ReactNode } from 'react'

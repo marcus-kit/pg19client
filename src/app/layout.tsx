@@ -1,3 +1,14 @@
+/**
+ * Корневой layout, оборачивающий все страницы приложения.
+ *
+ * Устанавливает язык документа (`<html lang="ru">`), подключает глобальные
+ * стили (globals.css) и оборачивает содержимое в {@link ThemeProvider} для
+ * поддержки тёмной/светлой темы. Также определяет метаданные страницы
+ * (title, description) через объект {@link Metadata} из Next.js.
+ *
+ * @module layout
+ * @exports RootLayout — React-компонент корневого layout
+ */
 import type { Metadata } from 'next'
 import { ThemeProvider } from '@/components/theme-provider'
 import './globals.css'

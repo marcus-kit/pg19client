@@ -1,60 +1,20 @@
+/**
+ * Карточки статуса и подключения на главной странице дашборда.
+ *
+ * Первая карточка — статус договора (Активен/Заблокирован) с пульсирующим
+ * индикатором и датой следующей оплаты.
+ * Вторая карточка — подключение: название тарифа и список адресов
+ * с активным статусом. Адреса больше 3 скрываются за кнопкой «Показать ещё».
+ * Кнопка «Оплатить сейчас» открывает модалку (если все счета оплачены).
+ */
 'use client'
 
 import { useState } from 'react'
 import { UiCard } from '@/components/ui/ui-card'
 import { UiButton } from '@/components/ui/ui-button'
 import { useAccountStore, isBlocked } from '@/store/use-account-store'
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-function XCircleIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-    </svg>
-  )
-}
-function WifiIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.141 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
-    </svg>
-  )
-}
-function MapPinIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  )
-}
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-    </svg>
-  )
-}
-
-const connectionAddresses = [
-  'обл Ростовская, г Таганрог, ул Ломоносова, д. 47',
-  'обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16',
-  'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
-  'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74',
-]
+import { connectionAddresses } from '@/utils/mockAddress.const'
+import { CalendarIcon, CheckIcon, ChevronDownIcon, MapPinIcon, WifiIcon, XCircleIcon } from '../icons/icons'
 
 export function DashboardBalanceCard() {
   const account = useAccountStore((s) => s.account)
@@ -63,8 +23,8 @@ export function DashboardBalanceCard() {
   const [showAllPaidModal, setShowAllPaidModal] = useState(false)
 
   const nextPaymentDate = (() => {
-    const now = new Date()
-    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    const now = new Date();
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return lastDay.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
   })()
 
@@ -90,7 +50,7 @@ export function DashboardBalanceCard() {
       : connectionAddresses.slice(0, 3)
   const showExpandButton = connectionAddresses.length > 3
 
-  function handlePayClick() {
+  const handlePayClick = () => {
     setShowAllPaidModal(true)
   }
 

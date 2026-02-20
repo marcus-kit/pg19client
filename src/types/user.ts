@@ -1,5 +1,7 @@
 /**
- * Типы пользователя
+ * Типы пользователя.
+ * User — основной интерфейс (ФИО, контакты, аватар, роль).
+ * UserRole — роль: user, admin, moderator.
  */
 export type UserRole = 'user' | 'admin' | 'moderator'
 

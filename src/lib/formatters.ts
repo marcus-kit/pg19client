@@ -1,5 +1,8 @@
 /**
- * Форматирование дат и сумм
+ * Утилиты форматирования дат и сумм для отображения в UI.
+ * formatDateShort — короткая дата (5 мар.),
+ * formatDate — полная дата (5 марта 2026),
+ * formatKopeks — сумма из копеек в рубли с разделителями (3 095).
  */
 export function formatDateShort(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'

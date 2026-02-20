@@ -1,3 +1,10 @@
+/**
+ * Провайдер тёмной/светлой темы.
+ *
+ * Обёртка над next-themes (ThemeProvider). Применяет тему через CSS-класс
+ * на <html> (attribute="class"). По умолчанию — тёмная тема,
+ * поддерживает системные настройки (enableSystem).
+ */
 'use client'
 
 import { ThemeProvider as NextThemesProvider } from 'next-themes'

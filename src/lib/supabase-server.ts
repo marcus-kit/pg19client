@@ -1,3 +1,10 @@
+/**
+ * Серверный клиент Supabase (service role).
+ * Singleton — создаётся один раз и переиспользуется.
+ * Работает со схемой "client" в БД.
+ * Требует переменные окружения SUPABASE_URL и SUPABASE_SECRET_KEY.
+ * Используется во всех API-роутах для доступа к базе данных.
+ */
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
 let _client: SupabaseClient | null = null

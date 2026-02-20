@@ -1,3 +1,14 @@
+/**
+ * API-роут авторизации по договору (POST /api/auth/contract).
+ *
+ * Принимает: contractNumber, lastName, firstName.
+ * Проверяет в Supabase: находит контракт по номеру, проверяет пользователя
+ * по ФИО, проверяет что аккаунт не заблокирован.
+ *
+ * При успехе: создаёт сессию (auth_sessions), устанавливает httpOnly cookie,
+ * возвращает данные user и account.
+ * Также определяет тариф через таблицу subscriptions/services.
+ */
 import { NextRequest } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 import { createUserSession } from '@/lib/auth'

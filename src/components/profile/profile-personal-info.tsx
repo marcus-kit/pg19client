@@ -1,8 +1,13 @@
+/**
+ * Секция «Персональные данные» на странице профиля.
+ * Показывает: фамилию, имя, отчество, дату рождения
+ * (с подсчётом возраста и правильным склонением «год/года/лет»).
+ * Данные читаются из useUserStore.
+ */
 'use client'
 
 import { UiCard } from '@/components/ui/ui-card'
 import { useUserStore } from '@/store/use-user-store'
-import { formatDate } from '@/lib/formatters'
 
 function UserIcon({ className }: { className?: string }) {
   return (

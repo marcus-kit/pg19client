@@ -1,3 +1,11 @@
+/**
+ * Базовый UI-компонент карточки.
+ *
+ * Использует CSS-класс glass-card (glassmorphism-стиль с размытием).
+ * Поддерживает: hover-эффект, настраиваемый padding (none/sm/md/lg),
+ * onClick (добавляет role="button" и обработку Enter).
+ * Используется повсеместно в приложении.
+ */
 'use client'
 
 import { type ReactNode } from 'react'

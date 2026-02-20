@@ -1,3 +1,9 @@
+/**
+ * API-роут одной новости (GET /api/news/:id).
+ *
+ * Загружает новость по ID из Supabase, включая вложения.
+ * Возвращает 404 если не найдена.
+ */
 import { NextRequest } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 

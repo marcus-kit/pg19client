@@ -1,0 +1,1 @@
+export { default } from "file:///home/anna/%D0%A0%D0%B0%D0%B1%D0%BE%D1%87%D0%B8%D0%B9%20%D1%81%D1%82%D0%BE%D0%BB/pg19V/pg19client/node_modules/.pnpm/@nuxt+vite-builder@4.2.2_@types+node@25.0.10_magicast@0.5.1_nuxt@4.2.2_@parcel+watcher@_fc29112d9091219cf763cbef58aeaff2/node_modules/@nuxt/vite-builder/dist/runtime/client.manifest.mjs"

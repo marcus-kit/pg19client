@@ -1,5 +1,10 @@
 /**
- * Типы счетов. Суммы в копейках (amount).
+ * Типы счетов.
+ * Invoice — счёт (номер, сумма в копейках, статус, период, даты).
+ * InvoiceDetails — детализация с адресами и услугами.
+ * Содержит утилиты: formatInvoicePeriod (форматирует период),
+ * invoiceStatusLabels (русские названия статусов),
+ * invoiceStatusColors (цвета бейджей).
  */
 export type InvoiceStatus =
   | 'pending'

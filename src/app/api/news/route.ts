@@ -1,3 +1,11 @@
+/**
+ * API-роут списка новостей (GET /api/news).
+ *
+ * Загружает опубликованные новости из Supabase, сортирует по закреплённости
+ * и дате. Фильтры через query-параметры: category — по категории,
+ * active=true — только не просроченные.
+ * Преобразует snake_case из БД в camelCase для фронтенда.
+ */
 import { NextRequest } from 'next/server'
 import { getSupabaseServer } from '@/lib/supabase-server'
 

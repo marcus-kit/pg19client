@@ -1,5 +1,8 @@
 /**
- * Типы новостей
+ * Типы новостей.
+ * News — новость (заголовок, контент, категория, статус публикации, закреплённость).
+ * NewsCategory — объявление/протокол/уведомление.
+ * NewsDetail — расширенный тип с вложениями (файлы).
  */
 export type NewsCategory = 'announcement' | 'protocol' | 'notification'
 export type NewsStatus = 'draft' | 'published' | 'archived'

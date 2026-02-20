@@ -1,3 +1,10 @@
+/**
+ * API-роут FAQ (GET /api/support/faq).
+ *
+ * Пытается загрузить FAQ из таблицы pages (slug="faq") в Supabase.
+ * Если не удалось — возвращает захардкоженный список из 5 вопросов-ответов
+ * (баланс, интернет, тариф, счета, услуги).
+ */
 import { getSupabaseServer } from '@/lib/supabase-server'
 
 export interface FaqItem {

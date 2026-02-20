@@ -1,10 +1,19 @@
+/**
+ * API-роут тикетов поддержки.
+ *
+ * GET /api/support/tickets — возвращает список тикетов (пока пустой).
+ * POST /api/support/tickets — создаёт новый тикет в Supabase.
+ *
+ * Требует авторизацию (requireUser).
+ * Принимает: subject, description, category.
+ * Подтягивает данные пользователя (имя, email, телефон, telegram) из БД.
+ */
 import { NextRequest } from 'next/server'
 import { requireUser } from '@/lib/auth'
 import { getSupabaseServer } from '@/lib/supabase-server'
 
 export async function GET() {
   await requireUser()
-  const supabase = getSupabaseServer()
   return Response.json({ tickets: [] })
 }
 
