@@ -2,6 +2,9 @@
 /**
  * Страница счета на оплату — квитанция (как в two.html), сохранение в PDF
  */
+import { useInvoiceServices } from '~/composables/useInvoiceServices'
+import { formatKopeks } from '~/composables/useFormatters'
+
 definePageMeta({
   middleware: 'auth'
 })
@@ -16,6 +19,19 @@ const invoicePdfRef = ref<HTMLElement | null>(null)
 // Логотип и QR — из public
 const logoSrc = '/logo.png'
 const qrSrc = '/qr-payment.png'
+
+// Получаем данные услуг для группировки по адресам
+const { getInvoiceDetails } = useInvoiceServices()
+const invoiceDetails = getInvoiceDetails(invoiceId)
+
+// Группируем услуги по адресам для отображения без дублирования адресов
+const groupedServices = computed(() => {
+  return invoiceDetails.addresses.map(address => ({
+    address: address.address,
+    services: address.services,
+    totalAmount: address.services.reduce((sum, s) => sum + s.price, 0)
+  }))
+})
 
 function goBack() {
   router.push('/invoices')
@@ -220,83 +236,17 @@ async function saveAsPdf(): Promise<void> {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул Ломоносова, д. 47</span>
-                    <span class="service-name">Ежемесячная плата за аренду участка сети передачи данных (СПД) от клиента до порта доступа ЛС АМИК - г. Таганрог, Неклиновский р-н, Матвеево-курганский р-н, Мясниковский р-н</span>
-                  </td>
-                  <td class="service-amount">399.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул Ломоносова, д. 47</span>
-                    <span class="service-name">Ежемесячный пакет "Режим работы порта доступа ЛС АМИК - Профиль "ИНТЕРНЕТ ПЖ19"</span>
-                  </td>
-                  <td class="service-amount">300.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16</span>
-                    <span class="service-name">Ежемесячная плата за аренду участка сети передачи данных (СПД) от клиента до порта доступа ЛС АМИК - г. Таганрог, Неклиновский р-н, Матвеево-курганский р-н, Мясниковский р-н</span>
-                  </td>
-                  <td class="service-amount">399.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16</span>
-                    <span class="service-name">Ежемесячный пакет "Режим работы порта доступа ЛС АМИК - Профиль "ИНТЕРНЕТ ПЖ19"</span>
-                  </td>
-                  <td class="service-amount">300.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45</span>
-                    <span class="service-name">Пользование оборудованием ПЖ-19, за 1 месяц</span>
-                  </td>
-                  <td class="service-amount">0.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45</span>
-                    <span class="service-name">Видеонаблюдение 1, за 1 месяц</span>
-                  </td>
-                  <td class="service-amount">299.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45</span>
-                    <span class="service-name">Ежемесячная плата за аренду участка сети передачи данных (СПД) от клиента до порта доступа ЛС АМИК - г. Таганрог, Неклиновский р-н, Матвеево-курганский р-н, Мясниковский р-н</span>
-                  </td>
-                  <td class="service-amount">399.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45</span>
-                    <span class="service-name">Ежемесячный пакет "Режим работы порта доступа ЛС АМИК - Профиль "ИНТЕРНЕТ ПЖ19"</span>
-                  </td>
-                  <td class="service-amount">300.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, пер 14-й Новый, д. 74</span>
-                    <span class="service-name">Пользование оборудованием ПЖ-19, за 1 месяц</span>
-                  </td>
-                  <td class="service-amount">0.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, пер 14-й Новый, д. 74</span>
-                    <span class="service-name">Ежемесячная плата за аренду участка сети передачи данных (СПД) от клиента до порта доступа ЛС АМИК - г. Таганрог, Неклиновский р-н, Матвеево-курганский р-н, Мясниковский р-н</span>
-                  </td>
-                  <td class="service-amount">399.00 ₽</td>
-                </tr>
-                <tr>
-                  <td>
-                    <span class="service-address">обл Ростовская, г Таганрог, пер 14-й Новый, д. 74</span>
-                    <span class="service-name">Ежемесячный пакет "Режим работы порта доступа ЛС АМИК - Профиль "ИНТЕРНЕТ ПЖ19"</span>
-                  </td>
-                  <td class="service-amount">300.00 ₽</td>
-                </tr>
+                <template v-for="(addressGroup, addressIndex) in groupedServices" :key="addressIndex">
+                  <template v-for="(service, serviceIndex) in addressGroup.services" :key="serviceIndex">
+                    <tr>
+                      <td>
+                        <span v-if="serviceIndex === 0" class="service-address">{{ addressGroup.address }}</span>
+                        <span class="service-name">{{ service.name }}</span>
+                      </td>
+                      <td class="service-amount">{{ formatKopeks(service.price) }} ₽</td>
+                    </tr>
+                  </template>
+                </template>
               </tbody>
               <tfoot>
                 <tr class="total-row">
