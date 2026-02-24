@@ -100,14 +100,8 @@ const visibleAddresses = computed(() => {
 
 // Обработчик клика на кнопку оплаты
 function handlePayClick(): void {
-  if (unpaidInvoices.value.length > 0) {
-    const first = unpaidInvoices.value[0]
-    if (first) {
-      window.open(`https://invoice.doka.team/invoice/${first.id}`, '_blank')
-    }
-  } else {
-    showAllPaidModal.value = true
-  }
+  // Всегда перенаправляем на страницу счетов с фильтром "к оплате"
+  navigateTo('/invoices?filter=unpaid')
 }
 </script>
 
