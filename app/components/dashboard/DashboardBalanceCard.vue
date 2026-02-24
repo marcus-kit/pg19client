@@ -31,31 +31,42 @@ const showAllAddresses = ref(false) // Показывать все адреса 
 // COMPUTED
 // =============================================================================
 
-// Расчёт следующей даты оплаты (конец текущего месяца)
-const nextPaymentDate = computed(() => {
+const { formatKopeks, formatContractNumber } = useFormatters()
+
+// Следующая дата оплаты (последний день текущего месяца) с годом — для строки "След. платеж:"
+const nextPaymentDateFull = computed(() => {
   const now = new Date()
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
   return lastDay.toLocaleDateString('ru-RU', {
     day: 'numeric',
-    month: 'long'
+    month: 'long',
+    year: 'numeric'
   })
 })
 
-// Конфигурация статуса аккаунта
+// Сумма к оплате по неоплаченным счетам (в копейках); при отсутствии данных — 3095 ₽
+const amountToPayKopeks = computed(() => {
+  const sum = unpaidInvoices.value.reduce((s, inv) => s + inv.amount, 0)
+  return sum > 0 ? sum : 309500 // 3095 ₽ в копейках
+})
+
+// Конфигурация статуса — пилюля с точкой и текстом (крупнее, контрастнее)
 const statusConfig = computed(() => {
   if (accountStore.isBlocked) {
     return {
       text: 'Заблокирован',
-      color: 'bg-red-500',
-      icon: 'heroicons:x-circle',
-      iconColor: 'text-red-400'
+      pillClass: 'bg-red-500/25',
+      dotClass: 'bg-red-400',
+      textClass: 'text-red-400',
+      borderClass: 'border-red-500/50'
     }
   }
   return {
     text: 'Активен',
-    color: 'bg-accent',
-    icon: 'heroicons:check-circle',
-    iconColor: 'text-accent'
+    pillClass: 'bg-accent/25',
+    dotClass: 'bg-accent',
+    textClass: 'text-accent',
+    borderClass: 'border-accent/50'
   }
 })
 
@@ -102,44 +113,44 @@ function handlePayClick(): void {
 
 <template>
   <div class="space-y-4">
-    <!-- Карточка: Статус услуги -->
+    <!-- Карточка: ИНТЕРНЕТ ПЖ19 — по референсу: шапка (услуга + статус-пилюля), строки Договор / След. платеж / К оплате -->
     <UiCard hover>
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус договора</p>
-        <div class="flex items-center gap-3 mt-2">
-          <span class="relative flex h-3 w-3">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="statusConfig.color"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-3 w-3"
-              :class="statusConfig.color"
-            ></span>
-          </span>
-          <span class="text-xl font-semibold text-[var(--text-primary)]">
-            {{ statusConfig.text }}
+      <!-- Верхняя строка: подпись «Статус договора» слева, статус-пилюля справа (крупнее для наглядности) -->
+      <div class="flex items-center justify-between gap-4 mb-5">
+        <p class="text-sm font-medium text-[var(--text-secondary)] mb-0">
+          Статус договора
+        </p>
+        <span
+          class="flex-shrink-0 inline-flex items-center gap-2.5 rounded-full py-2 px-4 text-base font-semibold border"
+          :class="[statusConfig.pillClass, statusConfig.textClass, statusConfig.borderClass]"
+        >
+          <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" :class="statusConfig.dotClass" aria-hidden="true" />
+          {{ statusConfig.text }}
+        </span>
+      </div>
+
+      <!-- Строки: подпись слева, значение справа -->
+      <div class="space-y-3 mb-5">
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">Договор:</span>
+          <span class="text-sm text-[var(--text-primary)]">№ {{ formatContractNumber(accountStore.account?.contractNumber) }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">След. платеж:</span>
+          <span class="text-sm text-[var(--text-primary)]">{{ nextPaymentDateFull }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">К оплате:</span>
+          <span class="text-sm text-[var(--text-primary)]">
+            <span class="font-bold">{{ formatKopeks(amountToPayKopeks) }}</span>
+            <span class="font-normal"> ₽</span>
           </span>
         </div>
       </div>
-      <div class="icon-container">
-        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-      </div>
-    </div>
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 text-[var(--text-muted)]">
-        <Icon name="heroicons:calendar" class="w-4 h-4" />
-        <span class="text-sm">
-            Следующая оплата
-            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
-        </span>
-      </div>
-      <UiButton size="sm" variant="secondary" @click="handlePayClick">
+      <UiButton size="sm" variant="secondary" class="w-full sm:w-auto" @click="handlePayClick">
         Оплатить сейчас
       </UiButton>
-    </div>
     </UiCard>
 
     <!-- Карточка: Подключение -->
@@ -163,15 +174,8 @@ function handlePayClick(): void {
             <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
             <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
           </div>
-          <div class="flex items-center gap-3 pl-7">
-            <span class="relative flex h-3 w-3">
-              <span
-                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-accent"
-              ></span>
-              <span
-                class="relative inline-flex rounded-full h-3 w-3 bg-accent"
-              ></span>
-            </span>
+          <div class="flex items-center gap-2 pl-7">
+            <span class="h-1.5 w-1.5 rounded-full bg-accent/70 flex-shrink-0 mt-1.5" aria-hidden="true" />
             <span class="text-sm text-[var(--text-secondary)]">
               Услуга активна
             </span>

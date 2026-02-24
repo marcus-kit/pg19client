@@ -25,6 +25,18 @@ export default {
     'focus:ring-accent',
     'focus:ring-red-500',
     'focus:ring-primary/20',
+    'bg-accent/15',
+    'bg-accent/20',
+    'bg-accent/25',
+    'bg-red-500/15',
+    'bg-red-500/20',
+    'bg-red-500/25',
+    'border-accent',
+    'border-accent/50',
+    'border-red-500',
+    'border-red-500/50',
+    'text-accent',
+    'text-red-400',
   ],
   theme: {
     extend: {
