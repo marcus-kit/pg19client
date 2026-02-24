@@ -1,21 +1,30 @@
 interface ContractAuthData {
-  contractNumber: string
-  lastName: string
-  firstName: string
+  /** Номер договора или логин */
+  login: string
+  /** Пароль (для будущей проверки; пока не используется) */
+  password: string
 }
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ContractAuthData>(event)
 
-  // Проверяем наличие обязательных полей
-  if (!body.contractNumber || !body.lastName || !body.firstName) {
+  if (!body.login?.trim()) {
     throw createError({
       statusCode: 400,
-      message: 'Заполните все поля'
+      message: 'Введите номер договора или логин'
     })
   }
 
-  // Используем shared Supabase client
+  const login = body.login.trim()
+  // Номер договора — только цифры
+  const contractNum = /^\d+$/.test(login) ? parseInt(login, 10) : null
+  if (contractNum == null) {
+    throw createError({
+      statusCode: 400,
+      message: 'Введите номер договора (цифры)'
+    })
+  }
+
   const supabase = useSupabaseServer()
 
   // Ищем аккаунт по номеру договора (в БД — таблица client.contracts)
@@ -30,7 +39,7 @@ export default defineEventHandler(async (event) => {
       address_full,
       start_date
     `)
-    .eq('contract_number', parseInt(body.contractNumber))
+    .eq('contract_number', contractNum)
     .single()
 
   if (accountError || !account) {
@@ -68,16 +77,8 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Проверяем ФИ (регистронезависимо)
-  const lastNameMatch = user.last_name?.toLowerCase() === body.lastName.toLowerCase()
-  const firstNameMatch = user.first_name?.toLowerCase() === body.firstName.toLowerCase()
-
-  if (!lastNameMatch || !firstNameMatch) {
-    throw createError({
-      statusCode: 401,
-      message: 'Неверные данные. Проверьте фамилию и имя.'
-    })
-  }
+  // TODO: когда в БД появится поле пароля — проверять body.password
+  void body.password
 
   // Проверяем статус пользователя
   if (user.status === 'suspended' || user.status === 'terminated') {
@@ -107,9 +108,8 @@ export default defineEventHandler(async (event) => {
   const tariffName = internetSub?.services?.name || 'Не подключен'
 
   // Создаём сессию с httpOnly cookie
-  await createUserSession(event, user.id, account.id, 'contract', body.contractNumber, {
-    last_name: body.lastName,
-    first_name: body.firstName
+  await createUserSession(event, user.id, account.id, 'contract', String(account.contract_number), {
+    login: body.login
   })
 
   // Возвращаем данные для клиента

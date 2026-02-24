@@ -52,15 +52,15 @@ const {
 // Текущий метод авторизации (таб)
 const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
 
-// Форма авторизации по договору
+// Форма авторизации по договору: номер договора/логин + пароль
 const form = reactive({
-  contractNumber: '',
-  lastName: '',
-  firstName: ''
+  login: '',
+  password: ''
 })
 
 const isLoading = ref(false)  // Загрузка формы договора
 const error = ref('')         // Общая ошибка (для договора)
+const showPassword = ref(false) // Показать/скрыть пароль (глаз)
 
 // Модальное окно регистрации
 const showRegisterModal = ref(false)
@@ -104,6 +104,51 @@ function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
   if (method !== 'telegram') resetTelegram()
 }
 
+// Только цифры (номер договора)
+function sanitizeLogin(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+// Разрешить только цифры и служебные клавиши в поле номера договора
+function onLoginKeydown(e: KeyboardEvent): void {
+  const key = e.key
+  if (key >= '0' && key <= '9') return
+  if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
+  if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
+  e.preventDefault()
+}
+
+// При вставке в поле договора — оставить только цифры
+function onLoginPaste(e: ClipboardEvent): void {
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  form.login = sanitizeLogin(form.login + pasted)
+}
+
+// Только латиница, цифры и символы — без русских букв (печатные ASCII)
+function sanitizePassword(value: string): string {
+  return value.replace(/[^\x20-\x7E]/g, '')
+}
+
+// Разрешить только печатные ASCII и служебные клавиши в поле пароля
+function onPasswordKeydown(e: KeyboardEvent): void {
+  const key = e.key
+  if (key.length === 1) {
+    const code = key.charCodeAt(0)
+    if (code >= 0x20 && code <= 0x7E) return // печатные ASCII
+  }
+  if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
+  if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
+  e.preventDefault()
+}
+
+// При вставке в поле пароля — оставить только латиницу, цифры и символы
+function onPasswordPaste(e: ClipboardEvent): void {
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  form.password = sanitizePassword(form.password + pasted)
+}
+
 // Запуск Telegram авторизации — создаёт токен и показывает deeplink
 async function startTelegramAuth(): Promise<void> {
   error.value = ''
@@ -122,12 +167,11 @@ async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
   // ВРЕМЕННЫЙ ОБХОД: если поля пустые, используем дефолтные данные
-  const contractNumber = form.contractNumber || '12345'
-  const lastName = form.lastName || 'Тестовый'
-  const firstName = form.firstName || 'Пользователь'
+  const login = form.login || '12345'
+  const password = form.password || ''
 
-  // Если все поля пустые, используем обход авторизации
-  if (!form.contractNumber && !form.lastName && !form.firstName) {
+  // Если оба поля пустые, используем обход авторизации
+  if (!form.login && !form.password) {
     isLoading.value = true
     try {
       // Пытаемся авторизоваться через API с дефолтными данными
@@ -138,11 +182,7 @@ async function handleContractSubmit(): Promise<void> {
           account: any
         }>('/api/auth/contract', {
           method: 'POST',
-          body: {
-            contractNumber: contractNumber,
-            lastName: lastName,
-            firstName: firstName
-          }
+          body: { login: login, password: password }
         })
 
         await authInit(response.user, response.account)
@@ -190,9 +230,13 @@ async function handleContractSubmit(): Promise<void> {
     return
   }
 
-  // Обычная авторизация с заполненными полями
-  if (!form.contractNumber || !form.lastName || !form.firstName) {
-    error.value = 'Заполните все поля'
+  // Обычная авторизация: номер договора/логин и пароль
+  if (!form.login?.trim()) {
+    error.value = 'Введите номер договора или логин'
+    return
+  }
+  if (!form.password) {
+    error.value = 'Введите пароль'
     return
   }
 
@@ -206,9 +250,8 @@ async function handleContractSubmit(): Promise<void> {
     }>('/api/auth/contract', {
       method: 'POST',
       body: {
-        contractNumber: form.contractNumber,
-        lastName: form.lastName,
-        firstName: form.firstName
+        login: form.login.trim(),
+        password: form.password
       }
     })
 
@@ -516,23 +559,56 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               ДОГОВОР — авторизация по номеру договора + ФИО
+               ДОГОВОР — авторизация по номеру договора/логину и паролю
                ----------------------------------------------------------------- -->
           <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
-            <UiInput
-              v-model="form.contractNumber"
-              type="text"
-              label="Номер договора"
-              placeholder="12345"
-              inputmode="numeric"
-            />
+            <!-- Поле только цифры: нативный input с привязкой :value и @input для гарантированной фильтрации -->
+            <div class="w-full">
+              <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                Номер договора / Логин
+              </label>
+              <input
+                :value="form.login"
+                type="text"
+                inputmode="numeric"
+                placeholder="Только цифры"
+                autocomplete="username"
+                maxlength="20"
+                class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                @input="form.login = sanitizeLogin(($event.target as HTMLInputElement).value)"
+                @keydown="onLoginKeydown"
+                @paste="onLoginPaste"
+              />
+            </div>
 
-            <UiInput
-              v-model="form.lastName"
-              type="text"
-              label="Логин"
-              placeholder="Логин"
-            />
+            <!-- Пароль: только англ, цифры, символы + глаз показать/скрыть -->
+            <div class="w-full">
+              <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                Пароль
+              </label>
+              <div class="relative">
+                <input
+                  :value="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="Только латиница, цифры и символы"
+                  autocomplete="current-password"
+                  class="w-full px-4 py-3 pr-12 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                  @input="form.password = sanitizePassword(($event.target as HTMLInputElement).value)"
+                  @keydown="onPasswordKeydown"
+                  @paste="onPasswordPaste"
+                />
+                <button
+                  type="button"
+                  :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                  @click="showPassword = !showPassword"
+                >
+                  <Icon :name="showPassword ? 'heroicons:eye-slash' : 'heroicons:eye'" class="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
             <UiButton type="submit" variant="primary" block :loading="isLoading">
               Войти

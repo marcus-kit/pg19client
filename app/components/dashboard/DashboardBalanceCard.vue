@@ -4,8 +4,10 @@
  *
  * Особенности:
  * - Левая карточка: индикатор статуса (активен/заблокирован), дата оплаты, кнопка оплаты
- * - Правая карточка: статус подключения, услуга активна, адрес
+ * - Правая карточка: статус подключения, адреса с раскрытием тарифов возле каждого
  */
+
+import { mockInvoiceDetails } from '~/composables/useInvoiceServices'
 
 // =============================================================================
 // STORES & COMPOSABLES
@@ -26,6 +28,11 @@ const { invoices: unpaidInvoices } = await fetchUnpaidInvoices()
 
 const showAllPaidModal = ref(false)
 const showAllAddresses = ref(false) // Показывать все адреса или только первые 3
+// Индексы адресов, у которых раскрыт блок тарифов (открытие возле каждого адреса)
+const expandedAddressIndices = ref<Set<number>>(new Set())
+
+// Адреса с подключёнными тарифами (услугами) — те же данные, что в счёте
+const addressesWithTariffs = mockInvoiceDetails.addresses
 
 // =============================================================================
 // COMPUTED
@@ -75,24 +82,23 @@ const connectionStatus = computed(() => {
   return accountStore.account?.tariff || 'Не подключен'
 })
 
-// Список адресов подключения
-const connectionAddresses = [
-  'обл Ростовская, г Таганрог, ул Ломоносова, д. 47',
-  'обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16',
-  'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
-  'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74'
-]
+// Показывать кнопку «Показать ещё», если адресов больше 2 (третий и четвёртый скрыты)
+const showExpandButton = computed(() => addressesWithTariffs.length > 2)
 
-// Показывать стрелку, если адресов больше 3
-const showExpandButton = computed(() => connectionAddresses.length > 3)
-
-// Видимые адреса (первые 3 или все)
-const visibleAddresses = computed(() => {
-  if (showAllAddresses.value || connectionAddresses.length <= 3) {
-    return connectionAddresses
+// Видимые адреса: по умолчанию два, остальные по «Показать ещё»
+const visibleAddressItems = computed(() => {
+  if (showAllAddresses.value || addressesWithTariffs.length <= 2) {
+    return addressesWithTariffs
   }
-  return connectionAddresses.slice(0, 3)
+  return addressesWithTariffs.slice(0, 2)
 })
+
+function toggleAddressTariffs(index: number): void {
+  const next = new Set(expandedAddressIndices.value)
+  if (next.has(index)) next.delete(index)
+  else next.add(index)
+  expandedAddressIndices.value = next
+}
 
 // =============================================================================
 // METHODS
@@ -162,31 +168,66 @@ function handlePayClick(): void {
       </div>
 
       <div class="space-y-4">
-        <!-- Список адресов подключения -->
-        <div v-for="(address, index) in visibleAddresses" :key="index" class="space-y-2">
-          <div class="flex items-start gap-3">
+        <!-- Список адресов с раскрытием тарифов возле каждого -->
+        <div v-for="(item, index) in visibleAddressItems" :key="index" class="space-y-2">
+          <div class="flex items-start gap-2">
             <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
-            <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
+            <span class="text-sm text-[var(--text-primary)] flex-1 min-w-0">{{ item.address }}</span>
+            <button
+              type="button"
+              :aria-expanded="expandedAddressIndices.has(index)"
+              class="flex-shrink-0 p-1 rounded text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+              @click="toggleAddressTariffs(index)"
+            >
+              <Icon
+                name="heroicons:chevron-down"
+                class="w-4 h-4 transition-transform duration-200"
+                :class="{ 'rotate-180': expandedAddressIndices.has(index) }"
+              />
+            </button>
           </div>
-          <div class="flex items-center gap-2 pl-7">
+          <div class="flex items-center gap-2 pl-6">
             <span class="h-1.5 w-1.5 rounded-full bg-accent/70 flex-shrink-0 mt-1.5" aria-hidden="true" />
-            <span class="text-sm text-[var(--text-secondary)]">
-              Услуга активна
-            </span>
+            <span class="text-sm text-[var(--text-secondary)]">Услуга активна</span>
           </div>
-          <!-- Разделитель между адресами (кроме последнего видимого) -->
-          <div v-if="index < visibleAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
+          <!-- Раскрывающийся блок тарифов по этому адресу -->
+          <Transition
+            enter-active-class="transition-all duration-200 ease-out"
+            enter-from-class="opacity-0 -translate-y-1 max-h-0"
+            enter-to-class="opacity-100 translate-y-0 max-h-[800px]"
+            leave-active-class="transition-all duration-150 ease-in"
+            leave-from-class="opacity-100 translate-y-0 max-h-[800px]"
+            leave-to-class="opacity-0 -translate-y-1 max-h-0"
+          >
+            <div v-show="expandedAddressIndices.has(index)" class="overflow-hidden pl-6">
+              <div class="rounded-lg p-3 mt-1" style="background: var(--glass-bg);">
+                <ul class="space-y-1.5">
+                  <li
+                    v-for="(service, svcIndex) in item.services"
+                    :key="svcIndex"
+                    class="flex items-center justify-between gap-2 text-sm"
+                  >
+                    <span class="text-[var(--text-secondary)] line-clamp-2">{{ service.name }}</span>
+                    <span class="text-[var(--text-primary)] font-medium whitespace-nowrap flex-shrink-0">
+                      {{ formatKopeks(service.price) }} ₽
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </Transition>
+          <div v-if="index < visibleAddressItems.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);" />
         </div>
 
-        <!-- Кнопка разворачивания/сворачивания -->
+        <!-- Кнопка «Показать ещё» адресов -->
         <button
           v-if="showExpandButton"
           @click="showAllAddresses = !showAllAddresses"
           class="w-full flex items-center justify-center gap-2 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
         >
-          <span>{{ showAllAddresses ? 'Свернуть' : `Показать ещё ${connectionAddresses.length - 3}` }}</span>
-          <Icon 
-            name="heroicons:chevron-down" 
+          <span>{{ showAllAddresses ? 'Свернуть' : `Показать ещё ${addressesWithTariffs.length - 2}` }}</span>
+          <Icon
+            name="heroicons:chevron-down"
             class="w-4 h-4 transition-transform duration-200"
             :class="{ 'rotate-180': showAllAddresses }"
           />
