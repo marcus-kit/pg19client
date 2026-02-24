@@ -367,7 +367,7 @@ onUnmounted(() => {
          HEADER — логотип (ведёт на дашборд)
          ===================================================================== -->
     <header class="py-6">
-      <div class="container mx-auto px-4">
+      <div class="container mx-auto max-w-5xl px-4">
         <NuxtLink to="/dashboard" class="flex items-center gap-3 w-fit">
           <img src="/logo.png" alt="PG19" class="h-10" />
         </NuxtLink>

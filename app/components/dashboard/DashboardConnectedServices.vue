@@ -8,20 +8,22 @@
  * - Цена
  * - Кнопка "Подробнее"
  *
- * Если нет подключенных услуг, показывает счета и ссылку "Перейти к счетам"
+ * Блок «Счета»: последние 3 счёта в табличной сводке, как на вкладке «Счета».
  */
 
 import type { Service, Subscription, SubscriptionStatus } from '~/types/service'
 import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
-import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
+import { invoiceStatusLabels } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
+import { useMockInvoices } from '~/composables/useMockInvoices'
 
 // =============================================================================
 // STORES & COMPOSABLES
 // =============================================================================
 
 const { fetchSubscriptions } = useServices()
+const { lastThreeInvoices } = useMockInvoices()
 
 // =============================================================================
 // DATA — загрузка подписок
@@ -29,121 +31,7 @@ const { fetchSubscriptions } = useServices()
 
 const { subscriptions } = await fetchSubscriptions()
 
-// =============================================================================
-// MOCK DATA — моковые данные счетов
-// =============================================================================
-
-// Функция для создания дат периодов
-function getMonthDates(year: number, month: number) {
-  const start = new Date(year, month - 1, 1)
-  const end = new Date(year, month, 0)
-  return {
-    start: start.toISOString().split('T')[0] || null,
-    end: end.toISOString().split('T')[0] || null
-  }
-}
-
-// Получаем текущую дату
-const now = new Date()
-const currentYear = now.getFullYear()
-const currentMonth = now.getMonth() + 1
-
-// Прошлый месяц
-const lastMonth = currentMonth === 1 ? 12 : currentMonth - 1
-const lastMonthYear = currentMonth === 1 ? currentYear - 1 : currentYear
-const lastMonthDates = getMonthDates(lastMonthYear, lastMonth)
-
-// Текущий месяц
-const currentMonthDates = getMonthDates(currentYear, currentMonth)
-
-// Будущий месяц
-const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
-const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear
-const nextMonthDates = getMonthDates(nextMonthYear, nextMonth)
-
-// Создаём моковые счета (в правильном порядке: прошлый, текущий, будущий)
-const invoicesRaw = [
-  // Счёт за прошлый месяц (оплачен)
-  {
-    id: 'mock-invoice-last-month',
-    invoiceNumber: `INV-${lastMonthYear}${String(lastMonth).padStart(2, '0')}-001`,
-    accountId: 'mock-account-id',
-    contractId: null,
-    status: 'paid' as InvoiceStatus,
-    amount: 69900, // 699 рублей в копейках
-    description: 'Ежемесячная плата за интернет',
-    periodStart: lastMonthDates.start,
-    periodEnd: lastMonthDates.end,
-    issuedAt: new Date(lastMonthYear, lastMonth - 1, 1).toISOString(),
-    dueDate: new Date(lastMonthYear, lastMonth, 0).toISOString(),
-    paidAt: new Date(lastMonthYear, lastMonth - 1, 15).toISOString(),
-    createdAt: new Date(lastMonthYear, lastMonth - 1, 1).toISOString(),
-    updatedAt: new Date(lastMonthYear, lastMonth - 1, 15).toISOString()
-  },
-  // Счёт за текущий месяц (оплачен)
-  {
-    id: 'mock-invoice-current-month',
-    invoiceNumber: `INV-${currentYear}${String(currentMonth).padStart(2, '0')}-001`,
-    accountId: 'mock-account-id',
-    contractId: null,
-    status: 'paid' as InvoiceStatus,
-    amount: 69900, // 699 рублей в копейках
-    description: 'Ежемесячная плата за интернет',
-    periodStart: currentMonthDates.start,
-    periodEnd: currentMonthDates.end,
-    issuedAt: new Date(currentYear, currentMonth - 1, 1).toISOString(),
-    dueDate: new Date(currentYear, currentMonth, 0).toISOString(),
-    paidAt: new Date(currentYear, currentMonth - 1, 10).toISOString(),
-    createdAt: new Date(currentYear, currentMonth - 1, 1).toISOString(),
-    updatedAt: new Date(currentYear, currentMonth - 1, 10).toISOString()
-  },
-  // Счёт за будущий месяц (предупреждающий - к оплате)
-  {
-    id: 'mock-invoice-next-month',
-    invoiceNumber: `INV-${nextMonthYear}${String(nextMonth).padStart(2, '0')}-001`,
-    accountId: 'mock-account-id',
-    contractId: null,
-    status: 'pending' as InvoiceStatus,
-    amount: 69900, // 699 рублей в копейках
-    description: 'Ежемесячная плата за интернет',
-    periodStart: nextMonthDates.start,
-    periodEnd: nextMonthDates.end,
-    issuedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
-    dueDate: new Date(nextMonthYear, nextMonth, 0).toISOString(),
-    paidAt: null,
-    createdAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
-    updatedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString()
-  }
-]
-
-const invoices = ref<Invoice[]>(invoicesRaw as Invoice[])
-
-// Сортированные счета: сначала ожидающие оплаты, затем оплаченные (снизу вверх)
-const sortedInvoices = computed(() => {
-  return [...invoices.value].sort((a, b) => {
-    // Сначала неоплаченные (pending, sent, viewed, expired)
-    const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
-    const aIsUnpaid = unpaidStatuses.includes(a.status)
-    const bIsUnpaid = unpaidStatuses.includes(b.status)
-    
-    // Если один неоплаченный, а другой оплаченный - неоплаченный идет первым
-    if (aIsUnpaid && !bIsUnpaid) return -1
-    if (!aIsUnpaid && bIsUnpaid) return 1
-    
-    // Если оба в одной группе (оба неоплаченные или оба оплаченные)
-    // Сортируем по дате начала периода
-    const dateA = a.periodStart ? new Date(a.periodStart).getTime() : 0
-    const dateB = b.periodStart ? new Date(b.periodStart).getTime() : 0
-    
-    // Для неоплаченных - по возрастанию (будущий месяц первым)
-    // Для оплаченных - по убыванию (текущий, потом прошлый - снизу вверх)
-    if (aIsUnpaid && bIsUnpaid) {
-      return dateA - dateB // по возрастанию
-    } else {
-      return dateB - dateA // по убыванию (обратный порядок)
-    }
-  })
-})
+const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
 
 // =============================================================================
 // METHODS
@@ -170,28 +58,9 @@ function getServiceIcon(service: Service | undefined): string {
   return service?.icon || 'heroicons:cube'
 }
 
-// Перейти на страницу счетов с открытием конкретного счета
+// Перейти на страницу конкретного счёта (состав услуг)
 function openInvoice(invoiceId: string): void {
-  navigateTo(`/invoices?id=${invoiceId}`)
-}
-
-// Получить CSS-класс для бейджа статуса счёта
-function getStatusBadgeClass(status: InvoiceStatus): string {
-  // Неоплаченные счета - красный фон
-  const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
-  if (unpaidStatuses.includes(status)) {
-    return 'bg-red-500/20 text-red-400'
-  }
-  
-  const colorMap: Record<string, string> = {
-    gray: 'bg-gray-600/20 text-gray-400',
-    primary: 'bg-primary/20 text-primary',
-    blue: 'bg-blue-500/20 text-blue-400',
-    green: 'bg-accent/20 text-accent',
-    red: 'bg-red-500/20 text-red-400'
-  }
-  const color = invoiceStatusColors[status] as string
-  return (color in colorMap ? colorMap[color] : colorMap.gray) as string
+  navigateTo(`/invoices/${invoiceId}`)
 }
 </script>
 
@@ -210,56 +79,209 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
           <Icon name="heroicons:arrow-right" class="w-4 h-4" />
         </NuxtLink>
       </div>
-      <div class="space-y-4">
-        <UiCard
-          v-for="invoice in sortedInvoices"
+      <!-- Табличная сводка: последние 3 счёта (как на вкладке «Счета») -->
+      <div v-if="lastThreeInvoices.length > 0" class="dashboard-invoices">
+        <div class="dashboard-invoices__header">
+          <div class="dashboard-invoices__col dashboard-invoices__col--status">Статус</div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--date">Дата выставления</div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--date">Оплачен / Срок</div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--amount">Сумма</div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--actions">Действия</div>
+        </div>
+        <div
+          v-for="invoice in lastThreeInvoices"
           :key="invoice.id"
-          hover
-          class="cursor-pointer"
+          class="dashboard-invoices__row"
           @click="openInvoice(invoice.id)"
         >
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div class="flex items-start gap-4">
-            <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center">
+          <div class="dashboard-invoices__col dashboard-invoices__col--status">
+            <span
+              class="dashboard-invoices__badge"
+              :class="invoice.status === 'paid' ? 'dashboard-invoices__badge--paid' : 'dashboard-invoices__badge--unpaid'"
+            >
               <Icon
-                :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:document-text'"
-                class="w-6 h-6"
-                :class="invoice.status === 'paid' ? 'text-accent' : 'text-primary'"
+                :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:clock'"
+                class="w-4 h-4"
               />
-            </div>
-            <div>
-              <div class="flex items-center gap-2 mb-1">
-                <span class="text-xs text-[var(--text-muted)]">{{ invoice.invoiceNumber }}</span>
-                <UiBadge :class="getStatusBadgeClass(invoice.status)" size="sm">
-                  {{ invoiceStatusLabels[invoice.status] }}
-                </UiBadge>
-              </div>
-              <p class="font-medium text-[var(--text-primary)]">{{ formatInvoicePeriod(invoice) }}</p>
-              <div class="flex items-center gap-3 mt-2 text-xs text-[var(--text-muted)]">
-                <span v-if="invoice.issuedAt">Выставлен: {{ formatDateShort(invoice.issuedAt) }}</span>
-                <span v-if="invoice.paidAt">Оплачен: {{ formatDateShort(invoice.paidAt) }}</span>
-                <span v-else-if="invoice.dueDate">Срок: {{ formatDateShort(invoice.dueDate) }}</span>
-              </div>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <span class="text-lg font-bold text-[var(--text-primary)]">
-              {{ formatKopeks(invoice.amount) }}
-              <span class="text-sm font-normal text-[var(--text-muted)]">₽</span>
+              {{ invoiceStatusLabels[invoice.status] }}
             </span>
-            <Icon name="heroicons:chevron-right" class="w-5 h-5 text-[var(--text-muted)] hidden sm:block" />
+          </div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--date">
+            <span class="text-[var(--text-secondary)]">
+              {{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}
+            </span>
+          </div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--date">
+            <span class="text-[var(--text-secondary)]">
+              {{ invoice.paidAt ? formatDateShort(invoice.paidAt) : (invoice.dueDate ? formatDateShort(invoice.dueDate) : '—') }}
+            </span>
+          </div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--amount">
+            <span class="dashboard-invoices__amount">
+              {{ formatKopeks(invoice.amount) }}<span class="dashboard-invoices__currency">₽</span>
+            </span>
+          </div>
+          <div class="dashboard-invoices__col dashboard-invoices__col--actions" @click.stop>
+            <button
+              v-if="!unpaidStatuses.includes(invoice.status)"
+              type="button"
+              class="dashboard-invoices__link"
+              @click="openInvoice(invoice.id)"
+            >
+              <span>Подробнее</span>
+              <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+            </button>
+            <NuxtLink
+              v-if="unpaidStatuses.includes(invoice.status)"
+              :to="`/invoices/${invoice.id}`"
+              class="dashboard-invoices__btn-link"
+            >
+              Оплатить
+            </NuxtLink>
           </div>
         </div>
-      </UiCard>
+      </div>
 
-        <!-- Empty State -->
-        <div v-if="sortedInvoices.length === 0" class="py-8">
-          <UiEmptyState
-            icon="heroicons:document-text"
-            title="Счетов не найдено"
-          />
-        </div>
+      <div v-else class="py-8">
+        <UiEmptyState
+          icon="heroicons:document-text"
+          title="Счетов не найдено"
+        />
       </div>
     </UiCard>
   </section>
 </template>
+
+<style scoped>
+.dashboard-invoices {
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  background: var(--bg-surface);
+}
+
+.dashboard-invoices__header,
+.dashboard-invoices__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+  gap: 0 1rem;
+}
+
+.dashboard-invoices__header {
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid var(--glass-border);
+}
+
+.dashboard-invoices__header .dashboard-invoices__col {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.dashboard-invoices__col {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+
+.dashboard-invoices__row {
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  border-bottom: 1px solid var(--glass-border);
+  transition: background-color 0.15s ease;
+}
+
+.dashboard-invoices__row:last-child {
+  border-bottom: none;
+}
+
+.dashboard-invoices__row:hover {
+  background: var(--glass-hover-bg);
+}
+
+.dashboard-invoices__col--amount {
+  justify-content: flex-end;
+}
+
+.dashboard-invoices__col--actions {
+  justify-content: center;
+  padding-left: 1rem;
+  gap: 0.5rem;
+}
+
+.dashboard-invoices__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.dashboard-invoices__badge--paid {
+  background: rgba(0, 166, 81, 0.12);
+  color: #00A651;
+}
+
+.dashboard-invoices__badge--unpaid {
+  background: rgba(247, 148, 29, 0.12);
+  color: #F7941D;
+}
+
+.dashboard-invoices__amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.dashboard-invoices__currency {
+  margin-left: 0.2em;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.dashboard-invoices__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.dashboard-invoices__link:hover {
+  color: var(--text-primary);
+  background: var(--glass-bg);
+}
+
+.dashboard-invoices__btn-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: white;
+  background: #F7941D;
+  box-shadow: 0 2px 8px rgba(247, 148, 29, 0.25);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+  text-decoration: none;
+}
+
+.dashboard-invoices__btn-link:hover {
+  background: #D67A0A;
+  box-shadow: 0 4px 12px rgba(247, 148, 29, 0.35);
+}
+</style>

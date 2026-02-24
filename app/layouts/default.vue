@@ -104,7 +104,7 @@ onUnmounted(() => {
       class="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       :class="isScrolled ? 'header-blur shadow-lg' : 'header-transparent'"
     >
-      <div class="container mx-auto px-4">
+      <div class="container mx-auto max-w-5xl px-4">
         <div class="flex items-center justify-between h-16">
 
           <!-- Логотип -->
@@ -180,21 +180,12 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <!-- =====================================================================
-         CONTENT — основной контент страницы
-         pt-16 — отступ под фиксированную шапку (64px)
-         pb-20 — отступ под мобильную навигацию (80px), убирается на desktop
-         ===================================================================== -->
     <main class="flex-1 pt-16 pb-20 md:pb-0">
-      <div class="container mx-auto px-4 py-6">
+      <div class="container mx-auto max-w-5xl px-4 py-6">
         <slot />
       </div>
     </main>
 
-    <!-- =====================================================================
-         MOBILE BOTTOM NAVIGATION — нижняя панель (только mobile)
-         4 основных пункта + кнопка "Ещё" с выпадающим меню
-         ===================================================================== -->
     <div class="md:hidden">
       <!-- Нижняя панель навигации -->
       <nav
