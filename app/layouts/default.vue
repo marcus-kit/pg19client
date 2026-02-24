@@ -17,7 +17,7 @@ const userStore = useUserStore()
 const accountStore = useAccountStore()
 const { logout } = useAuthInit()
 const route = useRoute()
-const colorMode = useColorMode()
+const { themeIcon, themeLabel, cycleTheme } = useThemeDetect()
 
 // Heartbeat — отправляет пинг на сервер каждые N секунд для онлайн-статуса
 const { startHeartbeat, stopHeartbeat } = usePresenceHeartbeat()
@@ -59,10 +59,7 @@ const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.hre
 const isScrolled = ref(false)    // true когда страница прокручена > 20px
 const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
 
-// Переключение темы light/dark
-function toggleTheme(): void {
-  colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
-}
+// Переключение темы: system → dark → light → system (из useThemeDetect)
 
 // Выход из аккаунта
 function handleLogout(): void {
@@ -128,14 +125,14 @@ onUnmounted(() => {
 
           <!-- Desktop: профиль и действия -->
           <div class="hidden md:flex items-center gap-3">
-            <!-- Переключатель темы -->
+            <!-- Переключатель темы: system → dark → light -->
             <button
-              @click="toggleTheme"
+              @click="cycleTheme"
               class="theme-toggle"
-              :title="colorMode.value === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
+              :title="themeLabel"
             >
               <Icon
-                :name="colorMode.value === 'dark' ? 'heroicons:sun' : 'heroicons:moon'"
+                :name="themeIcon"
                 class="w-5 h-5"
               />
             </button>
@@ -158,13 +155,14 @@ onUnmounted(() => {
 
           <!-- Mobile: иконки в шапке -->
           <div class="flex md:hidden items-center gap-2">
-            <!-- Переключатель темы -->
+            <!-- Переключатель темы: system → dark → light -->
             <button
-              @click="toggleTheme"
+              @click="cycleTheme"
               class="p-2 text-[var(--text-muted)] hover:text-primary rounded-lg transition-colors"
+              :title="themeLabel"
             >
               <Icon
-                :name="colorMode.value === 'dark' ? 'heroicons:sun' : 'heroicons:moon'"
+                :name="themeIcon"
                 class="w-5 h-5"
               />
             </button>

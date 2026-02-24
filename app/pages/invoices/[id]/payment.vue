@@ -21,18 +21,16 @@ function goBack() {
   router.push('/invoices')
 }
 
-function loadHtml2Pdf(): Promise<(opts?: object) => { set: (o: object) => { from: (el: HTMLElement) => { save: () => Promise<void> } } }> {
+function loadHtml2Pdf(): Promise<any> {
   return new Promise((resolve, reject) => {
-    if (typeof window !== 'undefined' && (window as unknown as { html2pdf?: unknown }).html2pdf) {
-      resolve((window as unknown as { html2pdf: (opts?: object) => { set: (o: object) => { from: (el: HTMLElement) => { save: () => Promise<void> } } } }).html2pdf)
+    if (typeof window !== 'undefined' && (window as any).html2pdf) {
+      resolve((window as any).html2pdf)
       return
     }
     const script = document.createElement('script')
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
     script.async = true
-    script.onload = () => {
-      resolve((window as unknown as { html2pdf: (opts?: object) => { set: (o: object) => { from: (el: HTMLElement) => { save: () => Promise<void> } } } }).html2pdf)
-    }
+    script.onload = () => resolve((window as any).html2pdf)
     script.onerror = () => reject(new Error('Не удалось загрузить библиотеку для PDF'))
     document.head.appendChild(script)
   })
@@ -86,7 +84,6 @@ async function saveAsPdf(): Promise<void> {
 
     const opt = {
       margin: [8, 6, 8, 6],
-      filename: `Квитанция_${invoiceId}.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: {
         scale: 2,
@@ -102,7 +99,37 @@ async function saveAsPdf(): Promise<void> {
       pagebreak: { mode: ['css', 'legacy'] as unknown as never }
     }
 
-    await html2pdf().set(opt).from(el).save()
+    const pdfFilename = `Квитанция_${invoiceId}.pdf`
+
+    // Получаем blob вместо .save() — на мобилках .save() вызывает навигацию по blob-UUID → 404
+    const blob: Blob = await html2pdf().set(opt).from(el).outputPdf('blob')
+
+    // На мобильных — пробуем Web Share API (шаринг файлом)
+    if (navigator.share && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent)) {
+      try {
+        const file = new File([blob], pdfFilename, { type: 'application/pdf' })
+        if (navigator.canShare?.({ files: [file] })) {
+          await navigator.share({ files: [file], title: pdfFilename })
+          return
+        }
+      } catch {
+        // Пользователь отменил шаринг или API не поддерживает файлы — fallback ниже
+      }
+    }
+
+    // Fallback: программное скачивание через <a download>
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = pdfFilename
+    a.style.display = 'none'
+    document.body.appendChild(a)
+    a.click()
+    // Очистка
+    setTimeout(() => {
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 200)
   } catch (e) {
     console.error('Ошибка при сохранении PDF:', e)
     if (typeof window !== 'undefined') {

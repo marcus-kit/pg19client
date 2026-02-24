@@ -84,9 +84,10 @@ export default defineNuxtConfig({
   // Цветовая тема
   // ---------------------------------------------------------------------------
   colorMode: {
-    classSuffix: '',     // Без суффикса: класс "dark", а не "dark-mode"
-    preference: 'dark',  // По умолчанию тёмная тема
-    fallback: 'dark'     // Fallback если preference не определён
+    classSuffix: '',      // Без суффикса: класс "dark", а не "dark-mode"
+    preference: 'system', // Автоопределение по prefers-color-scheme браузера
+    fallback: 'dark',     // Fallback если matchMedia недоступен
+    storageKey: 'pg19-theme' // Новый ключ — сбрасывает старое значение 'dark' из cookie
   },
 
   // ---------------------------------------------------------------------------
