@@ -43,6 +43,11 @@ async function saveAsPdf(): Promise<void> {
   if (!el) return
 
   isSavingPdf.value = true
+  const paperEl = el.querySelector('.invoice-paper') as HTMLElement | null
+  const paperStyles: { border?: string; boxShadow?: string; borderRadius?: string } = {}
+  const logoEl = el.querySelector('.receipt-logo')
+  const logoStyles: { width?: string; height?: string; maxWidth?: string; maxHeight?: string; objectFit?: string; objectPosition?: string } = {}
+
   try {
     const html2pdf = await loadHtml2Pdf()
     const imgs = el.querySelectorAll('img')
@@ -54,6 +59,30 @@ async function saveAsPdf(): Promise<void> {
         setTimeout(resolve, 3000)
       })
     }))
+
+    // Правки в реальном DOM перед захватом — без замены img на div, чтобы в PDF было как на сайте
+    if (paperEl) {
+      paperStyles.border = paperEl.style.border
+      paperStyles.boxShadow = paperEl.style.boxShadow
+      paperStyles.borderRadius = paperEl.style.borderRadius
+      paperEl.style.border = 'none'
+      paperEl.style.boxShadow = 'none'
+      paperEl.style.borderRadius = '0'
+    }
+    if (logoEl && logoEl instanceof HTMLImageElement) {
+      logoStyles.width = logoEl.style.width
+      logoStyles.height = logoEl.style.height
+      logoStyles.maxWidth = logoEl.style.maxWidth
+      logoStyles.maxHeight = logoEl.style.maxHeight
+      logoStyles.objectFit = logoEl.style.objectFit
+      logoStyles.objectPosition = logoEl.style.objectPosition
+      logoEl.style.width = '110px'
+      logoEl.style.height = '40px'
+      logoEl.style.maxWidth = '110px'
+      logoEl.style.maxHeight = '40px'
+      logoEl.style.objectFit = 'contain'
+      logoEl.style.objectPosition = 'left center'
+    }
 
     const opt = {
       margin: [8, 6, 8, 6],
@@ -67,59 +96,7 @@ async function saveAsPdf(): Promise<void> {
         logging: false,
         scrollY: 0,
         scrollX: 0,
-        backgroundColor: '#ffffff',
-        onclone(clonedDoc: Document) {
-          const paper = clonedDoc.querySelector('.invoice-paper')
-
-          // Убираем рамки у всех дочерних элементов с border-radius
-          const allElements = clonedDoc.querySelectorAll('*')
-          allElements.forEach((el) => {
-            if (el instanceof HTMLElement) {
-              el.style.borderRadius = '0'
-              el.style.boxShadow = 'none'
-            }
-          })
-          // Исправляем ссылку
-          const link = clonedDoc.querySelector('a[data-pdf-link="true"]')
-          if (link && link instanceof HTMLElement) {
-            link.style.color = '#2563eb'
-            link.style.textDecoration = 'underline'
-            link.style.fontWeight = '600'
-            link.style.display = 'inline'
-            link.style.visibility = 'visible'
-            link.style.opacity = '1'
-          }
-          // Исправляем логотип — явные размеры без object-fit
-          const logo = clonedDoc.querySelector('.receipt-logo')
-          if (logo && logo instanceof HTMLElement) {
-            logo.style.width = '140px'
-            logo.style.height = '85px'
-            logo.style.maxWidth = '140px'
-            logo.style.maxHeight = '85px'
-            logo.style.objectFit = 'fill'
-            logo.style.objectPosition = 'left center'
-            logo.style.display = 'block'
-          }
-          // Исправляем QR код — явные размеры
-          const qr = clonedDoc.querySelector('.qr-image')
-          if (qr && qr instanceof HTMLElement) {
-            qr.style.width = '130px'
-            qr.style.height = '130px'
-          }
-          // Исправляем grid — принудительно пересчитываем
-          const paymentGrid = clonedDoc.querySelector('.payment-grid')
-          if (paymentGrid && paymentGrid instanceof HTMLElement) {
-            paymentGrid.style.display = 'grid'
-            paymentGrid.style.gridTemplateColumns = '2fr 1fr'
-            paymentGrid.style.gap = '20px'
-          }
-          const infoSection = clonedDoc.querySelector('.info-section')
-          if (infoSection && infoSection instanceof HTMLElement) {
-            infoSection.style.display = 'grid'
-            infoSection.style.gridTemplateColumns = '1fr 1fr'
-            infoSection.style.gap = '40px'
-          }
-        }
+        backgroundColor: '#ffffff'
       },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
       pagebreak: { mode: ['css', 'legacy'] as unknown as never }
@@ -132,6 +109,20 @@ async function saveAsPdf(): Promise<void> {
       window.alert('Не удалось сформировать PDF. Проверьте подключение к интернету и попробуйте снова.')
     }
   } finally {
+    // Восстанавливаем DOM
+    if (paperEl) {
+      paperEl.style.border = paperStyles.border ?? ''
+      paperEl.style.boxShadow = paperStyles.boxShadow ?? ''
+      paperEl.style.borderRadius = paperStyles.borderRadius ?? ''
+    }
+    if (logoEl && logoEl instanceof HTMLImageElement) {
+      logoEl.style.width = logoStyles.width ?? ''
+      logoEl.style.height = logoStyles.height ?? ''
+      logoEl.style.maxWidth = logoStyles.maxWidth ?? ''
+      logoEl.style.maxHeight = logoStyles.maxHeight ?? ''
+      logoEl.style.objectFit = logoStyles.objectFit ?? ''
+      logoEl.style.objectPosition = logoStyles.objectPosition ?? ''
+    }
     isSavingPdf.value = false
   }
 }
