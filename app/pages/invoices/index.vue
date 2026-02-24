@@ -495,7 +495,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 .invoices-mobile__details {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.25rem 0.75rem;
+  gap: 0.5rem 0.75rem;
   padding: 0.75rem 1rem;
 }
 
@@ -505,25 +505,40 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--text-muted);
+  margin-bottom: 0.25rem;
 }
 
 .invoices-mobile__value {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--text-primary);
+  line-height: 1.4;
 }
 
 .invoices-mobile__detail {
   display: flex;
   flex-direction: column;
-  gap: 0.125rem;
+  align-items: flex-start;
+  min-height: 3rem;
+}
+
+.invoices-mobile__detail--amount {
+  align-items: flex-end;
+}
+
+.invoices-mobile__detail--amount .invoices-row__amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .invoices-mobile__actions {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 0.5rem;
-  padding: 0 1rem 0.875rem;
+  padding: 0.75rem 1rem 1rem 1rem;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 0.5rem;
 }
 
 </style>
