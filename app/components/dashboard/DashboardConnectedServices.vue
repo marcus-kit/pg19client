@@ -80,64 +80,134 @@ function openInvoice(invoiceId: string): void {
         </NuxtLink>
       </div>
       <!-- Табличная сводка: последние 3 счёта (как на вкладке «Счета») -->
-      <div v-if="lastThreeInvoices.length > 0" class="dashboard-invoices">
-        <div class="dashboard-invoices__header">
-          <div class="dashboard-invoices__col dashboard-invoices__col--status">Статус</div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--date">Дата выставления</div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--date">Оплачен / Срок</div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--amount">Сумма</div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--actions">Действия</div>
+      <div v-if="lastThreeInvoices.length > 0">
+        <!-- Desktop: таблица -->
+        <div class="dashboard-invoices hidden md:block">
+          <div class="dashboard-invoices__header">
+            <div class="dashboard-invoices__col dashboard-invoices__col--status">Статус</div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--date">Дата выставления</div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--date">Оплачен / Срок</div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--amount">Сумма</div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--actions">Действия</div>
+          </div>
+          <div
+            v-for="invoice in lastThreeInvoices"
+            :key="invoice.id"
+            class="dashboard-invoices__row"
+            @click="openInvoice(invoice.id)"
+          >
+            <div class="dashboard-invoices__col dashboard-invoices__col--status">
+              <span
+                class="dashboard-invoices__badge"
+                :class="invoice.status === 'paid' ? 'dashboard-invoices__badge--paid' : 'dashboard-invoices__badge--unpaid'"
+              >
+                <Icon
+                  :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:clock'"
+                  class="w-4 h-4"
+                />
+                {{ invoiceStatusLabels[invoice.status] }}
+              </span>
+            </div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--date">
+              <span class="text-[var(--text-secondary)]">
+                {{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}
+              </span>
+            </div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--date">
+              <span class="text-[var(--text-secondary)]">
+                {{ invoice.paidAt ? formatDateShort(invoice.paidAt) : (invoice.dueDate ? formatDateShort(invoice.dueDate) : '—') }}
+              </span>
+            </div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--amount">
+              <span class="dashboard-invoices__amount">
+                {{ formatKopeks(invoice.amount) }}<span class="dashboard-invoices__currency">₽</span>
+              </span>
+            </div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--actions" @click.stop>
+              <button
+                v-if="!unpaidStatuses.includes(invoice.status)"
+                type="button"
+                class="dashboard-invoices__link"
+                @click="openInvoice(invoice.id)"
+              >
+                <span>Подробнее</span>
+                <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+              </button>
+              <NuxtLink
+                v-if="unpaidStatuses.includes(invoice.status)"
+                :to="`/invoices/${invoice.id}`"
+                class="dashboard-invoices__btn-link"
+              >
+                Оплатить
+              </NuxtLink>
+            </div>
+          </div>
         </div>
-        <div
-          v-for="invoice in lastThreeInvoices"
-          :key="invoice.id"
-          class="dashboard-invoices__row"
-          @click="openInvoice(invoice.id)"
-        >
-          <div class="dashboard-invoices__col dashboard-invoices__col--status">
-            <span
-              class="dashboard-invoices__badge"
-              :class="invoice.status === 'paid' ? 'dashboard-invoices__badge--paid' : 'dashboard-invoices__badge--unpaid'"
-            >
-              <Icon
-                :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:clock'"
-                class="w-4 h-4"
-              />
-              {{ invoiceStatusLabels[invoice.status] }}
-            </span>
-          </div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--date">
-            <span class="text-[var(--text-secondary)]">
-              {{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}
-            </span>
-          </div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--date">
-            <span class="text-[var(--text-secondary)]">
-              {{ invoice.paidAt ? formatDateShort(invoice.paidAt) : (invoice.dueDate ? formatDateShort(invoice.dueDate) : '—') }}
-            </span>
-          </div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--amount">
-            <span class="dashboard-invoices__amount">
-              {{ formatKopeks(invoice.amount) }}<span class="dashboard-invoices__currency">₽</span>
-            </span>
-          </div>
-          <div class="dashboard-invoices__col dashboard-invoices__col--actions" @click.stop>
-            <button
-              v-if="!unpaidStatuses.includes(invoice.status)"
-              type="button"
-              class="dashboard-invoices__link"
-              @click="openInvoice(invoice.id)"
-            >
-              <span>Подробнее</span>
-              <Icon name="heroicons:chevron-right" class="w-4 h-4" />
-            </button>
-            <NuxtLink
-              v-if="unpaidStatuses.includes(invoice.status)"
-              :to="`/invoices/${invoice.id}`"
-              class="dashboard-invoices__btn-link"
-            >
-              Оплатить
-            </NuxtLink>
+
+        <!-- Mobile: карточки -->
+        <div class="md:hidden space-y-3">
+          <div
+            v-for="invoice in lastThreeInvoices"
+            :key="invoice.id"
+            class="dashboard-invoices-mobile"
+            @click="openInvoice(invoice.id)"
+          >
+            <div class="dashboard-invoices-mobile__top">
+              <span
+                class="dashboard-invoices__badge"
+                :class="invoice.status === 'paid' ? 'dashboard-invoices__badge--paid' : 'dashboard-invoices__badge--unpaid'"
+              >
+                <Icon
+                  :name="invoice.status === 'paid' ? 'heroicons:check-circle' : 'heroicons:clock'"
+                  class="w-4 h-4"
+                />
+                {{ invoiceStatusLabels[invoice.status] }}
+              </span>
+            </div>
+
+            <div class="dashboard-invoices-mobile__details">
+              <div class="dashboard-invoices-mobile__detail">
+                <span class="dashboard-invoices-mobile__label">Выставлен</span>
+                <span class="dashboard-invoices-mobile__value">{{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}</span>
+              </div>
+              <div class="dashboard-invoices-mobile__detail">
+                <span class="dashboard-invoices-mobile__label">{{ invoice.paidAt ? 'Оплачен' : 'Срок оплаты' }}</span>
+                <span class="dashboard-invoices-mobile__value">
+                  {{ invoice.paidAt ? formatDateShort(invoice.paidAt) : (invoice.dueDate ? formatDateShort(invoice.dueDate) : '—') }}
+                </span>
+              </div>
+              <div class="dashboard-invoices-mobile__detail dashboard-invoices-mobile__detail--amount">
+                <span class="dashboard-invoices-mobile__label">Сумма</span>
+                <span class="dashboard-invoices__amount">
+                  {{ formatKopeks(invoice.amount) }}<span class="dashboard-invoices__currency">₽</span>
+                </span>
+              </div>
+            </div>
+
+            <div class="dashboard-invoices-mobile__actions" @click.stop>
+              <button
+                v-if="!unpaidStatuses.includes(invoice.status)"
+                type="button"
+                class="dashboard-invoices__link flex-1 justify-center"
+                @click="openInvoice(invoice.id)"
+              >
+                <span>Подробнее</span>
+                <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+              </button>
+              <NuxtLink
+                v-if="unpaidStatuses.includes(invoice.status)"
+                :to="`/invoices/${invoice.id}`"
+                class="flex-shrink-0"
+              >
+                <UiButton
+                  variant="primary"
+                  size="sm"
+                  class="shadow-md shadow-primary/20"
+                >
+                  Оплатить
+                </UiButton>
+              </NuxtLink>
+            </div>
           </div>
         </div>
       </div>
@@ -283,5 +353,78 @@ function openInvoice(invoiceId: string): void {
 .dashboard-invoices__btn-link:hover {
   background: #D67A0A;
   box-shadow: 0 4px 12px rgba(247, 148, 29, 0.35);
+}
+
+/* =========================================================================
+   MOBILE CARDS — мобильная версия счетов
+   ========================================================================= */
+.dashboard-invoices-mobile {
+  border-radius: 1rem;
+  overflow: hidden;
+  background: var(--bg-surface);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 2px 12px var(--glass-shadow);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.dashboard-invoices-mobile:active {
+  box-shadow: 0 1px 4px var(--glass-shadow);
+}
+
+.dashboard-invoices-mobile__top {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1rem 1rem 0.75rem 1rem;
+}
+
+.dashboard-invoices-mobile__details {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.dashboard-invoices-mobile__label {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-invoices-mobile__value {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.dashboard-invoices-mobile__detail {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 3rem;
+}
+
+.dashboard-invoices-mobile__detail--amount {
+  align-items: flex-end;
+}
+
+.dashboard-invoices-mobile__detail--amount .dashboard-invoices__amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
+}
+
+.dashboard-invoices-mobile__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem 1rem 1rem;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 0.5rem;
 }
 </style>
