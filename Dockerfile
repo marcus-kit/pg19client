@@ -52,8 +52,9 @@ RUN pnpm exec prisma generate
 # Собираем production-версию
 RUN pnpm build
 
-# Копируем сгенерированный .prisma в вывод Nitro (Nitro не подтягивает его в server/node_modules)
-RUN cp -r node_modules/.prisma .output/server/node_modules/
+# Копируем сгенерированный .prisma в вывод Nitro (pnpm кладёт его в .pnpm/.../node_modules/.prisma)
+RUN PRISMA_DIR="$(find node_modules -type d -name '.prisma' 2>/dev/null | head -1)" && \
+    ([ -n "$PRISMA_DIR" ] && cp -r "$PRISMA_DIR" .output/server/node_modules/) || (echo "ERROR: .prisma not found after prisma generate" && exit 1)
 
 # -----------------------------------------------------------------------------
 # Этап 3: Production-образ
