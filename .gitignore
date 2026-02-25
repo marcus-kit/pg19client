@@ -5,7 +5,8 @@
 .data
 .cache
 node_modules
-
+package-lock.json
+pnpm-lock.yaml
 # Env (secrets)
 .env
 .env.local
