@@ -29,13 +29,25 @@ export default defineEventHandler(async (event) => {
   }
 
   let tariffName = 'Не подключен'
+  let payDay = 20
+  let isBlocked = false
   if (account?.contract_id) {
-    const services = await prisma.contractService.findMany({
-      where: { contract_id: account.contract_id, is_active: true },
-      select: { name: true, type: true }
-    })
+    const [services, contract] = await Promise.all([
+      prisma.contractService.findMany({
+        where: { contract_id: account.contract_id, is_active: true },
+        select: { name: true, type: true }
+      }),
+      prisma.contract.findUnique({
+        where: { id: account.contract_id },
+        select: { pay_day: true, is_blocked: true }
+      })
+    ])
     const internet = services.find(s => s.type === 'internet')
     tariffName = internet?.name ?? services[0]?.name ?? tariffName
+    if (contract) {
+      payDay = contract.pay_day ?? 20
+      isBlocked = contract.is_blocked ?? false
+    }
   }
 
   await createUserSession(event, user.id, account?.id ?? null, 'phone', request.phone)
@@ -62,10 +74,11 @@ export default defineEventHandler(async (event) => {
       ? {
           contractNumber: account.contract_number,
           balance: Number(account.balance),
-          status: account.status,
+          status: isBlocked ? 'blocked' : 'active',
           tariff: tariffName,
           address: account.address_full ?? '',
-          startDate: account.start_date
+          startDate: account.start_date,
+          payDay
         }
       : null
   }

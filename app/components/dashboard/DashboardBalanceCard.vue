@@ -13,36 +13,62 @@
 
 const accountStore = useAccountStore()
 const { fetchUnpaidInvoices } = useInvoices()
+const { fetchSubscriptions } = useServices()
 
 // =============================================================================
-// DATA — загрузка неоплаченных счетов
+// DATA — загрузка неоплаченных счетов и подписок
 // =============================================================================
 
 const { invoices: unpaidInvoices } = await fetchUnpaidInvoices()
+const { subscriptions } = await fetchSubscriptions()
+
+// Загружаем актуальный аккаунт; при отсутствии договора очищаем store
+const { data: accountData } = await useFetch<{ account: import('~/types').Account | null }>('/api/account/current', { key: 'account-current' })
+if (accountData.value?.account) {
+  accountStore.setAccount(accountData.value.account)
+} else {
+  accountStore.clear()
+}
 
 // =============================================================================
 // STATE — реактивное состояние
 // =============================================================================
 
 const showAllPaidModal = ref(false)
-const showAllAddresses = ref(false) // Показывать все адреса или только первые 3
+const showAllAddresses = ref(false)
 
 // =============================================================================
 // COMPUTED
 // =============================================================================
 
-// Расчёт следующей даты оплаты (конец текущего месяца)
+// Следующая дата оплаты по дню договора (payDay); при отсутствии договора — null
 const nextPaymentDate = computed(() => {
+  if (!accountStore.account) return null
+  const payDay = accountStore.account.payDay ?? 20
   const now = new Date()
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  return lastDay.toLocaleDateString('ru-RU', {
+  const lastDayCur = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+  const dayCur = Math.min(payDay, lastDayCur)
+  let next = new Date(now.getFullYear(), now.getMonth(), dayCur)
+  if (next.getTime() <= now.getTime()) {
+    const lastDayNext = new Date(now.getFullYear(), now.getMonth() + 2, 0).getDate()
+    next = new Date(now.getFullYear(), now.getMonth() + 1, Math.min(payDay, lastDayNext))
+  }
+  return next.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'long'
   })
 })
 
-// Конфигурация статуса аккаунта
+// Конфигурация статуса: нет договора / заблокирован / активен
 const statusConfig = computed(() => {
+  if (!accountStore.account) {
+    return {
+      text: 'Нет активного договора',
+      color: 'bg-[var(--text-muted)]',
+      icon: 'heroicons:minus-circle',
+      iconColor: 'text-[var(--text-muted)]'
+    }
+  }
   if (accountStore.isBlocked) {
     return {
       text: 'Заблокирован',
@@ -59,28 +85,40 @@ const statusConfig = computed(() => {
   }
 })
 
-// Статус подключения (если нет тарифа - "Не подключен")
+// Статус подключения: тариф из аккаунта или название первой услуги из подписок
 const connectionStatus = computed(() => {
-  return accountStore.account?.tariff || 'Не подключен'
+  if (accountStore.account?.tariff) return accountStore.account.tariff
+  const subs = subscriptions.value
+  const primary = subs.find((s: { isPrimary?: boolean }) => s.isPrimary)
+  if (primary?.service?.name) return primary.service.name
+  if (subs[0]?.service?.name) return subs[0].service.name
+  return subs.length > 0 ? 'Подключен' : 'Не подключен'
 })
 
-// Список адресов подключения
-const connectionAddresses = [
-  'обл Ростовская, г Таганрог, ул Ломоносова, д. 47',
-  'обл Ростовская, г Таганрог, пер Каркасный, д. 9, кв. 16',
-  'обл Ростовская, г Таганрог, ул 1-я Котельная, д. 45',
-  'обл Ростовская, г Таганрог, пер 14-й Новый, д. 74'
-]
-
-// Показывать стрелку, если адресов больше 3
-const showExpandButton = computed(() => connectionAddresses.length > 3)
-
-// Видимые адреса (первые 3 или все)
-const visibleAddresses = computed(() => {
-  if (showAllAddresses.value || connectionAddresses.length <= 3) {
-    return connectionAddresses
+// Адреса подключения из подписок (object_address), без дубликатов
+const connectionAddresses = computed(() => {
+  const subs = subscriptions.value
+  const addresses: string[] = []
+  const seen = new Set<string>()
+  for (const s of subs) {
+    const addr = (s as { address?: string | null }).address
+    if (addr && addr.trim() && !seen.has(addr.trim())) {
+      seen.add(addr.trim())
+      addresses.push(addr.trim())
+    }
   }
-  return connectionAddresses.slice(0, 3)
+  if (addresses.length === 0 && accountStore.account?.address) {
+    return [accountStore.account.address]
+  }
+  return addresses
+})
+
+const showExpandButton = computed(() => connectionAddresses.value.length > 3)
+
+const visibleAddresses = computed(() => {
+  const list = connectionAddresses.value
+  if (showAllAddresses.value || list.length <= 3) return list
+  return list.slice(0, 3)
 })
 
 // =============================================================================
@@ -132,11 +170,11 @@ function handlePayClick(): void {
       <div class="flex items-center gap-2 text-[var(--text-muted)]">
         <Icon name="heroicons:calendar" class="w-4 h-4" />
         <span class="text-sm">
-            Следующая оплата
-            <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate }}</span>
+          Следующая оплата
+          <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate ?? '—' }}</span>
         </span>
       </div>
-      <UiButton size="sm" variant="secondary" @click="handlePayClick">
+      <UiButton v-if="accountStore.account" size="sm" variant="secondary" @click="handlePayClick">
         Оплатить сейчас
       </UiButton>
     </div>
@@ -158,6 +196,9 @@ function handlePayClick(): void {
 
       <div class="space-y-4">
         <!-- Список адресов подключения -->
+        <p v-if="connectionAddresses.length === 0" class="text-sm text-[var(--text-muted)]">
+          Нет данных об адресах подключения
+        </p>
         <div v-for="(address, index) in visibleAddresses" :key="index" class="space-y-2">
           <div class="flex items-start gap-3">
             <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />

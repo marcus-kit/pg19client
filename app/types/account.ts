@@ -13,4 +13,6 @@ export interface Account {
   tariff: string
   address: string
   startDate: string
+  /** День месяца для оплаты (1–31), для блока «Следующая оплата» */
+  payDay?: number
 }

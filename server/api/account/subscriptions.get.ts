@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const contractServices = await prisma.contractService.findMany({
     where: { contract_id: account.contract_id, is_active: true },
     orderBy: { activated_at: 'desc' },
-    select: { id: true, name: true, type: true, is_active: true, activated_at: true, created_at: true, updated_at: true }
+    select: { id: true, name: true, type: true, object_address: true, is_active: true, activated_at: true, created_at: true, updated_at: true }
   })
   if (!contractServices.length) return { subscriptions: [] as Subscription[] }
 
@@ -55,6 +55,7 @@ export default defineEventHandler(async (event) => {
       expiresAt: null as string | null,
       customPrice: null as number | null,
       isPrimary: cs.type === 'internet',
+      address: cs.object_address ?? null,
       createdAt: cs.created_at?.toISOString() ?? new Date().toISOString(),
       updatedAt: cs.updated_at?.toISOString() ?? new Date().toISOString(),
       service: svc

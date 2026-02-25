@@ -45,6 +45,7 @@ export interface Subscription {
   expiresAt: string | null
   customPrice: number | null // в копейках
   isPrimary: boolean
+  address?: string | null // object_address из contract_services
   createdAt: string
   updatedAt: string
   service?: Service

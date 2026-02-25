@@ -143,7 +143,7 @@ onUnmounted(() => {
             <!-- Имя пользователя и номер договора -->
             <div class="text-right">
               <p class="text-sm font-medium text-[var(--text-primary)]">{{ userStore.shortName }}</p>
-              <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber }}</p>
+              <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber ?? '—' }}</p>
             </div>
 
             <!-- Кнопка выхода -->

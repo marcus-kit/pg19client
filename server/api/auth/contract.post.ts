@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
 
   const contract = await prisma.contract.findFirst({
     where: { contract_number: contractNumber },
-    select: { id: true, owner_user_id: true, contract_number: true, balance: true, status: true, address_full: true, start_date: true }
+    select: { id: true, owner_user_id: true, contract_number: true, balance: true, status: true, is_blocked: true, pay_day: true, address_full: true, start_date: true }
   })
 
   if (!contract) {
@@ -126,10 +126,11 @@ export default defineEventHandler(async (event) => {
     account: {
       contractNumber: contract.contract_number ?? '',
       balance: Number(contract.balance ?? 0),
-      status: contract.status ?? '',
+      status: (contract.is_blocked ? 'blocked' : 'active') as 'active' | 'blocked',
       tariff: tariffName,
       address: contract.address_full ?? '',
-      startDate: contract.start_date
+      startDate: contract.start_date,
+      payDay: contract.pay_day ?? 20
     }
   }
 })
