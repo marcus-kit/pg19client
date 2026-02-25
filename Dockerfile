@@ -46,8 +46,14 @@ ENV SUPABASE_URL=${SUPABASE_URL}
 ENV SUPABASE_KEY=${SUPABASE_KEY}
 ENV TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
 
+# Генерируем Prisma Client (иначе в рантайме нет .prisma/client)
+RUN pnpm exec prisma generate
+
 # Собираем production-версию
 RUN pnpm build
+
+# Копируем сгенерированный .prisma в вывод Nitro (Nitro не подтягивает его в server/node_modules)
+RUN cp -r node_modules/.prisma .output/server/node_modules/
 
 # -----------------------------------------------------------------------------
 # Этап 3: Production-образ
