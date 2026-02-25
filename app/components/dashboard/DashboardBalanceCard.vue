@@ -148,7 +148,7 @@ function handlePayClick(): void {
         </div>
       </div>
 
-      <UiButton size="sm" variant="secondary" class="w-full sm:w-auto" @click="handlePayClick">
+      <UiButton size="sm" variant="primary" class="w-full sm:w-auto" @click="handlePayClick">
         Оплатить сейчас
       </UiButton>
     </UiCard>

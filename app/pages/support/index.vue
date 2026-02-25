@@ -482,7 +482,7 @@ watch(isOperatorTyping, (typing) => {
     <div v-if="activeTab === 'faq'" class="space-y-2 md:space-y-3">
       <!-- Loading skeleton -->
       <div v-if="faqPending" class="space-y-2 md:space-y-3">
-        <UiCard v-for="i in 5" :key="i" class="animate-pulse p-3 md:p-5">
+        <UiCard v-for="i in 5" :key="i" class="animate-pulse p-4">
           <div class="h-4 md:h-5 bg-[var(--glass-bg)] rounded w-3/4"></div>
         </UiCard>
       </div>
@@ -495,7 +495,7 @@ watch(isOperatorTyping, (typing) => {
           class="p-0 overflow-hidden cursor-pointer"
           @click="toggleFaq(item.id)"
         >
-          <div class="p-3 md:p-5">
+          <div class="p-4">
             <!-- Вопрос -->
             <div class="flex items-center justify-between gap-4">
               <h3 class="text-sm md:text-base font-medium text-[var(--text-primary)]">{{ item.question }}</h3>
@@ -517,7 +517,7 @@ watch(isOperatorTyping, (typing) => {
         </UiCard>
 
         <!-- CTA — не нашли ответ -->
-        <UiCard class="p-4 md:p-6 mt-4 md:mt-6">
+        <UiCard class="p-4 mt-4 md:mt-6">
           <div class="text-center">
             <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
               <Icon name="heroicons:chat-bubble-left-right" class="w-6 h-6 md:w-8 md:h-8 text-primary" />

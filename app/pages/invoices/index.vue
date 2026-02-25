@@ -106,16 +106,9 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
     <!-- =====================================================================
          PAGE HEADER
          ===================================================================== -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-      <div class="flex items-start gap-4">
-        <div class="invoices-page__icon flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-glass">
-          <Icon name="heroicons:document-text" class="w-7 h-7 text-primary" />
-        </div>
-        <div>
-          <h1 class="text-3xl font-bold tracking-tight text-[var(--text-primary)]">Счета</h1>
-          <p class="text-[var(--text-muted)] mt-1.5 text-base">История выставленных счетов и управление оплатами</p>
-        </div>
-      </div>
+    <div>
+      <h1 class="text-2xl font-bold text-[var(--text-primary)]">Счета</h1>
+      <p class="text-[var(--text-muted)] mt-1">История выставленных счетов и управление оплатами</p>
     </div>
 
     <!-- =====================================================================
@@ -222,20 +215,17 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                 <NuxtLink
                   v-if="!unpaidStatuses.includes(invoice.status)"
                   :to="`/invoices/${invoice.id}`"
-                  class="invoices-row__link"
                 >
-                  <span>Подробнее</span>
-                  <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+                  <UiButton variant="ghost" size="sm">
+                    Подробнее
+                    <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+                  </UiButton>
                 </NuxtLink>
                 <NuxtLink
                   v-if="unpaidStatuses.includes(invoice.status)"
                   :to="`/invoices/${invoice.id}`"
                 >
-                  <UiButton
-                    variant="primary"
-                    size="sm"
-                    class="shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 transition-shadow"
-                  >
+                  <UiButton variant="primary" size="sm">
                     Оплатить
                   </UiButton>
                 </NuxtLink>
@@ -293,21 +283,19 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
               <NuxtLink
                 v-if="!unpaidStatuses.includes(invoice.status)"
                 :to="`/invoices/${invoice.id}`"
-                class="invoices-row__link flex-1 justify-center"
+                class="flex-1"
               >
-                <span>Подробнее</span>
-                <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+                <UiButton variant="ghost" size="sm" block>
+                  Подробнее
+                  <Icon name="heroicons:chevron-right" class="w-4 h-4" />
+                </UiButton>
               </NuxtLink>
               <NuxtLink
                 v-if="unpaidStatuses.includes(invoice.status)"
                 :to="`/invoices/${invoice.id}`"
                 class="flex-shrink-0"
               >
-                <UiButton
-                  variant="primary"
-                  size="sm"
-                  class="shadow-md shadow-primary/20"
-                >
+                <UiButton variant="primary" size="sm">
                   Оплатить
                 </UiButton>
               </NuxtLink>
@@ -328,11 +316,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 /* =========================================================================
    Страница счетов
    ========================================================================= */
-.invoices-page__icon {
-  background: linear-gradient(135deg, rgba(247, 148, 29, 0.15) 0%, rgba(233, 30, 140, 0.08) 100%);
-  border: 1px solid rgba(247, 148, 29, 0.2);
-}
-
 /* =========================================================================
    GRID-LIST — desktop таблица на CSS Grid
    ========================================================================= */
