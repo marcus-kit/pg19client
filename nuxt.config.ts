@@ -70,6 +70,8 @@ export default defineNuxtConfig({
     telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '', // Секрет для проверки webhook от Telegram
     supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',       // Service role ключ Supabase
     openaiApiKey: process.env.OPENAI_API_KEY || '',                 // API ключ OpenAI (AI-бот в чате)
+    bitrix24WebhookUrl: process.env.BITRIX24_WEBHOOK_URL || '',     // Webhook URL для Bitrix24 REST API
+    bitrix24OpenlineId: process.env.BITRIX24_OPENLINE_ID || '',     // ID открытой линии Bitrix24
 
     // Публичные переменные (доступны на клиенте)
     public: {

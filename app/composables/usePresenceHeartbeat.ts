@@ -25,8 +25,14 @@ export function usePresenceHeartbeat() {
         method: 'POST',
         body: { status }
       })
-    } catch {
-      // Игнорируем ошибки heartbeat
+    } catch (error: any) {
+      // Игнорируем ошибки heartbeat (особенно 401 при обходе авторизации)
+      // Не логируем 401 ошибки, чтобы не засорять консоль
+      if (error?.status === 401 || error?.statusCode === 401) {
+        // Тихая ошибка - не логируем
+        return
+      }
+      // Другие ошибки тоже игнорируем, но не логируем
     }
   }
 

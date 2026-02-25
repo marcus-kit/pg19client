@@ -12,7 +12,8 @@
  */
 
 import type { Ticket, TicketCategory } from '~/types/ticket'
-import { formatRelativeDate } from '~/composables/useFormatters'
+import type { Bitrix24ChatMessage } from '~/types/bitrix24'
+import { formatRelativeDate, formatFileSize } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -35,7 +36,20 @@ const { fetchFaq } = useFaq()
 const { tickets, pending: ticketsPending, error: ticketsError, refresh: refreshTickets } = await fetchTickets()
 const { faq, pending: faqPending } = await fetchFaq()
 
-// Bitrix24 чат — используем iframe вместо текущего чата
+// Bitrix24 чат через REST API
+const {
+  session,
+  messages,
+  isLoading: chatLoading,
+  isSending,
+  isUploading,
+  error: chatError,
+  initSession,
+  uploadFile,
+  sendMessage,
+  startPolling,
+  stopPolling
+} = useBitrix24Chat()
 
 // =============================================================================
 // STATE — локальное состояние страницы
@@ -47,8 +61,16 @@ const initialTab = (['faq', 'chat'].includes(route.query.tab as string)
   : 'chat') as 'faq' | 'chat'
 const activeTab = ref<'faq' | 'chat'>(initialTab)
 
-// Bitrix24 чат URL
-const bitrix24ChatUrl = 'https://pg19.bitrix24.ru/online/testbot2'
+// Чат
+const messageText = ref('')
+const messagesContainer = ref<HTMLElement | null>(null)
+const chatInitialized = ref(false)
+const fileInput = ref<HTMLInputElement | null>(null)
+const pendingFile = ref<File | null>(null)
+const pendingPreview = ref<string | null>(null)
+
+const ACCEPT_FILES = 'image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx'
+const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
 // FAQ
 const expandedFaq = ref<number | null>(null)             // ID развёрнутого вопроса
@@ -102,7 +124,125 @@ const categories = [
 // METHODS
 // =============================================================================
 
-// Удалено: вся логика текущего чата заменена на Bitrix24 iframe
+// Функции для работы с чатом
+function scrollToBottom() {
+  nextTick(() => {
+    if (messagesContainer.value) {
+      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+    }
+  })
+}
+
+async function initChatSession() {
+  if (chatInitialized.value) return
+  chatInitialized.value = true
+
+  if (!session.value && userStore.isAuthenticated) {
+    const userName = userStore.user?.firstName && userStore.user?.lastName
+      ? `${userStore.user.firstName} ${userStore.user.lastName}`
+      : userStore.user?.email || 'Пользователь'
+    
+    console.log('[Chat] Initializing Bitrix24 session for user:', userName)
+    try {
+      await initSession(userStore.user?.id, userName)
+      const currentSession = session.value
+      if (currentSession) {
+        console.log('[Chat] Session created, ID:', (currentSession as any).id || 'unknown')
+        scrollToBottom()
+        startPolling(3000)
+      } else {
+        console.error('[Chat] Session not created - сессия не была создана!')
+        // Выводим предупреждение в консоль
+        const errorMsg = chatError.value || 'Не удалось создать сессию чата. Проверьте настройки CONFIG_ID и права webhook в Bitrix24.'
+        console.warn('[Chat] ⚠️ Ошибка подключения к чату:', errorMsg)
+      }
+    } catch (error: any) {
+      console.error('[Chat] Error initializing session:', error)
+      const errorMsg = error?.data?.message || error?.message || 'Не удалось создать сессию чата'
+      console.warn('[Chat] ⚠️ Ошибка подключения к чату:', errorMsg)
+    }
+  } else if (session.value) {
+    // Если сессия уже есть, просто запускаем polling
+    startPolling(3000)
+  }
+}
+
+function openFileDialog() {
+  fileInput.value?.click()
+}
+
+function handleFileSelect(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  input.value = ''
+
+  if (file.size > MAX_FILE_SIZE) {
+    console.warn('[Chat] ⚠️ Размер файла не должен превышать 10 МБ')
+    return
+  }
+
+  pendingFile.value = file
+  pendingPreview.value = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
+}
+
+function removePendingFile() {
+  pendingFile.value = null
+  if (pendingPreview.value) {
+    URL.revokeObjectURL(pendingPreview.value)
+    pendingPreview.value = null
+  }
+}
+
+async function handleSendMessage() {
+  if ((!messageText.value.trim() && !pendingFile.value) || isSending.value) return
+
+  const text = messageText.value
+  const file = pendingFile.value
+
+  messageText.value = ''
+  const fileToSend = file
+  removePendingFile()
+
+  try {
+    let attachment
+    if (fileToSend) {
+      attachment = await uploadFile(fileToSend)
+    }
+
+    await sendMessage(text || '', attachment)
+    scrollToBottom()
+  } catch (error: any) {
+    console.error('[Chat] Error sending message:', error)
+    // Выводим предупреждение в консоль
+    const errorMessage = error?.data?.message || error?.message || 'Ошибка при отправке сообщения'
+    console.warn('[Chat] ⚠️ Не удалось отправить сообщение:', errorMessage)
+    
+    messageText.value = text
+    if (fileToSend) {
+      pendingFile.value = fileToSend
+      pendingPreview.value = fileToSend.type.startsWith('image/') ? URL.createObjectURL(fileToSend) : null
+    }
+  }
+}
+
+function handleChatKeydown(e: KeyboardEvent) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault()
+    handleSendMessage()
+  }
+}
+
+// Определение типа отправителя
+const msgIsUser = (msg: Bitrix24ChatMessage) => !msg.isOperator
+const msgIsOperator = (msg: Bitrix24ChatMessage) => msg.isOperator
+const msgHasAttachment = (msg: Bitrix24ChatMessage) => !!msg.attachments && msg.attachments.length > 0
+
+// Форматирование времени сообщения (ЧЧ:ММ)
+function formatMsgTime(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
 
 // Переключение FAQ аккордеона
 function toggleFaq(id: number) {
@@ -165,7 +305,7 @@ function preventBodyScroll(prevent: boolean) {
 }
 
 // Инициализация при загрузке страницы
-onMounted(() => {
+onMounted(async () => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateIsMobile)
@@ -173,6 +313,8 @@ onMounted(() => {
   
   if (activeTab.value === 'chat') {
     preventBodyScroll(true)
+    // Инициализируем чат при монтировании, если вкладка уже активна
+    await initChatSession()
   }
 })
 
@@ -188,13 +330,20 @@ onUnmounted(() => {
 // =============================================================================
 
 // Управление скроллом при переключении вкладок
-watch(activeTab, (tab) => {
+watch(activeTab, async (tab) => {
   if (tab === 'chat') {
     preventBodyScroll(true)
+    await initChatSession()
   } else {
     preventBodyScroll(false)
+    stopPolling()
   }
 })
+
+// Автоскролл при новых сообщениях
+watch(messages, () => {
+  scrollToBottom()
+}, { deep: true })
 </script>
 
 <template>
@@ -351,7 +500,7 @@ watch(activeTab, (tab) => {
     </div>
 
     <!-- =====================================================================
-         Chat Tab — Bitrix24 чат через iframe
+         Chat Tab — Bitrix24 чат через REST API
          ===================================================================== -->
     <div v-if="activeTab === 'chat'" class="flex flex-col md:h-[calc(100vh-280px)] min-h-[500px] fixed inset-x-0 top-[120px] bottom-20 md:relative md:inset-x-auto md:bottom-auto md:top-0">
       <div class="flex flex-col flex-1 h-full rounded-xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border);">
@@ -362,22 +511,225 @@ watch(activeTab, (tab) => {
           </div>
           <div class="flex-1 min-w-0">
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">Чат с поддержкой</h3>
-            <p class="text-xs text-[var(--text-muted)] truncate">
-              Онлайн консультация через Bitrix24
+            <p class="text-xs truncate" :class="chatError ? 'text-red-400' : 'text-[var(--text-muted)]'">
+              <span v-if="chatError">{{ chatError }}</span>
+              <span v-else-if="chatLoading">Подключение...</span>
+              <span v-else-if="session?.status === 'closed'">Чат закрыт</span>
+              <span v-else-if="session">Оператор онлайн</span>
+              <span v-else>Подключение...</span>
             </p>
           </div>
         </div>
 
-        <!-- Bitrix24 Chat iframe -->
-        <div class="flex-1 min-h-0 relative">
-          <iframe
-            :src="bitrix24ChatUrl"
-            class="w-full h-full border-0"
-            frameborder="0"
-            allow="microphone; camera"
-            title="Чат поддержки Bitrix24"
-          ></iframe>
+        <!-- Chat Loading -->
+        <div v-if="chatLoading" class="flex-1 flex items-center justify-center">
+          <Icon name="heroicons:arrow-path" class="w-8 h-8 text-primary animate-spin" />
         </div>
+
+        <!-- Chat Content -->
+        <template v-else>
+          <div class="flex flex-col flex-1 min-h-0">
+            <!-- Messages Area -->
+            <div
+              ref="messagesContainer"
+              class="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0"
+              style="background: #f5f5f5;"
+            >
+              <!-- Welcome message -->
+              <div v-if="messages.length === 0" class="text-center py-8 px-4">
+                <h4 class="text-base font-medium text-gray-800 mb-2">Мы онлайн</h4>
+                <p class="text-sm text-gray-600 mb-6">и готовы вам помочь!</p>
+                
+                <!-- Аватары операторов -->
+                <div class="flex items-center justify-center gap-4 mb-6">
+                  <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center mb-2">
+                      <Icon name="heroicons:user" class="w-6 h-6 text-gray-600" />
+                    </div>
+                    <span class="text-xs text-gray-600">Валентин</span>
+                  </div>
+                  <div class="flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center mb-2">
+                      <Icon name="heroicons:user" class="w-6 h-6 text-gray-600" />
+                    </div>
+                    <span class="text-xs text-gray-600">Богдан</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Messages -->
+              <div
+                v-for="msg in messages"
+                :key="msg.id"
+                class="flex gap-3"
+                :class="msgIsUser(msg) ? 'flex-row-reverse' : 'flex-row'"
+              >
+                <!-- Аватар -->
+                <div
+                  class="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center"
+                  :class="{
+                    'bg-blue-500': msgIsUser(msg),
+                    'bg-gray-300': msgIsOperator(msg)
+                  }"
+                >
+                  <Icon
+                    :name="msgIsUser(msg) ? 'heroicons:user' : 'heroicons:user-circle'"
+                    class="w-6 h-6"
+                    :class="{
+                      'text-white': msgIsUser(msg),
+                      'text-gray-600': msgIsOperator(msg)
+                    }"
+                  />
+                </div>
+
+                <!-- Блок сообщения -->
+                <div
+                  class="max-w-[70%] rounded-lg px-4 py-2.5 shadow-sm"
+                  :class="{
+                    'bg-blue-500 text-white': msgIsUser(msg),
+                    'bg-white text-gray-800 border border-gray-200': !msgIsUser(msg)
+                  }"
+                >
+                  <!-- Имя отправителя (только для оператора) -->
+                  <div
+                    v-if="!msgIsUser(msg)"
+                    class="text-xs font-semibold mb-1 text-gray-600"
+                  >
+                    {{ msg.authorName }}
+                  </div>
+
+                  <!-- Текст сообщения -->
+                  <p v-if="msg.text" class="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                    {{ msg.text }}
+                  </p>
+
+                  <!-- Вложения -->
+                  <template v-if="msgHasAttachment(msg)">
+                    <div v-for="attachment in msg.attachments" :key="attachment.id" class="mt-2">
+                      <!-- Изображение -->
+                      <a v-if="attachment.type === 'image'" :href="attachment.url" target="_blank" class="block rounded-lg overflow-hidden">
+                        <img
+                          :src="attachment.url"
+                          :alt="attachment.name"
+                          class="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                      <!-- Файл -->
+                      <a
+                        v-else
+                        :href="attachment.url"
+                        target="_blank"
+                        class="flex items-center gap-3 p-3 rounded-lg transition-colors border"
+                        :class="msgIsUser(msg) 
+                          ? 'bg-blue-400 border-blue-400 hover:bg-blue-300 text-white' 
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100 text-gray-800'"
+                      >
+                        <Icon name="heroicons:document" class="w-5 h-5 flex-shrink-0" :class="msgIsUser(msg) ? 'text-white' : 'text-gray-600'" />
+                        <div class="flex-1 min-w-0">
+                          <p class="text-sm truncate font-medium">{{ attachment.name }}</p>
+                          <p class="text-xs" :class="msgIsUser(msg) ? 'text-blue-100' : 'text-gray-500'">
+                            {{ formatFileSize(attachment.size) }}
+                          </p>
+                        </div>
+                        <Icon name="heroicons:arrow-down-tray" class="w-4 h-4 flex-shrink-0" :class="msgIsUser(msg) ? 'text-blue-100' : 'text-gray-500'" />
+                      </a>
+                    </div>
+                  </template>
+
+                  <!-- Время отправки -->
+                  <div
+                    class="text-[11px] mt-1.5"
+                    :class="msgIsUser(msg) ? 'text-blue-100 text-right' : 'text-gray-400'"
+                  >
+                    {{ formatMsgTime(msg.createdAt) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="px-4 py-3 border-t flex-shrink-0 bg-white">
+              <!-- Error message -->
+              <div v-if="chatError" class="text-red-500 text-sm mb-2 px-2">{{ chatError }}</div>
+
+              <!-- Pending file preview -->
+              <div v-if="pendingFile" class="mb-3 p-3 rounded-lg flex items-center gap-3 bg-gray-50 border border-gray-200">
+                <img
+                  v-if="pendingPreview"
+                  :src="pendingPreview"
+                  class="w-12 h-12 rounded object-cover flex-shrink-0"
+                />
+                <div v-else class="w-12 h-12 rounded bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Icon name="heroicons:document" class="w-6 h-6 text-blue-600" />
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm truncate text-gray-800 font-medium">{{ pendingFile.name }}</p>
+                  <p class="text-xs text-gray-500">{{ formatFileSize(pendingFile.size) }}</p>
+                </div>
+                <button
+                  @click="removePendingFile"
+                  class="p-1.5 rounded-lg hover:bg-gray-200 transition-colors flex-shrink-0"
+                >
+                  <Icon name="heroicons:x-mark" class="w-4 h-4 text-gray-600" />
+                </button>
+              </div>
+
+              <!-- Hidden file input -->
+              <input
+                ref="fileInput"
+                type="file"
+                :accept="ACCEPT_FILES"
+                class="hidden"
+                @change="handleFileSelect"
+              />
+
+              <!-- Input row -->
+              <div class="flex items-end gap-2">
+                <!-- Attach button -->
+                <button
+                  @click="openFileDialog"
+                  :disabled="isSending || isUploading"
+                  class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-600"
+                  title="Прикрепить файл"
+                >
+                  <Icon name="heroicons:paper-clip" class="w-5 h-5" />
+                </button>
+
+                <!-- Emoji button -->
+                <button
+                  :disabled="isSending || isUploading"
+                  class="w-9 h-9 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 text-gray-600"
+                  title="Эмодзи"
+                >
+                  <Icon name="heroicons:face-smile" class="w-5 h-5" />
+                </button>
+
+                <!-- Text input -->
+                <textarea
+                  v-model="messageText"
+                  @keydown="handleChatKeydown"
+                  placeholder="Введите сообщение..."
+                  rows="1"
+                  class="flex-1 px-4 py-2.5 rounded-lg text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all resize-none max-h-32 bg-white border border-gray-200"
+                  :disabled="isSending || isUploading"
+                ></textarea>
+
+                <!-- Send button -->
+                <button
+                  @click="handleSendMessage"
+                  :disabled="(!messageText.trim() && !pendingFile) || isSending || isUploading"
+                  class="w-9 h-9 rounded-lg bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
+                >
+                  <Icon
+                    :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
+                    class="w-4 h-4"
+                    :class="{ 'animate-spin': isSending || isUploading }"
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </div>
 
