@@ -1,67 +1,53 @@
-// PATCH /api/user/profile/nickname
-// Обновить никнейм пользователя (глобально уникальный)
+// PATCH /api/user/profile/nickname — обновить никнейм (глобально уникальный)
 
 import type { UpdateNicknameRequest, UpdateNicknameResponse } from '~/types/community'
 
 export default defineEventHandler(async (event): Promise<UpdateNicknameResponse> => {
   const body = await readBody<UpdateNicknameRequest>(event)
+  const prisma = usePrisma()
 
-  const supabase = useSupabaseServer()
-
-  // Авторизация
   const sessionUser = await getUserFromSession(event)
   if (!sessionUser) {
     throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
 
-  // Нормализация никнейма
   const nickname = body.nickname?.trim() || null
 
-  // Валидация
   if (nickname !== null) {
     if (nickname.length < 2 || nickname.length > 30) {
       throw createError({ statusCode: 400, message: 'Никнейм должен быть от 2 до 30 символов' })
     }
-
-    // Только буквы, цифры, пробелы, подчёркивания и дефисы
     if (!/^[\p{L}\p{N}\s_-]+$/u.test(nickname)) {
       throw createError({ statusCode: 400, message: 'Никнейм содержит недопустимые символы' })
     }
 
-    // Проверка уникальности через функцию
-    const { data: isAvailable, error: checkError } = await supabase.rpc('check_nickname_available', {
-      p_nickname: nickname,
-      p_user_id: sessionUser.id
+    const existing = await prisma.user.findFirst({
+      where: {
+        nickname,
+        id: { not: sessionUser.id }
+      }
     })
-
-    if (checkError) {
-      console.error('Error checking nickname:', checkError)
-      throw createError({ statusCode: 500, message: 'Ошибка проверки никнейма' })
-    }
-
-    if (!isAvailable) {
+    if (existing) {
       throw createError({ statusCode: 409, message: 'Этот никнейм уже занят' })
     }
   }
 
-  // Обновляем пользователя
-  const { data, error } = await supabase
-    .schema('client').from('users')
-    .update({ nickname })
-    .eq('id', sessionUser.id)
-    .select('nickname')
-    .single()
-
-  if (error) {
-    console.error('Error updating nickname:', error)
-
-    // Специальная обработка уникальности (если constraint сработал)
-    if (error.code === '23505') {
+  try {
+    const updated = await prisma.user.update({
+      where: { id: sessionUser.id },
+      data: {
+        nickname,
+        updated_at: new Date()
+      },
+      select: { nickname: true }
+    })
+    return { success: true, nickname: updated.nickname }
+  } catch (e: unknown) {
+    const err = e as { code?: string }
+    if (err.code === 'P2002') {
       throw createError({ statusCode: 409, message: 'Этот никнейм уже занят' })
     }
-
+    console.error('Error updating nickname:', e)
     throw createError({ statusCode: 500, message: 'Ошибка обновления никнейма' })
   }
-
-  return { success: true, nickname: data.nickname }
 })

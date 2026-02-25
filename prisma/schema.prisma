@@ -27,6 +27,7 @@ model User {
   last_name          String?
   middle_name        String?
   full_name          String?
+  nickname           String?            @unique
   email              String?            @unique
   phone              String?
   telegram_id        String?

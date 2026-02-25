@@ -1,10 +1,5 @@
-/**
- * GET /api/auth/telegram-deeplink/complete/:token
- * Завершение авторизации через Telegram deeplink
- *
- * Для purpose='login': создаёт сессию, возвращает user + account
- * Для purpose='link': привязывает Telegram к пользователю, возвращает telegram данные
- */
+import { getClientIdentifier, resetRateLimit } from '../../../../utils/rateLimit'
+
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, 'token')
 
@@ -15,65 +10,62 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
 
-  // Ищем verified запрос по токену (схема client)
-  const { data: authRequest, error: requestError } = await supabase
-    .schema('client')
-    .from('telegram_auth_requests')
-    .select('*')
-    .eq('token', token)
-    .eq('status', 'verified')
-    .single()
+  const authRequest = await prisma.telegramAuthRequest.findFirst({
+    where: { token, status: 'verified' }
+  })
 
-  if (requestError || !authRequest) {
+  if (!authRequest) {
     throw createError({
       statusCode: 404,
       message: 'Запрос не найден или не подтверждён'
     })
   }
 
-  // Помечаем токен как использованный
-  await supabase
-    .schema('client')
-    .from('telegram_auth_requests')
-    .update({ status: 'used' })
-    .eq('id', authRequest.id)
+  await prisma.telegramAuthRequest.update({
+    where: { id: authRequest.id },
+    data: { status: 'used' }
+  })
 
-  // Обработка в зависимости от purpose
   if (authRequest.purpose === 'link') {
-    return await handleLinkFlow(event, supabase, authRequest)
-  } else {
-    return await handleLoginFlow(event, supabase, authRequest)
+    return await handleLinkFlow(event, prisma, authRequest)
   }
+  return await handleLoginFlow(event, prisma, authRequest)
 })
 
-/**
- * Обработка login flow — создание сессии и возврат данных пользователя
- */
-async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
-  // Ищем пользователя по telegram_id (схема client)
-  const { data: user, error: userError } = await supabase
-    .schema('client')
-    .from('users')
-    .select(`
-      id,
-      first_name,
-      last_name,
-      middle_name,
-      phone,
-      email,
-      telegram_username,
-      telegram_id,
-      birth_date,
-      avatar,
-      vk_id,
-      status
-    `)
-    .eq('telegram_id', authRequest.telegram_id.toString())
-    .single()
+async function handleLoginFlow(
+  event: ReturnType<typeof defineEventHandler>,
+  prisma: ReturnType<typeof usePrisma>,
+  authRequest: { telegram_id: bigint | null; telegram_username: string | null }
+) {
+  const telegramId = authRequest.telegram_id?.toString()
+  if (!telegramId) {
+    throw createError({
+      statusCode: 400,
+      message: 'Telegram не привязан к запросу'
+    })
+  }
 
-  if (userError || !user) {
+  const user = await prisma.user.findFirst({
+    where: { telegram_id: telegramId },
+    select: {
+      id: true,
+      first_name: true,
+      last_name: true,
+      middle_name: true,
+      phone: true,
+      email: true,
+      telegram_username: true,
+      telegram_id: true,
+      birth_date: true,
+      avatar: true,
+      vk_id: true,
+      status: true
+    }
+  })
+
+  if (!user) {
     throw createError({
       statusCode: 404,
       message: 'Пользователь с этим Telegram не найден. Войдите по договору и привяжите Telegram в профиле.'
@@ -87,40 +79,37 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
     })
   }
 
-  // Загружаем один из аккаунтов пользователя (client.accounts)
-  const { data: account, error: accountError } = await supabase
-    .schema('client')
-    .from('accounts')
-    .select('id, contract_id, contract_number, balance, status, address_full, start_date')
-    .eq('user_id', user.id)
-    .limit(1)
-    .maybeSingle()
-
-  if (accountError) {
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка загрузки данных аккаунта'
-    })
-  }
+  const account = await prisma.account.findFirst({
+    where: { user_id: user.id },
+    select: {
+      id: true,
+      contract_id: true,
+      contract_number: true,
+      balance: true,
+      status: true,
+      address_full: true,
+      start_date: true
+    }
+  })
 
   let tariffName = 'Не подключен'
   if (account?.contract_id) {
-    const { data: contractServices } = await supabase
-      .schema('billing')
-      .from('contract_services')
-      .select('name, type')
-      .eq('contract_id', account.contract_id)
-      .eq('is_active', true)
-    const internetService = contractServices?.find((s: { type?: string }) => s.type === 'internet')
-    tariffName = internetService?.name ?? contractServices?.[0]?.name ?? tariffName
+    const services = await prisma.contractService.findMany({
+      where: { contract_id: account.contract_id, is_active: true },
+      select: { name: true, type: true }
+    })
+    const internetService = services.find((s) => s.type === 'internet')
+    tariffName = internetService?.name ?? services[0]?.name ?? tariffName
   }
 
   if (authRequest.telegram_username && authRequest.telegram_username !== user.telegram_username) {
-    await supabase
-      .schema('client')
-      .from('users')
-      .update({ telegram_username: authRequest.telegram_username })
-      .eq('id', user.id)
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        telegram_username: authRequest.telegram_username,
+        updated_at: new Date()
+      }
+    })
   }
 
   await createUserSession(
@@ -128,30 +117,29 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
     user.id,
     account?.id ?? null,
     'telegram',
-    authRequest.telegram_id.toString(),
+    telegramId,
     {
       telegram_username: authRequest.telegram_username,
       auth_method: 'deeplink'
     }
   )
 
-  const clientIp = getClientIdentifier(event)
-  resetRateLimit(clientIp, 'auth:telegram-deeplink')
+  resetRateLimit(getClientIdentifier(event), 'auth:telegram-deeplink')
 
   return {
     success: true,
     user: {
       id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      middleName: user.middle_name,
-      phone: user.phone || '',
-      email: user.email || '',
+      firstName: user.first_name ?? undefined,
+      lastName: user.last_name ?? undefined,
+      middleName: user.middle_name ?? undefined,
+      phone: user.phone ?? '',
+      email: user.email ?? '',
       telegram: authRequest.telegram_username ? `@${authRequest.telegram_username}` : '',
-      telegramId: authRequest.telegram_id.toString(),
-      vkId: user.vk_id || '',
-      avatar: user.avatar || null,
-      birthDate: user.birth_date || null,
+      telegramId,
+      vkId: user.vk_id ?? '',
+      avatar: user.avatar ?? null,
+      birthDate: user.birth_date ?? null,
       role: 'user'
     },
     account: account
@@ -160,57 +148,54 @@ async function handleLoginFlow(event: any, supabase: any, authRequest: any) {
           balance: Number(account.balance),
           status: account.status,
           tariff: tariffName,
-          address: account.address_full || '',
+          address: account.address_full ?? '',
           startDate: account.start_date
         }
       : null
   }
 }
 
-/**
- * Обработка link flow — привязка Telegram к существующему пользователю
- */
-async function handleLinkFlow(event: any, supabase: any, authRequest: any) {
-  // Проверяем что telegram_id не занят другим пользователем
-  const { data: existingUser } = await supabase
-    .schema('client')
-    .from('users')
-    .select('id')
-    .eq('telegram_id', authRequest.telegram_id.toString())
-    .single()
+async function handleLinkFlow(
+  event: ReturnType<typeof defineEventHandler>,
+  prisma: ReturnType<typeof usePrisma>,
+  authRequest: { user_id: string | null; telegram_id: bigint | null; telegram_username: string | null }
+) {
+  const telegramId = authRequest.telegram_id?.toString()
+  const userId = authRequest.user_id
 
-  if (existingUser && existingUser.id !== authRequest.user_id) {
+  if (!userId || !telegramId) {
+    throw createError({
+      statusCode: 400,
+      message: 'Неверные данные запроса'
+    })
+  }
+
+  const existingUser = await prisma.user.findFirst({
+    where: { telegram_id: telegramId },
+    select: { id: true }
+  })
+
+  if (existingUser && existingUser.id !== userId) {
     throw createError({
       statusCode: 409,
       message: 'Этот Telegram уже привязан к другому аккаунту'
     })
   }
 
-  // Привязываем Telegram к пользователю
-  const { error: updateError } = await supabase
-    .schema('client')
-    .from('users')
-    .update({
-      telegram_id: authRequest.telegram_id.toString(),
-      telegram_username: authRequest.telegram_username || null
-    })
-    .eq('id', authRequest.user_id)
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      telegram_id: telegramId,
+      telegram_username: authRequest.telegram_username ?? null,
+      updated_at: new Date()
+    }
+  })
 
-  if (updateError) {
-    console.error('[TelegramDeeplink] Link update error:', updateError)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка привязки Telegram'
-    })
-  }
-
-  // Сбрасываем rate limit
-  const clientIp = getClientIdentifier(event)
-  resetRateLimit(clientIp, 'auth:telegram-deeplink')
+  resetRateLimit(getClientIdentifier(event), 'auth:telegram-deeplink')
 
   return {
     success: true,
-    telegramId: authRequest.telegram_id.toString(),
-    telegramUsername: authRequest.telegram_username || null
+    telegramId,
+    telegramUsername: authRequest.telegram_username ?? null
   }
 }

@@ -1,8 +1,8 @@
-import type { RealtimeChannel } from '@supabase/supabase-js'
 import type { Chat, ChatMessage, UploadedFile } from '~/types/chat'
 
+const CHAT_POLL_INTERVAL_MS = 4000
+
 export function useChat() {
-  const supabase = useSupabaseClient()
   const chatStore = useChatStore()
 
   const session = ref<Chat | null>(null)
@@ -12,9 +12,8 @@ export function useChat() {
   const isUploading = ref(false)
   const error = ref<string | null>(null)
 
-  let channel: RealtimeChannel | null = null
+  let pollInterval: ReturnType<typeof setInterval> | null = null
 
-  // Создать или получить чат
   async function initSession(options: {
     chatId?: string
     userId?: string
@@ -35,12 +34,10 @@ export function useChat() {
 
       session.value = newChat
 
-      // Загружаем историю сообщений
       await loadMessages()
 
-      // Отписываемся от старой подписки и создаём новую
-      await unsubscribe()
-      await subscribe()
+      stopPolling()
+      startPolling()
 
       return { session: newChat, isNew }
     } catch (e: unknown) {
@@ -52,7 +49,6 @@ export function useChat() {
     }
   }
 
-  // Загрузить сообщения
   async function loadMessages() {
     if (!session.value) return
 
@@ -64,13 +60,21 @@ export function useChat() {
         query: { chatId: session.value.id }
       })
 
+      const prevCount = messages.value.length
       messages.value = loadedMessages
+      if (loadedMessages.length > prevCount) {
+        const newFromOther = loadedMessages
+          .filter(m => m.sender_type !== 'user')
+          .slice(prevCount)
+        if (newFromOther.length) {
+          chatStore.incrementUnread()
+        }
+      }
     } catch (e) {
       console.error('Error loading messages:', e)
     }
   }
 
-  // Загрузить файл
   async function uploadFile(file: File): Promise<UploadedFile> {
     if (!session.value) {
       throw new Error('Нет активной сессии чата')
@@ -99,7 +103,6 @@ export function useChat() {
     }
   }
 
-  // Отправить сообщение (с опциональным вложением)
   async function sendMessage(text: string, attachment?: UploadedFile) {
     if (!session.value || (!text.trim() && !attachment)) return
 
@@ -121,8 +124,6 @@ export function useChat() {
         }
       })
 
-      // Сообщения добавятся через Realtime, но на всякий случай
-      // проверяем что их ещё нет
       if (!messages.value.find(m => m.id === result.message.id)) {
         messages.value.push(result.message)
       }
@@ -137,7 +138,6 @@ export function useChat() {
     }
   }
 
-  // Закрыть чат
   async function closeSession() {
     if (!session.value) return
 
@@ -147,81 +147,41 @@ export function useChat() {
         body: { chatId: session.value.id }
       })
 
-      // Обновляем статус через spread для реактивности
       if (session.value) {
         session.value = { ...session.value, status: 'closed' }
       }
     } catch (e) {
       console.error('Error closing chat:', e)
     } finally {
-      // Всегда отписываемся, даже при ошибке
-      await unsubscribe()
+      stopPolling()
     }
   }
 
-  // Подписка на Realtime
-  async function subscribe() {
-    if (!session.value) return
+  function startPolling() {
+    if (!session.value || pollInterval) return
 
-    // Отписываемся от предыдущего канала (защита от race condition)
-    if (channel) {
-      await supabase.removeChannel(channel)
-      channel = null
-    }
-
-    channel = supabase
-      .channel(`chat:${session.value.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'chat_messages',
-          filter: `chat_id=eq.${session.value.id}`
-        },
-        (payload) => {
-          const newMessage = payload.new as ChatMessage
-          // Проверяем что сообщения ещё нет (могло прийти от sendMessage)
-          if (!messages.value.find(m => m.id === newMessage.id)) {
-            messages.value.push(newMessage)
-            // Для сообщений не от пользователя: счётчик непрочитанных
-            if (newMessage.sender_type !== 'user') {
-              // playNotificationSound() // TODO: добавить /public/sounds/notification.mp3
-              chatStore.incrementUnread()
-            }
-          }
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'chats',
-          filter: `id=eq.${session.value.id}`
-        },
-        (payload) => {
-          // Обновляем статус чата
-          if (session.value) {
-            Object.assign(session.value, payload.new)
-          }
-        }
-      )
-      .subscribe()
+    pollInterval = setInterval(() => {
+      if (!session.value || session.value.status === 'closed') {
+        stopPolling()
+        return
+      }
+      loadMessages()
+    }, CHAT_POLL_INTERVAL_MS)
   }
 
-  // Отписка
-  async function unsubscribe(): Promise<void> {
-    if (channel) {
-      await supabase.removeChannel(channel)
-      channel = null
+  function stopPolling() {
+    if (pollInterval) {
+      clearInterval(pollInterval)
+      pollInterval = null
     }
   }
 
-  // Очистка при размонтировании
+  function unsubscribe() {
+    stopPolling()
+  }
+
   onUnmounted(() => {
-    // void используется т.к. onUnmounted не поддерживает async
-    void unsubscribe()
+    unsubscribe()
   })
 
   return {

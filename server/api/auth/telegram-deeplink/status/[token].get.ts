@@ -1,10 +1,3 @@
-/**
- * GET /api/auth/telegram-deeplink/status/:token
- * Polling fallback — проверка статуса токена авторизации
- *
- * Response:
- * - status: 'pending' | 'verified' | 'expired' | 'used'
- */
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, 'token')
 
@@ -15,30 +8,25 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
 
-  // Получаем статус запроса
-  const { data: authRequest, error } = await supabase
-    .schema('client').from('telegram_auth_requests')
-    .select('status, expires_at')
-    .eq('token', token)
-    .single()
+  const authRequest = await prisma.telegramAuthRequest.findUnique({
+    where: { token },
+    select: { status: true, expires_at: true }
+  })
 
-  if (error || !authRequest) {
+  if (!authRequest) {
     throw createError({
       statusCode: 404,
       message: 'Запрос не найден'
     })
   }
 
-  // Проверяем истечение для pending запросов
-  if (authRequest.status === 'pending' && new Date(authRequest.expires_at) < new Date()) {
-    // Обновляем статус на expired
-    await supabase
-      .schema('client').from('telegram_auth_requests')
-      .update({ status: 'expired' })
-      .eq('token', token)
-
+  if (authRequest.status === 'pending' && authRequest.expires_at && new Date(authRequest.expires_at) < new Date()) {
+    await prisma.telegramAuthRequest.update({
+      where: { token },
+      data: { status: 'expired' }
+    })
     return { status: 'expired' }
   }
 

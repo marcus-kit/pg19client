@@ -19,96 +19,32 @@ definePageMeta({
 })
 
 // =============================================================================
-// MOCK DATA — моковые данные счетов
+// DATA — счета из API
 // =============================================================================
 
-// Функция для создания дат периодов
-function getMonthDates(year: number, month: number) {
-  const start = new Date(year, month - 1, 1)
-  const end = new Date(year, month, 0)
-  return {
-    start: start.toISOString().split('T')[0] || null,
-    end: end.toISOString().split('T')[0] || null
-  }
-}
-
-// Получаем текущую дату
-const now = new Date()
-const currentYear = now.getFullYear()
-const currentMonth = now.getMonth() + 1
-
-// Импортируем данные услуг
 const invoiceServices = useInvoiceServices()
-const invoiceDetailsData = invoiceServices.getInvoiceDetails('')
 
-// Создаём массив из 10 счетов (9 оплаченных + 1 неоплаченный)
-const generateMockInvoices = (): Invoice[] => {
-  const mockInvoices: Invoice[] = []
-  
-  // 1 неоплаченный счёт за будущий месяц (с полной суммой 3095₽)
-  const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1
-  const nextMonthYear = currentMonth === 12 ? currentYear + 1 : currentYear
-  const nextMonthDates = getMonthDates(nextMonthYear, nextMonth)
-  
-  mockInvoices.push({
-    id: `mock-invoice-${nextMonthYear}-${String(nextMonth).padStart(2, '0')}`,
-    invoiceNumber: `INV-${nextMonthYear}${String(nextMonth).padStart(2, '0')}-001`,
-    accountId: 'mock-account-id',
-    contractId: null,
-    status: 'pending',
-    amount: invoiceDetailsData.totalToPay, // 3095.00 ₽
-    description: 'Ежемесячная плата за интернет',
-    periodStart: nextMonthDates.start,
-    periodEnd: nextMonthDates.end,
-    issuedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
-    dueDate: new Date(nextMonthYear, nextMonth, 0).toISOString(),
-    paidAt: null,
-    createdAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString(),
-    updatedAt: new Date(nextMonthYear, nextMonth - 1, 1).toISOString()
-  })
-  
-  // 9 оплаченных счетов за предыдущие месяцы (с полной суммой 3095₽)
-  for (let i = 0; i < 9; i++) {
-    let month = currentMonth - i - 1
-    let year = currentYear
-    
-    // Обработка перехода через год
-    while (month <= 0) {
-      month += 12
-      year -= 1
-    }
-    
-    const monthDates = getMonthDates(year, month)
-    const paidDate = new Date(year, month - 1, 10 + (i % 20)) // Разные даты оплаты
-    
-    mockInvoices.push({
-      id: `mock-invoice-${year}-${String(month).padStart(2, '0')}`,
-      invoiceNumber: `INV-${year}${String(month).padStart(2, '0')}-001`,
-      accountId: 'mock-account-id',
-      contractId: null,
-      status: 'paid',
-      amount: invoiceDetailsData.totalToPay, // 3095.00 ₽
-      description: 'Ежемесячная плата за интернет',
-      periodStart: monthDates.start,
-      periodEnd: monthDates.end,
-      issuedAt: new Date(year, month - 1, 1).toISOString(),
-      dueDate: new Date(year, month, 0).toISOString(),
-      paidAt: paidDate.toISOString(),
-      createdAt: new Date(year, month - 1, 1).toISOString(),
-      updatedAt: paidDate.toISOString()
-    })
-  }
-  
-  return mockInvoices
-}
-
-const invoices = ref<Invoice[]>(generateMockInvoices())
+const invoices = ref<Invoice[]>([])
 const pending = ref(false)
 const error = ref<string | null>(null)
 
-// Функция для обновления (для совместимости с UI)
+async function loadInvoices() {
+  pending.value = true
+  error.value = null
+  try {
+    const data = await $fetch<{ invoices: Invoice[] }>('/api/invoices')
+    invoices.value = data.invoices ?? []
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    error.value = err.data?.message || 'Не удалось загрузить счета'
+    invoices.value = []
+  } finally {
+    pending.value = false
+  }
+}
+
 function refresh() {
-  // Можно обновить данные, если нужно
+  loadInvoices()
 }
 
 // =============================================================================
@@ -133,21 +69,20 @@ const selectedInvoiceId = ref<string | null>(null)
 // Суммы оплаты для каждого счета
 const paymentAmounts = ref<Record<string, number>>({})
 
-// Проверяем query параметр для открытия модального окна и установки фильтра
-onMounted(() => {
-  // Устанавливаем фильтр из query параметра
+onMounted(async () => {
+  await loadInvoices()
+
   const filterParam = route.query.filter as string
   if (filterParam && ['all', 'unpaid', 'paid'].includes(filterParam)) {
     filter.value = filterParam as 'all' | 'unpaid' | 'paid'
   }
-  
+
   const invoiceId = route.query.id as string
   if (invoiceId) {
     const invoice = invoices.value.find(inv => inv.id === invoiceId)
     if (invoice) {
       selectedInvoiceForServices.value = invoice
       showServicesModal.value = true
-      // Прокручиваем к счету
       nextTick(() => {
         const element = document.getElementById(`invoice-${invoiceId}`)
         if (element) {
@@ -156,12 +91,11 @@ onMounted(() => {
       })
     }
   }
-  
-  // Инициализируем суммы оплаты для неоплаченных счетов
+
   invoices.value.forEach(invoice => {
     if (!unpaidStatuses.includes(invoice.status)) return
     if (!paymentAmounts.value[invoice.id]) {
-      paymentAmounts.value[invoice.id] = invoice.amount / 100 // в рублях
+      paymentAmounts.value[invoice.id] = invoice.amount / 100
     }
   })
 })

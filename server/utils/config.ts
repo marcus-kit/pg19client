@@ -1,25 +1,13 @@
 /**
- * Валидация runtime конфигурации
- * Проверяет наличие всех необходимых environment переменных при старте сервера
+ * Валидация runtime конфигурации при старте сервера.
+ * Supabase (URL, ключи) — опционально; нужен только для загрузки аватаров и вложений чата в Storage.
  */
 export function validateConfig() {
   const config = useRuntimeConfig()
   const errors: string[] = []
 
-  // Public variables (доступны на клиенте)
-  if (!config.public.supabaseUrl) {
-    errors.push('SUPABASE_URL is not set')
-  }
-  if (!config.public.supabaseKey) {
-    errors.push('SUPABASE_KEY is not set')
-  }
   if (!config.public.telegramBotUsername) {
     errors.push('TELEGRAM_BOT_USERNAME is not set')
-  }
-
-  // Server-only variables (приватные)
-  if (!config.supabaseSecretKey) {
-    errors.push('NUXT_SUPABASE_SECRET_KEY is not set')
   }
   if (!config.telegramBotToken) {
     errors.push('NUXT_TELEGRAM_BOT_TOKEN is not set')
@@ -32,4 +20,7 @@ export function validateConfig() {
   }
 
   console.log('✅ Configuration validated successfully')
+  if (!config.public.supabaseUrl || !config.public.supabaseKey || !config.supabaseSecretKey) {
+    console.warn('⚠️ Supabase не настроен: загрузка аватаров и вложений чата в Storage будет недоступна.')
+  }
 }

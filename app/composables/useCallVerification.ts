@@ -1,6 +1,6 @@
 /**
- * Composable для авторизации по входящему звонку
- * Использует Supabase Realtime вместо polling
+ * Composable для авторизации по входящему звонку.
+ * Использует polling статуса (без Supabase Realtime).
  */
 
 interface CallVerifyResponse {
@@ -37,8 +37,6 @@ interface CompleteResponse {
 }
 
 export function useCallVerification() {
-  const supabase = useSupabaseClient()
-
   const isLoading = ref(false)
   const error = ref<string | null>(null)
   const status = ref<'idle' | 'waiting' | 'verified' | 'expired'>('idle')
@@ -47,13 +45,9 @@ export function useCallVerification() {
   const remainingSeconds = ref(0)
   const verifiedData = ref<CompleteResponse | null>(null)
 
-  let channel: ReturnType<typeof supabase.channel> | null = null
   let countdownInterval: ReturnType<typeof setInterval> | null = null
   let pollInterval: ReturnType<typeof setInterval> | null = null
 
-  /**
-   * Запрос на верификацию — создаёт токен и возвращает номер для звонка
-   */
   const requestVerification = async (phone: string): Promise<CallVerifyResponse> => {
     isLoading.value = true
     error.value = null
@@ -69,52 +63,21 @@ export function useCallVerification() {
       remainingSeconds.value = response.expiresInSeconds
       status.value = 'waiting'
 
-      // Подписываемся на Realtime канал + запускаем polling как fallback
-      subscribeToChannel(response.token)
       startPolling(response.token)
       startCountdown()
 
       return response
-    } catch (e: any) {
-      error.value = e.data?.message || 'Ошибка отправки запроса'
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } }
+      error.value = err.data?.message || 'Ошибка отправки запроса'
       throw e
     } finally {
       isLoading.value = false
     }
   }
 
-  /**
-   * Подписка на Realtime канал для получения события verified
-   */
-  const subscribeToChannel = (verifyToken: string) => {
-    console.log('[CallVerify] Subscribing to channel:', `call-verify:${verifyToken}`)
-
-    channel = supabase
-      .channel(`call-verify:${verifyToken}`)
-      .on('broadcast', { event: 'verified' }, async (payload) => {
-        console.log('[CallVerify] Received verified event:', payload)
-        stopAll()
-
-        // Завершаем авторизацию — получаем данные пользователя и создаём сессию
-        const result = await completeVerification()
-
-        // Устанавливаем статус ПОСЛЕ загрузки данных, чтобы watch сработал корректно
-        if (result) {
-          status.value = 'verified'
-        }
-      })
-      .subscribe((subscribeStatus) => {
-        console.log('[CallVerify] Channel status:', subscribeStatus)
-      })
-  }
-
-  /**
-   * Fallback polling - проверяет статус верификации каждые 3 секунды
-   */
   const startPolling = (verifyToken: string) => {
     if (pollInterval) return
-
-    console.log('[CallVerify] Starting polling fallback')
 
     pollInterval = setInterval(async () => {
       if (status.value !== 'waiting') {
@@ -126,17 +89,18 @@ export function useCallVerification() {
         const response = await $fetch<{ status: string }>(`/api/auth/call-verify/status/${verifyToken}`)
 
         if (response.status === 'verified') {
-          console.log('[CallVerify] Poll detected verification!')
           stopAll()
 
           const result = await completeVerification()
           if (result) {
             status.value = 'verified'
           }
+        } else if (response.status === 'expired') {
+          stopAll()
+          status.value = 'expired'
         }
-      } catch (e) {
-        // Игнорируем ошибки polling
-        console.log('[CallVerify] Poll error:', e)
+      } catch {
+        // ignore
       }
     }, 3000)
   }
@@ -148,9 +112,6 @@ export function useCallVerification() {
     }
   }
 
-  /**
-   * Завершение авторизации — получение данных пользователя и создание сессии
-   */
   const completeVerification = async (): Promise<CompleteResponse | null> => {
     if (!token.value) return null
 
@@ -165,9 +126,6 @@ export function useCallVerification() {
     }
   }
 
-  /**
-   * Запуск обратного отсчёта
-   */
   const startCountdown = () => {
     if (countdownInterval) return
 
@@ -181,15 +139,7 @@ export function useCallVerification() {
     }, 1000)
   }
 
-  /**
-   * Остановка всех подписок и интервалов
-   */
   const stopAll = () => {
-    if (channel) {
-      console.log('[CallVerify] Removing channel')
-      supabase.removeChannel(channel)
-      channel = null
-    }
     if (countdownInterval) {
       clearInterval(countdownInterval)
       countdownInterval = null
@@ -197,9 +147,6 @@ export function useCallVerification() {
     stopPolling()
   }
 
-  /**
-   * Сброс состояния для повторной попытки
-   */
   const reset = () => {
     stopAll()
     status.value = 'idle'
@@ -210,11 +157,9 @@ export function useCallVerification() {
     verifiedData.value = null
   }
 
-  // Очистка при размонтировании компонента
   onUnmounted(() => stopAll())
 
   return {
-    // State (readonly для безопасности)
     isLoading: readonly(isLoading),
     error: readonly(error),
     status: readonly(status),
@@ -223,7 +168,6 @@ export function useCallVerification() {
     remainingSeconds: readonly(remainingSeconds),
     verifiedData: readonly(verifiedData),
 
-    // Actions
     requestVerification,
     completeVerification,
     reset

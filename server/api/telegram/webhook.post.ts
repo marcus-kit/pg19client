@@ -1,11 +1,3 @@
-/**
- * POST /api/telegram/webhook
- * Обработчик webhook от Telegram бота
- *
- * Обрабатывает команды /start AUTH_xxxxx для deeplink-авторизации
- * Верифицирует подпись через X-Telegram-Bot-Api-Secret-Token
- */
-
 interface TelegramUser {
   id: number
   is_bot: boolean
@@ -18,10 +10,7 @@ interface TelegramUser {
 interface TelegramMessage {
   message_id: number
   from: TelegramUser
-  chat: {
-    id: number
-    type: string
-  }
+  chat: { id: number; type: string }
   date: number
   text?: string
 }
@@ -34,32 +23,26 @@ interface TelegramUpdate {
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
-  // Верификация секрета webhook
   const secretToken = getHeader(event, 'x-telegram-bot-api-secret-token')
   if (!config.telegramWebhookSecret || secretToken !== config.telegramWebhookSecret) {
-    console.warn('[TelegramWebhook] Invalid secret token')
-    // Возвращаем 200 чтобы Telegram не ретраил (но ничего не делаем)
     return { ok: true }
   }
 
   const body = await readBody<TelegramUpdate>(event)
 
-  // Проверяем что это сообщение с текстом
   if (!body.message?.text || !body.message.from) {
     return { ok: true }
   }
 
   const { text, from, chat } = body.message
 
-  // Обрабатываем только команду /start с параметром AUTH_
   const match = text.match(/^\/start\s+AUTH_([a-zA-Z0-9]+)$/)
   if (!match) {
-    // Можно отправить приветственное сообщение для обычного /start
     if (text === '/start') {
       await sendTelegramMessage(
         chat.id,
         'Добро пожаловать! Этот бот используется для авторизации в личном кабинете ПЖ19.\n\n' +
-        'Перейдите на сайт pg19v3client.doka.team и нажмите "Войти через Telegram".',
+          'Перейдите на сайт pg19v3client.doka.team и нажмите "Войти через Telegram".',
         config.telegramBotToken
       )
     }
@@ -67,59 +50,47 @@ export default defineEventHandler(async (event) => {
   }
 
   const token = match[1]
-  console.log('[TelegramWebhook] Auth request:', { token, telegramId: from.id, username: from.username })
+  const prisma = usePrisma()
 
-  const supabase = useSupabaseServer()
+  const authRequest = await prisma.telegramAuthRequest.findFirst({
+    where: { token, status: 'pending' }
+  })
 
-  // Ищем запрос авторизации по токену
-  const { data: authRequest, error: findError } = await supabase
-    .schema('client').from('telegram_auth_requests')
-    .select('*')
-    .eq('token', token)
-    .eq('status', 'pending')
-    .single()
-
-  if (findError || !authRequest) {
-    console.log('[TelegramWebhook] Token not found or not pending:', token)
+  if (!authRequest) {
     await sendTelegramMessage(
       chat.id,
       'Ссылка для авторизации недействительна или уже использована.\n\n' +
-      'Вернитесь на сайт и запросите новую ссылку.',
+        'Вернитесь на сайт и запросите новую ссылку.',
       config.telegramBotToken
     )
     return { ok: true }
   }
 
-  // Проверяем что токен не истёк
-  if (new Date(authRequest.expires_at) < new Date()) {
-    await supabase
-      .schema('client').from('telegram_auth_requests')
-      .update({ status: 'expired' })
-      .eq('id', authRequest.id)
-
+  if (authRequest.expires_at && new Date(authRequest.expires_at) < new Date()) {
+    await prisma.telegramAuthRequest.update({
+      where: { id: authRequest.id },
+      data: { status: 'expired' }
+    })
     await sendTelegramMessage(
       chat.id,
       'Время для авторизации истекло.\n\n' +
-      'Вернитесь на сайт и запросите новую ссылку.',
+        'Вернитесь на сайт и запросите новую ссылку.',
       config.telegramBotToken
     )
     return { ok: true }
   }
 
-  // Для login flow: проверяем что telegram_id привязан к какому-то пользователю
   if (authRequest.purpose === 'login') {
-    const { data: existingUser, error: userError } = await supabase
-      .schema('client')
-      .from('users')
-      .select('id, first_name, status')
-      .eq('telegram_id', from.id.toString())
-      .single()
+    const existingUser = await prisma.user.findFirst({
+      where: { telegram_id: from.id.toString() },
+      select: { id: true, first_name: true, status: true }
+    })
 
-    if (userError || !existingUser) {
+    if (!existingUser) {
       await sendTelegramMessage(
         chat.id,
         'Ваш Telegram не привязан к аккаунту ПЖ19.\n\n' +
-        'Войдите по номеру договора на сайте и привяжите Telegram в профиле.',
+          'Войдите по номеру договора на сайте и привяжите Telegram в профиле.',
         config.telegramBotToken
       )
       return { ok: true }
@@ -135,83 +106,50 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Для link flow: проверяем что telegram_id не занят другим пользователем
   if (authRequest.purpose === 'link') {
-    const { data: occupiedUser } = await supabase
-      .schema('client')
-      .from('users')
-      .select('id')
-      .eq('telegram_id', from.id.toString())
-      .single()
+    const occupiedUser = await prisma.user.findFirst({
+      where: { telegram_id: from.id.toString() },
+      select: { id: true }
+    })
 
     if (occupiedUser && occupiedUser.id !== authRequest.user_id) {
       await sendTelegramMessage(
         chat.id,
         'Этот Telegram уже привязан к другому аккаунту.\n\n' +
-        'Если вы хотите привязать его к новому аккаунту, сначала отвяжите его от старого.',
+          'Если вы хотите привязать его к новому аккаунту, сначала отвяжите его от старого.',
         config.telegramBotToken
       )
       return { ok: true }
     }
   }
 
-  // Обновляем запрос авторизации
-  const { error: updateError } = await supabase
-    .schema('client').from('telegram_auth_requests')
-    .update({
+  await prisma.telegramAuthRequest.update({
+    where: { id: authRequest.id },
+    data: {
       status: 'verified',
-      telegram_id: from.id,
-      telegram_username: from.username || null,
-      telegram_first_name: from.first_name,
-      telegram_last_name: from.last_name || null,
-      verified_at: new Date().toISOString()
-    })
-    .eq('id', authRequest.id)
-
-  if (updateError) {
-    console.error('[TelegramWebhook] Update error:', updateError)
-    await sendTelegramMessage(
-      chat.id,
-      'Произошла ошибка. Попробуйте ещё раз.',
-      config.telegramBotToken
-    )
-    return { ok: true }
-  }
-
-  // Отправляем broadcast через Supabase Realtime
-  const channel = supabase.channel(`telegram-auth:${token}`)
-  await channel.send({
-    type: 'broadcast',
-    event: 'verified',
-    payload: {
-      telegramId: from.id,
-      telegramUsername: from.username
+      telegram_id: BigInt(from.id),
+      telegram_username: from.username ?? null
     }
   })
 
-  // Отправляем подтверждение пользователю с кнопкой для возврата
-  const successMessage = authRequest.purpose === 'login'
-    ? '✅ Авторизация подтверждена!\n\nНажмите кнопку ниже, чтобы перейти в личный кабинет.'
-    : '✅ Telegram успешно привязан!\n\nНажмите кнопку ниже, чтобы вернуться в профиль.'
+  const successMessage =
+    authRequest.purpose === 'login'
+      ? '✅ Авторизация подтверждена!\n\nНажмите кнопку ниже, чтобы перейти в личный кабинет.'
+      : '✅ Telegram успешно привязан!\n\nНажмите кнопку ниже, чтобы вернуться в профиль.'
 
-  const buttonUrl = authRequest.purpose === 'login'
-    ? 'https://pg19v3client.doka.team/dashboard'
-    : 'https://pg19v3client.doka.team/profile'
+  const buttonUrl =
+    authRequest.purpose === 'login'
+      ? 'https://pg19v3client.doka.team/dashboard'
+      : 'https://pg19v3client.doka.team/profile'
 
-  const buttonText = authRequest.purpose === 'login'
-    ? '🏠 Открыть личный кабинет'
-    : '👤 Вернуться в профиль'
+  const buttonText =
+    authRequest.purpose === 'login' ? '🏠 Открыть личный кабинет' : '👤 Вернуться в профиль'
 
   await sendTelegramMessageWithButton(chat.id, successMessage, buttonText, buttonUrl, config.telegramBotToken)
-
-  console.log('[TelegramWebhook] Auth verified:', { token, telegramId: from.id })
 
   return { ok: true }
 })
 
-/**
- * Отправка сообщения через Telegram Bot API
- */
 async function sendTelegramMessage(chatId: number, text: string, botToken: string): Promise<void> {
   try {
     await $fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -227,9 +165,6 @@ async function sendTelegramMessage(chatId: number, text: string, botToken: strin
   }
 }
 
-/**
- * Отправка сообщения с inline-кнопкой (URL)
- */
 async function sendTelegramMessageWithButton(
   chatId: number,
   text: string,

@@ -1,6 +1,6 @@
 /**
- * Composable для авторизации через Telegram Deeplink
- * Использует Supabase Realtime + polling fallback (аналогично useCallVerification)
+ * Composable для авторизации через Telegram Deeplink.
+ * Использует polling статуса (без Supabase Realtime).
  */
 
 interface DeeplinkResponse {
@@ -45,7 +45,6 @@ interface LinkCompleteResponse {
 type CompleteResponse = LoginCompleteResponse | LinkCompleteResponse
 
 export function useTelegramDeeplink() {
-  const supabase = useSupabaseClient()
   const config = useRuntimeConfig()
 
   const isLoading = ref(false)
@@ -56,15 +55,9 @@ export function useTelegramDeeplink() {
   const remainingSeconds = ref(0)
   const verifiedData = ref<CompleteResponse | null>(null)
 
-  let channel: ReturnType<typeof supabase.channel> | null = null
   let countdownInterval: ReturnType<typeof setInterval> | null = null
   let pollInterval: ReturnType<typeof setInterval> | null = null
 
-  /**
-   * Запрос на авторизацию — создаёт токен и возвращает deeplink
-   * @param purpose 'login' — для входа, 'link' — для привязки к существующему аккаунту
-   * @param userId Обязателен для purpose='link'
-   */
   async function requestAuth(
     purpose: 'login' | 'link',
     userId?: string
@@ -86,52 +79,21 @@ export function useTelegramDeeplink() {
       remainingSeconds.value = response.expiresInSeconds
       status.value = 'waiting'
 
-      // Подписываемся на Realtime канал + запускаем polling как fallback
-      subscribeToChannel(response.token)
       startPolling(response.token)
       startCountdown()
 
       return response
-    } catch (e: any) {
-      error.value = e.data?.message || 'Ошибка создания запроса'
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } }
+      error.value = err.data?.message || 'Ошибка создания запроса'
       throw e
     } finally {
       isLoading.value = false
     }
   }
 
-  /**
-   * Подписка на Realtime канал для получения события verified
-   */
-  function subscribeToChannel(authToken: string): void {
-    console.log('[TelegramDeeplink] Subscribing to channel:', `telegram-auth:${authToken}`)
-
-    channel = supabase
-      .channel(`telegram-auth:${authToken}`)
-      .on('broadcast', { event: 'verified' }, async (payload) => {
-        console.log('[TelegramDeeplink] Received verified event:', payload)
-        stopAll()
-
-        // Завершаем авторизацию — получаем данные пользователя и создаём сессию
-        const result = await completeAuth()
-
-        // Устанавливаем статус ПОСЛЕ загрузки данных
-        if (result) {
-          status.value = 'verified'
-        }
-      })
-      .subscribe((subscribeStatus) => {
-        console.log('[TelegramDeeplink] Channel status:', subscribeStatus)
-      })
-  }
-
-  /**
-   * Fallback polling — проверяет статус каждые 3 секунды
-   */
   function startPolling(authToken: string): void {
     if (pollInterval) return
-
-    console.log('[TelegramDeeplink] Starting polling fallback')
 
     pollInterval = setInterval(async () => {
       if (status.value !== 'waiting') {
@@ -143,7 +105,6 @@ export function useTelegramDeeplink() {
         const response = await $fetch<{ status: string }>(`/api/auth/telegram-deeplink/status/${authToken}`)
 
         if (response.status === 'verified') {
-          console.log('[TelegramDeeplink] Poll detected verification!')
           stopAll()
 
           const result = await completeAuth()
@@ -154,8 +115,8 @@ export function useTelegramDeeplink() {
           stopAll()
           status.value = 'expired'
         }
-      } catch (e) {
-        console.log('[TelegramDeeplink] Poll error:', e)
+      } catch {
+        // ignore poll errors
       }
     }, 3000)
   }
@@ -167,9 +128,6 @@ export function useTelegramDeeplink() {
     }
   }
 
-  /**
-   * Завершение авторизации — получение данных и создание сессии
-   */
   async function completeAuth(): Promise<CompleteResponse | null> {
     if (!token.value) return null
 
@@ -177,16 +135,14 @@ export function useTelegramDeeplink() {
       const response = await $fetch<CompleteResponse>(`/api/auth/telegram-deeplink/complete/${token.value}`)
       verifiedData.value = response
       return response
-    } catch (e: any) {
+    } catch (e: unknown) {
+      const err = e as { data?: { message?: string } }
       console.error('[TelegramDeeplink] Complete error:', e)
-      error.value = e.data?.message || 'Ошибка завершения авторизации'
+      error.value = err.data?.message || 'Ошибка завершения авторизации'
       return null
     }
   }
 
-  /**
-   * Запуск обратного отсчёта
-   */
   function startCountdown(): void {
     if (countdownInterval) return
 
@@ -200,15 +156,7 @@ export function useTelegramDeeplink() {
     }, 1000)
   }
 
-  /**
-   * Остановка всех подписок и интервалов
-   */
   function stopAll(): void {
-    if (channel) {
-      console.log('[TelegramDeeplink] Removing channel')
-      supabase.removeChannel(channel)
-      channel = null
-    }
     if (countdownInterval) {
       clearInterval(countdownInterval)
       countdownInterval = null
@@ -216,9 +164,6 @@ export function useTelegramDeeplink() {
     stopPolling()
   }
 
-  /**
-   * Сброс состояния для повторной попытки
-   */
   function reset(): void {
     stopAll()
     status.value = 'idle'
@@ -229,16 +174,11 @@ export function useTelegramDeeplink() {
     verifiedData.value = null
   }
 
-  /**
-   * Получить username бота для отображения
-   */
   const botUsername = computed(() => config.public.telegramBotUsername || 'PG19CONNECTBOT')
 
-  // Очистка при размонтировании компонента
   onUnmounted(() => stopAll())
 
   return {
-    // State (readonly)
     isLoading: readonly(isLoading),
     error: readonly(error),
     status: readonly(status),
@@ -248,7 +188,6 @@ export function useTelegramDeeplink() {
     verifiedData: readonly(verifiedData),
     botUsername,
 
-    // Actions
     requestAuth,
     reset
   }
