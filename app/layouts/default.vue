@@ -59,7 +59,7 @@ const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.hre
 const isScrolled = ref(false)    // true когда страница прокручена > 20px
 const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
 
-// Переключение темы: system → dark → light → system (из useThemeDetect)
+// Переключение темы: dark ↔ light (из useThemeDetect)
 
 // Выход из аккаунта
 function handleLogout(): void {

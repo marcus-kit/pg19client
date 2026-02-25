@@ -124,21 +124,23 @@ function openInvoice(invoiceId: string): void {
               </span>
             </div>
             <div class="dashboard-invoices__col dashboard-invoices__col--actions" @click.stop>
-              <button
+              <UiButton
                 v-if="!unpaidStatuses.includes(invoice.status)"
-                type="button"
-                class="dashboard-invoices__link"
+                variant="ghost"
+                size="sm"
                 @click="openInvoice(invoice.id)"
               >
-                <span>Подробнее</span>
+                Подробнее
                 <Icon name="heroicons:chevron-right" class="w-4 h-4" />
-              </button>
+              </UiButton>
               <NuxtLink
                 v-if="unpaidStatuses.includes(invoice.status)"
                 :to="`/invoices/${invoice.id}`"
-                class="dashboard-invoices__btn-link"
+                class="inline-flex"
               >
-                Оплатить
+                <UiButton variant="primary" size="sm">
+                  Оплатить
+                </UiButton>
               </NuxtLink>
             </div>
           </div>
@@ -185,25 +187,22 @@ function openInvoice(invoiceId: string): void {
             </div>
 
             <div class="dashboard-invoices-mobile__actions" @click.stop>
-              <button
+              <UiButton
                 v-if="!unpaidStatuses.includes(invoice.status)"
-                type="button"
-                class="dashboard-invoices__link flex-1 justify-center"
+                variant="ghost"
+                size="sm"
+                block
                 @click="openInvoice(invoice.id)"
               >
-                <span>Подробнее</span>
+                Подробнее
                 <Icon name="heroicons:chevron-right" class="w-4 h-4" />
-              </button>
+              </UiButton>
               <NuxtLink
                 v-if="unpaidStatuses.includes(invoice.status)"
                 :to="`/invoices/${invoice.id}`"
                 class="flex-shrink-0"
               >
-                <UiButton
-                  variant="primary"
-                  size="sm"
-                  class="shadow-md shadow-primary/20"
-                >
+                <UiButton variant="primary" size="sm">
                   Оплатить
                 </UiButton>
               </NuxtLink>
@@ -315,45 +314,6 @@ function openInvoice(invoiceId: string): void {
   color: var(--text-muted);
 }
 
-.dashboard-invoices__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.5rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color 0.15s ease, background-color 0.15s ease;
-}
-
-.dashboard-invoices__link:hover {
-  color: var(--text-primary);
-  background: var(--glass-bg);
-}
-
-.dashboard-invoices__btn-link {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.5rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: white;
-  background: #F7941D;
-  box-shadow: 0 2px 8px rgba(247, 148, 29, 0.25);
-  transition: background-color 0.15s ease, box-shadow 0.15s ease;
-  text-decoration: none;
-}
-
-.dashboard-invoices__btn-link:hover {
-  background: #D67A0A;
-  box-shadow: 0 4px 12px rgba(247, 148, 29, 0.35);
-}
 
 /* =========================================================================
    MOBILE CARDS — мобильная версия счетов

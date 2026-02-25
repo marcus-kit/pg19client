@@ -482,7 +482,6 @@ onUnmounted(() => {
                 variant="primary"
                 block
                 :loading="telegramLoading"
-                class="!bg-[#0088cc] hover:!bg-[#0077b5]"
                 @click="startTelegramAuth"
               >
                 <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
@@ -571,7 +570,6 @@ onUnmounted(() => {
                 :value="form.login"
                 type="text"
                 inputmode="numeric"
-                placeholder="Только цифры"
                 autocomplete="username"
                 maxlength="20"
                 class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
@@ -591,7 +589,6 @@ onUnmounted(() => {
                 <input
                   :value="form.password"
                   :type="showPassword ? 'text' : 'password'"
-                  placeholder="Только латиница, цифры и символы"
                   autocomplete="current-password"
                   class="w-full px-4 py-3 pr-12 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                   style="background: var(--glass-bg); border: 1px solid var(--glass-border);"

@@ -1,70 +1,37 @@
 /**
- * useThemeDetect — автоопределение темы браузера
+ * useThemeDetect — кнопка переключения темы (солнце/луна).
  *
- * - Определяет системную тему (prefers-color-scheme: dark / light)
- * - Слушает изменения в реальном времени через matchMedia
- * - Интегрируется с @nuxtjs/color-mode
- * - Предоставляет переключение: system → dark → light → system
+ * Определение и следование теме браузера — в плагине theme-system.client.ts
+ * (работает на всех страницах, в т.ч. логин без layout).
  */
+
+const STORAGE_KEY = 'pg19-theme'
+
+function resetStorageToSystem(): void {
+  try { localStorage.setItem(STORAGE_KEY, 'system') } catch { /* noop */ }
+  document.cookie = `${STORAGE_KEY}=system;path=/;max-age=31536000;SameSite=Lax`
+}
+
 export function useThemeDetect() {
   const colorMode = useColorMode()
 
-  /** Текущая системная тема браузера ('dark' | 'light') */
-  const systemTheme = ref<'dark' | 'light'>('dark')
+  const themeIcon = computed(() =>
+    colorMode.value === 'dark' ? 'heroicons:sun' : 'heroicons:moon'
+  )
 
-  /** Слушает ли сейчас изменения системной темы */
-  const isSystemMode = computed(() => colorMode.preference === 'system')
+  const themeLabel = computed(() =>
+    colorMode.value === 'dark' ? 'Светлая тема' : 'Тёмная тема'
+  )
 
-  /** Итоговая применённая тема ('dark' | 'light') */
-  const resolvedTheme = computed(() => colorMode.value as 'dark' | 'light')
-
-  /** Текущий режим: 'system' | 'dark' | 'light' */
-  const preference = computed(() => colorMode.preference)
-
-  /** Иконка для текущего режима */
-  const themeIcon = computed(() => {
-    if (colorMode.preference === 'system') return 'heroicons:computer-desktop'
-    return colorMode.value === 'dark' ? 'heroicons:sun' : 'heroicons:moon'
-  })
-
-  /** Подпись для текущего режима */
-  const themeLabel = computed(() => {
-    if (colorMode.preference === 'system') return 'Системная тема'
-    return colorMode.value === 'dark' ? 'Светлая тема' : 'Тёмная тема'
-  })
-
-  /** Переключить: system → dark → light → system */
+  /** Ручное переключение; после этого при следующей загрузке снова будет тема по ОС. */
   function cycleTheme(): void {
-    const order: Array<'system' | 'dark' | 'light'> = ['system', 'dark', 'light']
-    const current = order.indexOf(colorMode.preference as typeof order[number])
-    const next = order[(current + 1) % order.length]
-    colorMode.preference = next
-  }
-
-  /** Установить конкретный режим */
-  function setTheme(mode: 'system' | 'dark' | 'light'): void {
-    colorMode.preference = mode
-  }
-
-  if (import.meta.client) {
-    const mql = window.matchMedia('(prefers-color-scheme: dark)')
-    systemTheme.value = mql.matches ? 'dark' : 'light'
-
-    const handler = (e: MediaQueryListEvent) => {
-      systemTheme.value = e.matches ? 'dark' : 'light'
-    }
-    mql.addEventListener('change', handler)
-    onScopeDispose(() => mql.removeEventListener('change', handler))
+    colorMode.preference = colorMode.value === 'dark' ? 'light' : 'dark'
+    setTimeout(resetStorageToSystem, 100)
   }
 
   return {
-    systemTheme,
-    isSystemMode,
-    resolvedTheme,
-    preference,
     themeIcon,
     themeLabel,
-    cycleTheme,
-    setTheme
+    cycleTheme
   }
 }
