@@ -62,6 +62,7 @@ export function useTelegramDeeplink() {
     purpose: 'login' | 'link',
     userId?: string
   ): Promise<DeeplinkResponse> {
+    stopAll()
     isLoading.value = true
     error.value = null
 
@@ -81,6 +82,10 @@ export function useTelegramDeeplink() {
 
       startPolling(response.token)
       startCountdown()
+
+      if (import.meta.client && response.deeplink) {
+        window.open(response.deeplink, '_blank', 'noopener,noreferrer')
+      }
 
       return response
     } catch (e: unknown) {

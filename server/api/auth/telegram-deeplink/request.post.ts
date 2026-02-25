@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { getClientIdentifier } from '../../../utils/rateLimit'
+import { getUserFromSession } from '../../../utils/userAuth'
 
 interface DeeplinkRequest {
   purpose: 'login' | 'link'
@@ -19,11 +20,26 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  if (body.purpose === 'link' && !body.userId) {
-    throw createError({
-      statusCode: 400,
-      message: 'Для привязки Telegram укажите userId'
-    })
+  if (body.purpose === 'link') {
+    if (!body.userId) {
+      throw createError({
+        statusCode: 400,
+        message: 'Для привязки Telegram укажите userId'
+      })
+    }
+    const sessionUser = await getUserFromSession(event)
+    if (!sessionUser) {
+      throw createError({
+        statusCode: 401,
+        message: 'Требуется авторизация. Войдите в личный кабинет и повторите попытку.'
+      })
+    }
+    if (sessionUser.id !== body.userId) {
+      throw createError({
+        statusCode: 403,
+        message: 'Нельзя привязать Telegram к чужому аккаунту'
+      })
+    }
   }
 
   const prisma = usePrisma()
