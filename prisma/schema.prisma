@@ -195,6 +195,96 @@ model Page {
   @@schema("client")
 }
 
+model Chat {
+  id                 String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id            String?
+  user_name          String?
+  guest_name         String?
+  guest_contact      String?
+  session_token     String?
+  status             String        @default("waiting")
+  assigned_to        String?
+  last_message_at    DateTime?     @db.Timestamp(6)
+  unread_admin_count Int           @default(0)
+  unread_user_count  Int           @default(0)
+  ai_summary         String?
+  source             String        @default("web")
+  created_at         DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at         DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  closed_at          DateTime?     @db.Timestamp(6)
+  is_bot_active      Boolean       @default(false)
+  bot_message_count  Int           @default(0)
+  escalated_at       DateTime?     @db.Timestamp(6)
+  escalation_reason  String?
+  chat_messages      ChatMessage[]
+
+  @@index([user_id], map: "idx_chats_user_id")
+  @@index([status], map: "idx_chats_status")
+  @@index([created_at], map: "idx_chats_created_at")
+  @@map("chats")
+  @@schema("client")
+}
+
+model ChatMessage {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  chat_id         String
+  sender_type     String   @default("user")
+  sender_id       String?
+  sender_name     String?
+  content         String   @default("")
+  content_type    String   @default("text")
+  attachment_url  String?
+  attachment_name String?
+  attachment_size Int?
+  is_read         Boolean  @default(false)
+  read_at         DateTime? @db.Timestamp(6)
+  created_at      DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  chats           Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+
+  @@index([chat_id], map: "idx_chat_messages_chat_id")
+  @@index([created_at], map: "idx_chat_messages_created_at")
+  @@map("chat_messages")
+  @@schema("client")
+}
+
+model AiBotSettings {
+  id                   String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  is_enabled            Boolean  @default(false)
+  escalation_keywords   Json     @default("[]")
+  max_bot_messages      Int      @default(10)
+  system_prompt        String?
+  rag_enabled           Boolean  @default(false)
+  rag_match_threshold   Float?
+  rag_match_count       Int?
+  model                 String?  @default("gpt-4o-mini")
+  temperature           Float?   @default(0.7)
+  max_tokens            Int?     @default(500)
+  operator_name         String?  @default("Оператор")
+  created_at            DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at            DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@map("ai_bot_settings")
+  @@schema("client")
+}
+
+model AiBotMessage {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  chat_id         String
+  message_id      String
+  user_message    String
+  bot_response    String
+  rag_sources     Json     @default("[]")
+  model           String?
+  prompt_tokens   Int?
+  completion_tokens Int?
+  latency_ms      Int?
+  created_at      DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@index([chat_id], map: "idx_ai_bot_messages_chat_id")
+  @@map("ai_bot_messages")
+  @@schema("client")
+}
+
 model Contract {
   id                 String             @id
   contract_number    String             @unique

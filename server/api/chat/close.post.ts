@@ -1,11 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
-
 interface CloseRequest {
   chatId: string
 }
 
 export default defineEventHandler(async (event) => {
-  const config = useRuntimeConfig()
   const body = await readBody<CloseRequest>(event)
 
   if (!body.chatId) {
@@ -15,17 +12,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const supabase = createClient(
-    config.public.supabaseUrl,
-    config.supabaseSecretKey
-  )
+  const prisma = usePrisma()
 
-  // Проверяем чат
-  const { data: chat } = await supabase
-    .from('chats')
-    .select('id, status')
-    .eq('id', body.chatId)
-    .single()
+  const chat = await prisma.chat.findUnique({
+    where: { id: body.chatId },
+    select: { id: true, status: true }
+  })
 
   if (!chat) {
     throw createError({
@@ -38,22 +30,13 @@ export default defineEventHandler(async (event) => {
     return { success: true, message: 'Чат уже закрыт' }
   }
 
-  // Закрываем чат
-  const { error } = await supabase
-    .from('chats')
-    .update({
+  await prisma.chat.update({
+    where: { id: body.chatId },
+    data: {
       status: 'closed',
-      closed_at: new Date().toISOString()
-    })
-    .eq('id', body.chatId)
-
-  if (error) {
-    console.error('Error closing chat:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при закрытии чата'
-    })
-  }
+      closed_at: new Date()
+    }
+  })
 
   return { success: true, message: 'Чат закрыт' }
 })

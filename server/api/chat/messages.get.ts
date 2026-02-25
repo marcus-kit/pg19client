@@ -17,14 +17,12 @@ export default defineEventHandler(async (event) => {
   const limit = Math.min(parseInt(query.limit as string) || 50, 100)
   const offset = parseInt(query.offset as string) || 0
 
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
 
-  // Получаем чат с полной информацией для проверки ownership
-  const { data: chat } = await supabase
-    .from('chats')
-    .select('id, user_id, session_token, status')
-    .eq('id', chatId)
-    .single()
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId },
+    select: { id: true, user_id: true, session_token: true, status: true }
+  })
 
   if (!chat) {
     throw createError({
@@ -33,12 +31,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Проверяем ownership
   const sessionUser = await getUserFromSession(event)
   const chatSessionToken = getCookie(event, CHAT_SESSION_COOKIE)
 
   if (chat.user_id) {
-    // Чат авторизованного пользователя
     if (!sessionUser || sessionUser.id !== chat.user_id) {
       throw createError({
         statusCode: 403,
@@ -46,7 +42,6 @@ export default defineEventHandler(async (event) => {
       })
     }
   } else {
-    // Гостевой чат - проверяем токен
     if (!chatSessionToken || chatSessionToken !== chat.session_token) {
       throw createError({
         statusCode: 403,
@@ -55,25 +50,19 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  // Получаем сообщения
-  const { data: messages, error, count } = await supabase
-    .from('chat_messages')
-    .select('*', { count: 'exact' })
-    .eq('chat_id', chatId)
-    .order('created_at', { ascending: true })
-    .range(offset, offset + limit - 1)
-
-  if (error) {
-    console.error('Error fetching messages:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при получении сообщений'
-    })
-  }
+  const [messages, total] = await Promise.all([
+    prisma.chatMessage.findMany({
+      where: { chat_id: chatId },
+      orderBy: { created_at: 'asc' },
+      skip: offset,
+      take: limit
+    }),
+    prisma.chatMessage.count({ where: { chat_id: chatId } })
+  ])
 
   return {
-    messages: messages as ChatMessage[],
-    total: count || 0,
-    hasMore: (count || 0) > offset + limit
+    messages: messages as unknown as ChatMessage[],
+    total,
+    hasMore: total > offset + limit
   }
 })

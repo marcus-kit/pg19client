@@ -53,14 +53,10 @@ export default defineEventHandler(async (event): Promise<UploadedFile> => {
     })
   }
 
-  const supabase = serverSupabaseServiceRole(event)
-
-  // Проверяем чат
-  const { data: chat } = await supabase
-    .from('chats')
-    .select('*')
-    .eq('id', chatId)
-    .single()
+  const prisma = usePrisma()
+  const chat = await prisma.chat.findUnique({
+    where: { id: chatId }
+  })
 
   if (!chat) {
     throw createError({
@@ -76,7 +72,6 @@ export default defineEventHandler(async (event): Promise<UploadedFile> => {
     })
   }
 
-  // Проверяем авторизацию — гости не могут загружать файлы
   const sessionUser = await getUserFromSession(event)
 
   if (!sessionUser) {
@@ -86,7 +81,6 @@ export default defineEventHandler(async (event): Promise<UploadedFile> => {
     })
   }
 
-  // Проверяем ownership чата
   if (chat.user_id !== sessionUser.id) {
     throw createError({
       statusCode: 403,
@@ -94,16 +88,15 @@ export default defineEventHandler(async (event): Promise<UploadedFile> => {
     })
   }
 
-  // Generate unique filename
+  const supabase = serverSupabaseServiceRole(event)
+
   const timestamp = Date.now()
   const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
   const storagePath = `${chatId}/${timestamp}_${safeFileName}`
 
-  // Convert File to ArrayBuffer
   const arrayBuffer = await file.arrayBuffer()
   const buffer = new Uint8Array(arrayBuffer)
 
-  // Upload to Supabase Storage
   const { error: uploadError } = await supabase.storage
     .from('chat-attachments')
     .upload(storagePath, buffer, {
