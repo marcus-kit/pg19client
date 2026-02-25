@@ -25,13 +25,15 @@ export default defineEventHandler(async (event) => {
     take: limit
   })
 
-  const invoices: Invoice[] = data.map(row => ({
+  const invoices: Invoice[] = data.map(row => {
+    const totalRub = Number(row.total_amount ?? 0)
+    return {
     id: row.id,
     invoiceNumber: row.id.slice(0, 8),
     accountId: sessionUser.accountId!,
     contractId: row.contract_id ?? '',
     status: mapOperationTypeToStatus(row.operation_type ?? ''),
-    amount: Number(row.total_amount ?? 0),
+    amount: Math.round(totalRub * 100),
     description: row.operation_type ?? '',
     periodStart: null,
     periodEnd: null,
@@ -40,7 +42,8 @@ export default defineEventHandler(async (event) => {
     paidAt: row.operation_type === 'paid' ? (row.created_at?.toISOString() ?? null) : null,
     createdAt: row.created_at?.toISOString() ?? '',
     updatedAt: row.created_at?.toISOString() ?? ''
-  }))
+  }
+  })
   return { invoices }
 })
 
