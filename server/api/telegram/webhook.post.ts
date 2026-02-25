@@ -1,3 +1,5 @@
+import { getTelegramBotToken } from '../../utils/config'
+
 interface TelegramUser {
   id: number
   is_bot: boolean
@@ -22,6 +24,7 @@ interface TelegramUpdate {
 
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
+  const botToken = getTelegramBotToken()
 
   const secretToken = getHeader(event, 'x-telegram-bot-api-secret-token')
   if (!config.telegramWebhookSecret || secretToken !== config.telegramWebhookSecret) {
@@ -43,7 +46,7 @@ export default defineEventHandler(async (event) => {
         chat.id,
         'Добро пожаловать! Этот бот используется для авторизации в личном кабинете ПЖ19.\n\n' +
           'Перейдите на сайт pg19v3client.doka.team и нажмите "Войти через Telegram".',
-        config.telegramBotToken
+        botToken
       )
     }
     return { ok: true }
@@ -61,7 +64,7 @@ export default defineEventHandler(async (event) => {
       chat.id,
       'Ссылка для авторизации недействительна или уже использована.\n\n' +
         'Вернитесь на сайт и запросите новую ссылку.',
-      config.telegramBotToken
+      botToken
     )
     return { ok: true }
   }
@@ -75,7 +78,7 @@ export default defineEventHandler(async (event) => {
       chat.id,
       'Время для авторизации истекло.\n\n' +
         'Вернитесь на сайт и запросите новую ссылку.',
-      config.telegramBotToken
+      botToken
     )
     return { ok: true }
   }
@@ -91,7 +94,7 @@ export default defineEventHandler(async (event) => {
         chat.id,
         'Ваш Telegram не привязан к аккаунту ПЖ19.\n\n' +
           'Войдите по номеру договора на сайте и привяжите Telegram в профиле.',
-        config.telegramBotToken
+        botToken
       )
       return { ok: true }
     }
@@ -100,7 +103,7 @@ export default defineEventHandler(async (event) => {
       await sendTelegramMessage(
         chat.id,
         'Ваш аккаунт заблокирован. Обратитесь в поддержку.',
-        config.telegramBotToken
+        botToken
       )
       return { ok: true }
     }
@@ -117,7 +120,7 @@ export default defineEventHandler(async (event) => {
         chat.id,
         'Этот Telegram уже привязан к другому аккаунту.\n\n' +
           'Если вы хотите привязать его к новому аккаунту, сначала отвяжите его от старого.',
-        config.telegramBotToken
+        botToken
       )
       return { ok: true }
     }
@@ -145,7 +148,7 @@ export default defineEventHandler(async (event) => {
   const buttonText =
     authRequest.purpose === 'login' ? '🏠 Открыть личный кабинет' : '👤 Вернуться в профиль'
 
-  await sendTelegramMessageWithButton(chat.id, successMessage, buttonText, buttonUrl, config.telegramBotToken)
+  await sendTelegramMessageWithButton(chat.id, successMessage, buttonText, buttonUrl, botToken)
 
   return { ok: true }
 })
