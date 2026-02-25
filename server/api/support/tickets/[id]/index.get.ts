@@ -17,8 +17,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
 
-  // Получаем тикет
+  // Получаем тикет (схема client)
   const { data: ticket, error: ticketError } = await supabase
+    .schema('client')
     .from('tickets')
     .select('*')
     .eq('id', ticketId)
@@ -31,6 +32,7 @@ export default defineEventHandler(async (event) => {
 
   // Получаем комментарии (только не внутренние)
   const { data: comments, error: commentsError } = await supabase
+    .schema('client')
     .from('ticket_comments')
     .select('*')
     .eq('ticket_id', ticketId)

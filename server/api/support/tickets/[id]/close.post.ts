@@ -24,8 +24,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Некорректный статус. Допустимые: resolved, closed' })
   }
 
-  // Получаем тикет и проверяем владельца
+  // Получаем тикет и проверяем владельца (схема client)
   const { data: ticket, error: ticketError } = await supabase
+    .schema('client')
     .from('tickets')
     .select('id, user_id, status')
     .eq('id', ticketId)
@@ -58,6 +59,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { error: updateError } = await supabase
+    .schema('client')
     .from('tickets')
     .update(updateData)
     .eq('id', ticketId)
@@ -73,6 +75,7 @@ export default defineEventHandler(async (event) => {
     : 'Пользователь закрыл заявку'
 
   const { error: commentError } = await supabase
+    .schema('client')
     .from('ticket_comments')
     .insert({
       ticket_id: ticketId,

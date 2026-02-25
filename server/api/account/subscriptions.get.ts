@@ -1,90 +1,64 @@
-// GET /api/account/subscriptions
-// Возвращает подписки (подключенные услуги) пользователя
-
 import type { Subscription, SubscriptionStatus, Service } from '~/types/service'
 
-interface SubscriptionRow {
-  id: string
-  account_id: string
-  service_id: string
-  status: SubscriptionStatus
-  started_at: string
-  expires_at: string | null
-  custom_price: number | null
-  is_primary: boolean
-  date_created: string
-  date_updated: string
-  service: {
-    id: string
-    name: string
-    slug: string | null
-    description: string | null
-    price_monthly: number
-    price_connection: number | null
-    icon: string | null
-    color: string | null
-    features: any | null
-    equipment: any | null
-    sort_order: number
-    is_active: boolean
-  }
-}
-
 export default defineEventHandler(async (event) => {
-  const supabase = useSupabaseServer()
-
-  // Получаем пользователя из сессии
   const sessionUser = await getUserFromSession(event)
-  if (!sessionUser) {
-    throw createError({ statusCode: 401, message: 'Требуется авторизация' })
+  if (!sessionUser) throw createError({ statusCode: 401, message: 'Требуется авторизация' })
+  if (!sessionUser.accountId) return { subscriptions: [] as Subscription[] }
+
+  const prisma = usePrisma()
+  const account = await prisma.account.findFirst({
+    where: { id: sessionUser.accountId, user_id: sessionUser.id },
+    select: { contract_id: true }
+  })
+  if (!account?.contract_id) return { subscriptions: [] as Subscription[] }
+
+  const contractServices = await prisma.contractService.findMany({
+    where: { contract_id: account.contract_id, is_active: true },
+    orderBy: { activated_at: 'desc' },
+    select: { id: true, name: true, type: true, is_active: true, activated_at: true, created_at: true, updated_at: true }
+  })
+  if (!contractServices.length) return { subscriptions: [] as Subscription[] }
+
+  const catalogRows = await prisma.serviceCatalog.findMany({
+    select: { id: true, name: true, service_category: true, default_mrc: true, default_nrc: true }
+  })
+  const catalogByName = new Map<string, (typeof catalogRows)[0]>()
+  for (const row of catalogRows) {
+    if (row.name) catalogByName.set(row.name.toLowerCase(), row)
+    if (row.service_category) catalogByName.set(row.service_category.toLowerCase(), row)
   }
 
-  // Получаем подписки с информацией об услугах
-  const { data, error } = await supabase
-    .from('subscriptions')
-    .select(`
-      *,
-      service:services!subscriptions_service_id_fkey(*)
-    `)
-    .eq('account_id', sessionUser.accountId)
-    .in('status', ['active', 'paused'])
-    .order('is_primary', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching subscriptions:', error)
-    throw createError({ statusCode: 500, message: 'Ошибка загрузки подписок' })
-  }
-
-  // Маппинг в camelCase
-  const subscriptions: Subscription[] = (data as SubscriptionRow[]).map(row => {
-    const svc = row.service
+  const subscriptions: Subscription[] = contractServices.map(cs => {
+    const catalog = catalogByName.get(cs.name?.toLowerCase() ?? '') ?? catalogByName.get(cs.type?.toLowerCase() ?? '') ?? null
+    const svc: Service | undefined = catalog
+      ? {
+          id: catalog.id as unknown as number,
+          name: catalog.name ?? '',
+          slug: catalog.service_category ?? null,
+          description: null,
+          priceMonthly: Number(catalog.default_mrc ?? 0),
+          priceConnection: catalog.default_nrc != null ? Number(catalog.default_nrc) : null,
+          icon: null,
+          color: null,
+          features: null,
+          equipment: null,
+          sortOrder: 0,
+          isActive: true
+        }
+      : undefined
     return {
-      id: row.id,
-      accountId: row.account_id,
-      serviceId: row.service_id,
-      status: row.status,
-      startedAt: row.started_at,
-      expiresAt: row.expires_at,
-      customPrice: row.custom_price,
-      isPrimary: row.is_primary,
-      createdAt: row.date_created,
-      updatedAt: row.date_updated,
-      service: svc ? {
-        id: svc.id,
-        name: svc.name,
-        slug: svc.slug,
-        description: svc.description,
-        priceMonthly: svc.price_monthly,
-        priceConnection: svc.price_connection,
-        icon: svc.icon,
-        color: svc.color,
-        features: svc.features,
-        equipment: svc.equipment,
-        sortOrder: svc.sort_order,
-        isActive: svc.is_active
-      } : undefined
+      id: cs.id,
+      accountId: sessionUser.accountId,
+      serviceId: catalog?.id ?? cs.id,
+      status: (cs.is_active ? 'active' : 'paused') as SubscriptionStatus,
+      startedAt: (cs.activated_at ?? cs.created_at)?.toISOString() ?? new Date().toISOString(),
+      expiresAt: null as string | null,
+      customPrice: null as number | null,
+      isPrimary: cs.type === 'internet',
+      createdAt: cs.created_at?.toISOString() ?? new Date().toISOString(),
+      updatedAt: cs.updated_at?.toISOString() ?? new Date().toISOString(),
+      service: svc
     }
   })
-
   return { subscriptions }
 })

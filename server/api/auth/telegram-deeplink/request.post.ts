@@ -50,6 +50,7 @@ export default defineEventHandler(async (event) => {
   // Для link flow проверяем пользователя и получаем account_id
   if (body.purpose === 'link') {
     const { data: user, error: userError } = await supabase
+      .schema('client')
       .from('users')
       .select('id, telegram_id')
       .eq('id', body.userId)
@@ -72,10 +73,12 @@ export default defineEventHandler(async (event) => {
 
     // Получаем account_id по user_id
     const { data: account, error: accountError } = await supabase
+      .schema('client')
       .from('accounts')
       .select('id')
       .eq('user_id', body.userId)
-      .single()
+      .limit(1)
+      .maybeSingle()
 
     if (accountError || !account) {
       throw createError({
@@ -93,14 +96,14 @@ export default defineEventHandler(async (event) => {
 
   if (body.purpose === 'login') {
     await supabase
-      .from('telegram_auth_requests')
+      .schema('client').from('telegram_auth_requests')
       .update({ status: 'expired' })
       .eq('ip_address', clientId)
       .eq('purpose', 'login')
       .eq('status', 'pending')
   } else {
     await supabase
-      .from('telegram_auth_requests')
+      .schema('client').from('telegram_auth_requests')
       .update({ status: 'expired' })
       .eq('user_id', body.userId)
       .eq('purpose', 'link')
@@ -113,7 +116,7 @@ export default defineEventHandler(async (event) => {
 
   // Создаём запрос в БД
   const { error: insertError } = await supabase
-    .from('telegram_auth_requests')
+    .schema('client').from('telegram_auth_requests')
     .insert({
       token,
       purpose: body.purpose,

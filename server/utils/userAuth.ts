@@ -6,7 +6,7 @@ const SESSION_MAX_AGE = 30 * 24 * 60 * 60 // 30 дней в секундах
 
 interface SessionUser {
   id: string
-  accountId: string
+  accountId: string | null
 }
 
 /**
@@ -51,29 +51,16 @@ export function getSessionToken(event: H3Event): string | undefined {
  */
 export async function getUserFromSession(event: H3Event): Promise<SessionUser | null> {
   const token = getSessionToken(event)
+  if (!token) return null
 
-  if (!token) {
-    return null
-  }
+  const prisma = usePrisma()
+  const session = await prisma.authSession.findFirst({
+    where: { session_token: token, verified: true },
+    select: { user_id: true, account_id: true, expires_at: true }
+  })
 
-  const supabase = useSupabaseServer()
-
-  // Ищем активную сессию по токену
-  const { data: session, error } = await supabase
-    .from('auth_sessions')
-    .select('user_id, account_id, expires_at')
-    .eq('session_token', token)
-    .eq('verified', true)
-    .single()
-
-  if (error || !session) {
-    return null
-  }
-
-  // Проверяем что сессия не истекла
-  if (new Date(session.expires_at) < new Date()) {
-    return null
-  }
+  if (!session) return null
+  if (session.expires_at && new Date(session.expires_at) < new Date()) return null
 
   return {
     id: session.user_id,
@@ -83,18 +70,12 @@ export async function getUserFromSession(event: H3Event): Promise<SessionUser | 
 
 /**
  * Требует авторизованного пользователя.
- * Выбрасывает 401 ошибку если пользователь не авторизован.
  */
 export async function requireUser(event: H3Event): Promise<SessionUser> {
   const user = await getUserFromSession(event)
-
   if (!user) {
-    throw createError({
-      statusCode: 401,
-      message: 'Требуется авторизация'
-    })
+    throw createError({ statusCode: 401, message: 'Требуется авторизация' })
   }
-
   return user
 }
 
@@ -104,40 +85,33 @@ export async function requireUser(event: H3Event): Promise<SessionUser> {
 export async function createUserSession(
   event: H3Event,
   userId: string,
-  accountId: string,
-  method: 'telegram' | 'contract' | 'phone',
+  accountId: string | null,
+  method: 'telegram' | 'contract' | 'phone' | 'register',
   identifier: string,
   metadata?: Record<string, unknown>
 ): Promise<string> {
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
   const token = generateSessionToken()
-
   const sessionExpiry = new Date()
   sessionExpiry.setSeconds(sessionExpiry.getSeconds() + SESSION_MAX_AGE)
+  const sessionId = crypto.randomUUID()
 
-  const { error } = await supabase.from('auth_sessions').insert({
-    session_token: token,
-    method,
-    identifier,
-    verified: true,
-    user_id: userId,
-    account_id: accountId,
-    verified_at: new Date().toISOString(),
-    expires_at: sessionExpiry.toISOString(),
-    metadata: metadata || {}
+  await prisma.authSession.create({
+    data: {
+      id: sessionId,
+      session_token: token,
+      user_id: userId,
+      account_id: accountId,
+      method,
+      identifier,
+      verified: true,
+      verified_at: new Date(),
+      expires_at: sessionExpiry,
+      metadata: (metadata || {}) as object
+    }
   })
 
-  if (error) {
-    console.error('Failed to create session:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка создания сессии'
-    })
-  }
-
-  // Устанавливаем cookie
   setSessionCookie(event, token)
-
   return token
 }
 
@@ -146,16 +120,12 @@ export async function createUserSession(
  */
 export async function endUserSession(event: H3Event): Promise<void> {
   const token = getSessionToken(event)
-
   if (token) {
-    const supabase = useSupabaseServer()
-
-    // Помечаем сессию как истёкшую
-    await supabase
-      .from('auth_sessions')
-      .update({ expires_at: new Date().toISOString() })
-      .eq('session_token', token)
+    const prisma = usePrisma()
+    await prisma.authSession.updateMany({
+      where: { session_token: token },
+      data: { expires_at: new Date() }
+    })
   }
-
   clearSessionCookie(event)
 }

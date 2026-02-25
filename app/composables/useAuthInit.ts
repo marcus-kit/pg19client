@@ -19,10 +19,10 @@ export function useAuthInit() {
   const achievementsStore = useAchievementsStore()
   const referralStore = useReferralStore()
 
-  async function init(user: User, account: Account) {
+  async function init(user: User, account: Account | null) {
     // Set core data
     userStore.setUser(user)
-    accountStore.setAccount(account)
+    accountStore.setAccount(account ?? null)
 
     // Load additional data in parallel
     const [notifications, achievements, sessions, referral] = await Promise.all([

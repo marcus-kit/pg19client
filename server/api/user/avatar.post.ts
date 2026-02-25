@@ -64,8 +64,9 @@ export default defineEventHandler(async (event) => {
 
   const avatarUrl = urlData.publicUrl
 
-  // Update user record with avatar URL
+  // Update user record with avatar URL (схема client)
   const { error: updateError } = await supabase
+    .schema('client')
     .from('users')
     .update({ avatar: avatarUrl })
     .eq('id', userId)

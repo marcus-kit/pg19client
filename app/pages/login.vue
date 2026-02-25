@@ -289,10 +289,10 @@ function initPhoneMask(): void {
 // WATCHERS — реактивные наблюдатели
 // =============================================================================
 
-// Автоматический вход при успешной верификации звонка
+// Автоматический вход при успешной верификации звонка (account может быть null — пользователь без договора)
 watch(callStatus, async (newStatus) => {
-  if (newStatus === 'verified' && verifiedData.value?.user && verifiedData.value?.account) {
-    await authInit(verifiedData.value.user, verifiedData.value.account)
+  if (newStatus === 'verified' && verifiedData.value?.user) {
+    await authInit(verifiedData.value.user, verifiedData.value.account ?? null)
     await nextTick()
     await navigateTo('/dashboard')
   }
@@ -314,8 +314,8 @@ watch(callStatus, async (newStatus) => {
 watch(telegramStatus, async (newStatus) => {
   if (newStatus === 'verified' && telegramVerifiedData.value) {
     const data = telegramVerifiedData.value as any
-    if (data.user && data.account) {
-      await authInit(data.user, data.account)
+    if (data.user) {
+      await authInit(data.user, data.account ?? null)
       await nextTick()
       await navigateTo('/dashboard')
     }

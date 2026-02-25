@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
   if (body.data.firstName !== undefined || body.data.lastName !== undefined) {
     // Получаем текущие данные для формирования full_name
     const { data: currentUser } = await supabase
-      .from('users')
+      .schema('client').from('users')
       .select('first_name, last_name, middle_name')
       .eq('id', body.userId)
       .single()
@@ -71,7 +71,7 @@ export default defineEventHandler(async (event) => {
 
   // Обновляем пользователя
   const { data: updated, error } = await supabase
-    .from('users')
+    .schema('client').from('users')
     .update(dbData)
     .eq('id', body.userId)
     .select(`

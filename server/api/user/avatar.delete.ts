@@ -6,8 +6,9 @@ export default defineEventHandler(async (event) => {
 
   const supabase = serverSupabaseServiceRole(event)
 
-  // Get current avatar URL to extract filename
+  // Get current avatar URL to extract filename (схема client)
   const { data: user } = await supabase
+    .schema('client')
     .from('users')
     .select('avatar')
     .eq('id', userId)
@@ -26,6 +27,7 @@ export default defineEventHandler(async (event) => {
 
   // Clear avatar in user record
   const { error: updateError } = await supabase
+    .schema('client')
     .from('users')
     .update({ avatar: null })
     .eq('id', userId)

@@ -46,7 +46,7 @@ export default defineEventHandler(async (event): Promise<UpdateNicknameResponse>
 
   // Обновляем пользователя
   const { data, error } = await supabase
-    .from('users')
+    .schema('client').from('users')
     .update({ nickname })
     .eq('id', sessionUser.id)
     .select('nickname')

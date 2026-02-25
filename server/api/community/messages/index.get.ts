@@ -60,7 +60,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { data: account } = await supabase
-    .from('accounts')
+    .schema('client').from('accounts')
     .select('address_city, address_district, address_building')
     .eq('id', sessionUser.accountId)
     .single()

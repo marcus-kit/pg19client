@@ -28,8 +28,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Комментарий не может быть пустым' })
   }
 
-  // Проверяем, что тикет принадлежит пользователю
+  // Проверяем, что тикет принадлежит пользователю (схема client)
   const { data: ticket, error: ticketError } = await supabase
+    .schema('client')
     .from('tickets')
     .select('id, status')
     .eq('id', ticketId)
@@ -47,6 +48,7 @@ export default defineEventHandler(async (event) => {
 
   // Получаем имя пользователя
   const { data: user } = await supabase
+    .schema('client')
     .from('users')
     .select('first_name, last_name')
     .eq('id', sessionUser.id)
@@ -56,6 +58,7 @@ export default defineEventHandler(async (event) => {
 
   // Создаём комментарий
   const { data: comment, error: commentError } = await supabase
+    .schema('client')
     .from('ticket_comments')
     .insert({
       ticket_id: ticketId,
@@ -77,6 +80,7 @@ export default defineEventHandler(async (event) => {
   // Если тикет был в статусе pending, возвращаем в open
   if (ticket.status === 'pending') {
     await supabase
+      .schema('client')
       .from('tickets')
       .update({ status: 'open' })
       .eq('id', ticketId)

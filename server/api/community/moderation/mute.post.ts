@@ -37,7 +37,7 @@ export default defineEventHandler(async (event) => {
 
   // Также проверяем глобальную роль admin
   const { data: user } = await supabase
-    .from('users')
+    .schema('client').schema('client').from('users')
     .select('role')
     .eq('id', sessionUser.id)
     .single()
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
 
   // Проверяем что цель не админ
   const { data: targetUser } = await supabase
-    .from('users')
+    .schema('client').schema('client').from('users')
     .select('role')
     .eq('id', body.userId)
     .single()

@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
 
   // Получаем статус запроса
   const { data: authRequest, error } = await supabase
-    .from('telegram_auth_requests')
+    .schema('client').from('telegram_auth_requests')
     .select('status, expires_at')
     .eq('token', token)
     .single()
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event) => {
   if (authRequest.status === 'pending' && new Date(authRequest.expires_at) < new Date()) {
     // Обновляем статус на expired
     await supabase
-      .from('telegram_auth_requests')
+      .schema('client').from('telegram_auth_requests')
       .update({ status: 'expired' })
       .eq('token', token)
 

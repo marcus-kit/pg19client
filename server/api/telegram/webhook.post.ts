@@ -73,7 +73,7 @@ export default defineEventHandler(async (event) => {
 
   // Ищем запрос авторизации по токену
   const { data: authRequest, error: findError } = await supabase
-    .from('telegram_auth_requests')
+    .schema('client').from('telegram_auth_requests')
     .select('*')
     .eq('token', token)
     .eq('status', 'pending')
@@ -93,7 +93,7 @@ export default defineEventHandler(async (event) => {
   // Проверяем что токен не истёк
   if (new Date(authRequest.expires_at) < new Date()) {
     await supabase
-      .from('telegram_auth_requests')
+      .schema('client').from('telegram_auth_requests')
       .update({ status: 'expired' })
       .eq('id', authRequest.id)
 
@@ -109,6 +109,7 @@ export default defineEventHandler(async (event) => {
   // Для login flow: проверяем что telegram_id привязан к какому-то пользователю
   if (authRequest.purpose === 'login') {
     const { data: existingUser, error: userError } = await supabase
+      .schema('client')
       .from('users')
       .select('id, first_name, status')
       .eq('telegram_id', from.id.toString())
@@ -137,6 +138,7 @@ export default defineEventHandler(async (event) => {
   // Для link flow: проверяем что telegram_id не занят другим пользователем
   if (authRequest.purpose === 'link') {
     const { data: occupiedUser } = await supabase
+      .schema('client')
       .from('users')
       .select('id')
       .eq('telegram_id', from.id.toString())
@@ -155,7 +157,7 @@ export default defineEventHandler(async (event) => {
 
   // Обновляем запрос авторизации
   const { error: updateError } = await supabase
-    .from('telegram_auth_requests')
+    .schema('client').from('telegram_auth_requests')
     .update({
       status: 'verified',
       telegram_id: from.id,

@@ -10,7 +10,7 @@
 export type SubscriptionStatus = 'active' | 'paused' | 'cancelled'
 
 export interface Service {
-  id: number
+  id: string | number
   name: string
   slug: string | null
   description: string | null
@@ -37,9 +37,9 @@ export interface ServiceEquipment {
 }
 
 export interface Subscription {
-  id: number
-  accountId: number
-  serviceId: number
+  id: string | number
+  accountId: string | number
+  serviceId: string | number
   status: SubscriptionStatus
   startedAt: string
   expiresAt: string | null
@@ -47,7 +47,6 @@ export interface Subscription {
   isPrimary: boolean
   createdAt: string
   updatedAt: string
-  // Joined data
   service?: Service
 }
 

@@ -1,104 +1,44 @@
 /**
  * GET /api/auth/call-verify/complete/[token]
- * Завершение авторизации после получения Realtime события verified
- * Создаёт сессию и возвращает данные пользователя
+ * Завершение авторизации по звонку: сессия + данные пользователя
  */
 export default defineEventHandler(async (event) => {
   const token = getRouterParam(event, 'token')
+  if (!token) throw createError({ statusCode: 400, message: 'Token обязателен' })
 
-  if (!token) {
-    throw createError({
-      statusCode: 400,
-      message: 'Token обязателен'
+  const prisma = usePrisma()
+  const request = await prisma.phoneVerificationRequest.findFirst({
+    where: { token, status: 'verified' }
+  })
+  if (!request) {
+    throw createError({ statusCode: 404, message: 'Запрос не найден или не подтверждён' })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: request.user_id },
+    select: { id: true, first_name: true, last_name: true, middle_name: true, phone: true, email: true, telegram_username: true, telegram_id: true, birth_date: true, avatar: true, vk_id: true }
+  })
+  if (!user) throw createError({ statusCode: 500, message: 'Ошибка загрузки данных пользователя' })
+
+  let account: { id: string; contract_id: string | null; contract_number: string; balance: unknown; status: string; address_full: string | null; start_date: Date | null } | null = null
+  if (request.account_id) {
+    account = await prisma.account.findUnique({
+      where: { id: request.account_id },
+      select: { id: true, contract_id: true, contract_number: true, balance: true, status: true, address_full: true, start_date: true }
     })
   }
 
-  const supabase = useSupabaseServer()
-
-  // Ищем verified запрос по токену
-  const { data: request, error: requestError } = await supabase
-    .from('phone_verification_requests')
-    .select('*')
-    .eq('token', token)
-    .eq('status', 'verified')
-    .single()
-
-  if (requestError || !request) {
-    throw createError({
-      statusCode: 404,
-      message: 'Запрос не найден или не подтверждён'
+  let tariffName = 'Не подключен'
+  if (account?.contract_id) {
+    const services = await prisma.contractService.findMany({
+      where: { contract_id: account.contract_id, is_active: true },
+      select: { name: true, type: true }
     })
+    const internet = services.find(s => s.type === 'internet')
+    tariffName = internet?.name ?? services[0]?.name ?? tariffName
   }
 
-  // Загружаем данные пользователя
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select(`
-      id,
-      first_name,
-      last_name,
-      middle_name,
-      phone,
-      email,
-      telegram_username,
-      telegram_id,
-      birth_date,
-      avatar,
-      vk_id
-    `)
-    .eq('id', request.user_id)
-    .single()
-
-  if (userError || !user) {
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка загрузки данных пользователя'
-    })
-  }
-
-  // Загружаем данные аккаунта
-  const { data: account, error: accountError } = await supabase
-    .from('accounts')
-    .select(`
-      id,
-      contract_number,
-      balance,
-      status,
-      address_full,
-      start_date
-    `)
-    .eq('id', request.account_id)
-    .single()
-
-  if (accountError || !account) {
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка загрузки данных аккаунта'
-    })
-  }
-
-  // Получаем подписки для определения тарифа
-  const { data: subscriptions } = await supabase
-    .from('subscriptions')
-    .select(`
-      id,
-      status,
-      services (
-        id,
-        name,
-        type
-      )
-    `)
-    .eq('account_id', account.id)
-    .eq('status', 'active')
-
-  const internetSub = subscriptions?.find((s: any) => s.services?.type === 'internet')
-  const tariffName = internetSub?.services?.name || 'Не подключен'
-
-  // Создаём сессию авторизации
-  await createUserSession(event, user.id, account.id, 'phone', request.phone)
-
-  // Сбрасываем rate limit после успешного входа
+  await createUserSession(event, user.id, account?.id ?? null, 'phone', request.phone)
   const clientIp = getClientIdentifier(event)
   resetRateLimit(clientIp, 'auth:call-verify')
 
@@ -106,25 +46,27 @@ export default defineEventHandler(async (event) => {
     success: true,
     user: {
       id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      middleName: user.middle_name,
-      phone: user.phone || '',
-      email: user.email || '',
+      firstName: user.first_name ?? '',
+      lastName: user.last_name ?? '',
+      middleName: user.middle_name ?? '',
+      phone: user.phone ?? '',
+      email: user.email ?? '',
       telegram: user.telegram_username ? `@${user.telegram_username}` : '',
-      telegramId: user.telegram_id || null,
-      vkId: user.vk_id || '',
-      avatar: user.avatar || null,
-      birthDate: user.birth_date || null,
+      telegramId: user.telegram_id ?? null,
+      vkId: user.vk_id ?? '',
+      avatar: user.avatar ?? null,
+      birthDate: user.birth_date ?? null,
       role: 'user'
     },
-    account: {
-      contractNumber: account.contract_number,
-      balance: account.balance,
-      status: account.status,
-      tariff: tariffName,
-      address: account.address_full || '',
-      startDate: account.start_date
-    }
+    account: account
+      ? {
+          contractNumber: account.contract_number,
+          balance: Number(account.balance),
+          status: account.status,
+          tariff: tariffName,
+          address: account.address_full ?? '',
+          startDate: account.start_date
+        }
+      : null
   }
 })

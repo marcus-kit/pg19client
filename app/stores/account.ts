@@ -32,7 +32,7 @@ export const useAccountStore = defineStore('account', {
   },
 
   actions: {
-    setAccount(account: Account) {
+    setAccount(account: Account | null) {
       this.account = account
     },
 
