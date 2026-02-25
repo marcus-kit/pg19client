@@ -279,11 +279,11 @@ onUnmounted(() => {
           </template>
           <!-- Бейджи статуса -->
           <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
-            Подтверждён
-          </UiBadge>
-          <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
-            Не подтверждён
-          </UiBadge>
+          Подтверждён
+        </UiBadge>
+        <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
+          Не подтверждён
+        </UiBadge>
         </div>
       </div>
       

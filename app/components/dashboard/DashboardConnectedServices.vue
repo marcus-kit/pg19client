@@ -65,7 +65,7 @@ function openInvoice(invoiceId: string): void {
 </script>
 
 <template>
-  <section>
+<section>
     <!-- Контейнер со счетами -->
     <UiCard padding="lg" class="space-y-4">
       <!-- Заголовок и ссылка "Перейти к счетам" -->
@@ -122,7 +122,7 @@ function openInvoice(invoiceId: string): void {
               <span class="dashboard-invoices__amount">
                 {{ formatKopeks(invoice.amount) }}<span class="dashboard-invoices__currency">₽</span>
               </span>
-            </div>
+              </div>
             <div class="dashboard-invoices__col dashboard-invoices__col--actions" @click.stop>
               <button
                 v-if="!unpaidStatuses.includes(invoice.status)"
@@ -210,13 +210,13 @@ function openInvoice(invoiceId: string): void {
             </div>
           </div>
         </div>
-      </div>
+    </div>
 
       <div v-else class="py-8">
-        <UiEmptyState
+      <UiEmptyState
           icon="heroicons:document-text"
           title="Счетов не найдено"
-        />
+      />
       </div>
     </UiCard>
   </section>
