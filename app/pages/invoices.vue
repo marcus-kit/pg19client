@@ -12,7 +12,7 @@
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
-import { useInvoiceServices } from '~/composables/useInvoiceServices'
+import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoiceServices'
 
 definePageMeta({
   middleware: 'auth'
@@ -114,6 +114,45 @@ const filteredInvoices = computed(() => {
   }
   return invoices.value
 })
+
+// Детали счёта для модалки и раскрытой карточки (состав услуг) — загружаются из БД.
+const defaultInvoiceDetails: InvoiceDetails = {
+  addresses: [],
+  totalAmount: 0,
+  balance: 0,
+  totalToPay: 0
+}
+
+const invoiceDetailsData = ref<InvoiceDetails>(defaultInvoiceDetails)
+const invoiceDetailsLoading = ref(false)
+
+const activeInvoiceDetailsId = computed(
+  () =>
+    (showServicesModal.value && selectedInvoiceForServices.value?.id) ||
+    expandedInvoiceId.value ||
+    null
+)
+
+async function loadInvoiceDetails(id: string) {
+  invoiceDetailsLoading.value = true
+  try {
+    const data = await invoiceServices.fetchInvoiceDetails(id)
+    invoiceDetailsData.value = data
+  } catch {
+    invoiceDetailsData.value = defaultInvoiceDetails
+  } finally {
+    invoiceDetailsLoading.value = false
+  }
+}
+
+watch(activeInvoiceDetailsId, (id) => {
+  if (!id) {
+    invoiceDetailsData.value = defaultInvoiceDetails
+    return
+  }
+  invoiceDetailsData.value = defaultInvoiceDetails
+  loadInvoiceDetails(id)
+}, { immediate: true })
 
 // Путь к изображению счета
 const invoiceImageSrc = computed(() => {
@@ -425,7 +464,10 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
           <UiCard v-if="expandedInvoiceId === invoice.id" class="mt-2 border-t-0 rounded-t-none">
             <div class="space-y-6">
               <h3 class="text-lg font-bold text-[var(--text-primary)] mb-4">Состав услуг:</h3>
-              
+              <div v-if="invoiceDetailsLoading && activeInvoiceDetailsId === invoice.id" class="py-6 text-center text-[var(--text-muted)]">
+                Загрузка…
+              </div>
+              <template v-else>
               <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
                 <!-- Адрес -->
                 <div class="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/5 border-l-4 border-primary">
@@ -515,6 +557,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                   </UiButton>
                 </div>
               </div>
+              </template>
             </div>
           </UiCard>
         </Transition>
@@ -562,7 +605,10 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 
             <!-- Контентная область (scrollable) -->
             <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" @wheel="handleModalWheel">
-              <div class="space-y-6">
+              <div v-if="invoiceDetailsLoading" class="flex items-center justify-center py-12 text-[var(--text-muted)]">
+                <span>Загрузка состава услуг…</span>
+              </div>
+              <div v-else class="space-y-6">
                 <div v-for="(address, idx) in invoiceDetailsData.addresses" :key="idx" class="space-y-4">
                   <!-- Адрес -->
                   <div class="p-4 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/5 border-l-4 border-primary">
