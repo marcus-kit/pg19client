@@ -60,6 +60,7 @@ const form = reactive({
 
 const isLoading = ref(false)  // Загрузка формы договора
 const error = ref('')         // Общая ошибка (для договора)
+const showPassword = ref(false) // Показать/скрыть пароль (глаз)
 
 // Модальное окно регистрации
 const showRegisterModal = ref(false)
@@ -101,6 +102,51 @@ function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
   error.value = ''
   if (method !== 'call') resetCall()
   if (method !== 'telegram') resetTelegram()
+}
+
+// Только цифры (номер договора)
+function sanitizeContractNumber(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+// Разрешить только цифры и служебные клавиши в поле номера договора
+function onContractKeydown(e: KeyboardEvent): void {
+  const key = e.key
+  if (key >= '0' && key <= '9') return
+  if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
+  if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
+  e.preventDefault()
+}
+
+// При вставке в поле договора — оставить только цифры
+function onContractPaste(e: ClipboardEvent): void {
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  form.contractNumber = sanitizeContractNumber(form.contractNumber + pasted)
+}
+
+// Только латиница, цифры и символы — без русских букв (печатные ASCII)
+function sanitizePassword(value: string): string {
+  return value.replace(/[^\x20-\x7E]/g, '')
+}
+
+// Разрешить только печатные ASCII и служебные клавиши в поле пароля
+function onPasswordKeydown(e: KeyboardEvent): void {
+  const key = e.key
+  if (key.length === 1) {
+    const code = key.charCodeAt(0)
+    if (code >= 0x20 && code <= 0x7E) return
+  }
+  if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
+  if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
+  e.preventDefault()
+}
+
+// При вставке в поле пароля — оставить только латиницу, цифры и символы
+function onPasswordPaste(e: ClipboardEvent): void {
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  form.password = sanitizePassword(form.password + pasted)
 }
 
 // Запуск Telegram авторизации — создаёт токен и показывает deeplink
@@ -295,7 +341,7 @@ onUnmounted(() => {
          HEADER — логотип (ведёт на дашборд)
          ===================================================================== -->
     <header class="py-6">
-      <div class="container mx-auto px-4">
+      <div class="container mx-auto max-w-5xl px-4">
         <NuxtLink to="/dashboard" class="flex items-center gap-3 w-fit">
           <img src="/logo.png" alt="PG19" class="h-10" />
         </NuxtLink>
@@ -367,7 +413,6 @@ onUnmounted(() => {
                 variant="primary"
                 block
                 :loading="telegramLoading"
-                class="!bg-[#0088cc] hover:!bg-[#0077b5]"
                 @click="startTelegramAuth"
               >
                 <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
@@ -447,21 +492,50 @@ onUnmounted(() => {
                ДОГОВОР — авторизация по номеру договора и паролю
                ----------------------------------------------------------------- -->
           <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
-            <UiInput
-              v-model="form.contractNumber"
-              type="text"
-              label="Номер договора"
-              placeholder="12345"
-              inputmode="numeric"
-            />
+            <div class="w-full">
+              <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                Номер договора
+              </label>
+              <input
+                :value="form.contractNumber"
+                type="text"
+                inputmode="numeric"
+                autocomplete="username"
+                placeholder="12345"
+                maxlength="20"
+                class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                @input="form.contractNumber = sanitizeContractNumber(($event.target as HTMLInputElement).value)"
+                @keydown="onContractKeydown"
+                @paste="onContractPaste"
+              />
+            </div>
 
-            <UiInput
-              v-model="form.password"
-              type="password"
-              label="Пароль"
-              placeholder="Пароль"
-              autocomplete="current-password"
-            />
+            <div class="w-full">
+              <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
+                Пароль
+              </label>
+              <div class="relative">
+                <input
+                  :value="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  autocomplete="current-password"
+                  class="w-full px-4 py-3 pr-12 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
+                  @input="form.password = sanitizePassword(($event.target as HTMLInputElement).value)"
+                  @keydown="onPasswordKeydown"
+                  @paste="onPasswordPaste"
+                />
+                <button
+                  type="button"
+                  :aria-label="showPassword ? 'Скрыть пароль' : 'Показать пароль'"
+                  class="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-white/5 transition-colors"
+                  @click="showPassword = !showPassword"
+                >
+                  <Icon :name="showPassword ? 'heroicons:eye-slash' : 'heroicons:eye'" class="w-5 h-5" />
+                </button>
+              </div>
+            </div>
 
             <UiButton type="submit" variant="primary" block :loading="isLoading">
               Войти

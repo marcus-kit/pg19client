@@ -1,18 +1,16 @@
 <script setup lang="ts">
 /**
- * UiButton — базовая кнопка с вариантами стилей
+ * UiButton — единая кнопка для всего проекта
  *
  * Варианты (variant):
- * - primary  — градиент оранжевый→розовый, основное действие
- * - secondary — прозрачная с рамкой
- * - ghost    — прозрачная без рамки
- * - danger   — красная, деструктивное действие
- * - success  — зелёная, подтверждение
+ * - primary   — градиент оранжевый→розовый, основное действие (как «Оплатить»)
+ * - secondary — полупрозрачная с рамкой, вторичное действие
+ * - ghost     — прозрачная без рамки, мягкое действие
+ * - danger    — красная, деструктивное действие
+ * - success   — зелёная, подтверждение
  *
  * Размеры (size): sm, md, lg
  * Модификаторы: block (100% ширина), loading (спиннер), disabled
- *
- * Стили в глобальном CSS (не scoped) — для возможности переопределения извне
  */
 
 interface Props {
@@ -43,33 +41,47 @@ withDefaults(defineProps<Props>(), {
     ]"
     :disabled="disabled || loading"
   >
-    <!-- Спиннер при загрузке -->
-    <Icon v-if="loading" name="heroicons:arrow-path" class="w-4 h-4 animate-spin" />
+    <Icon v-if="loading" name="heroicons:arrow-path" class="u-btn__spinner" />
     <slot />
   </button>
 </template>
 
-<!-- Глобальные стили (без scoped) для возможности переопределения через !important -->
 <style>
+/* =============================================================================
+   UiButton — единая дизайн-система кнопок
+   За основу: кнопка «Оплатить» (primary, градиент, тень, hover-подъём)
+   Все варианты разделяют: скругление, вес шрифта, переходы, отступы
+   ============================================================================= */
+
 .u-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
-  border-radius: 0.5rem;
-  transition: all 0.3s ease;
+  border-radius: 0.625rem;
+  transition: all 0.2s ease;
   cursor: pointer;
   border: none;
+  outline: none;
+  text-decoration: none;
+  line-height: 1.25;
+  letter-spacing: 0.01em;
 }
 
+.u-btn:focus-visible {
+  box-shadow: 0 0 0 2px var(--bg-base), 0 0 0 4px #F7941D;
+}
+
+/* ---------- Размеры ---------- */
+
 .u-btn--sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.875rem;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.8125rem;
   gap: 0.375rem;
 }
 
 .u-btn--md {
-  padding: 0.625rem 1rem;
+  padding: 0.6rem 1.15rem;
   font-size: 0.875rem;
   gap: 0.5rem;
 }
@@ -80,28 +92,48 @@ withDefaults(defineProps<Props>(), {
   gap: 0.5rem;
 }
 
+/* ---------- PRIMARY — градиент, как «Оплатить» ---------- */
+
 .u-btn--primary {
-  background: linear-gradient(to right, #F7941D, #E91E8C) !important;
-  color: white !important;
-  box-shadow: 0 10px 15px -3px rgba(247, 148, 29, 0.3);
+  background: linear-gradient(135deg, #F7941D, #E91E8C);
+  color: #fff;
+  box-shadow: 0 4px 14px -2px rgba(247, 148, 29, 0.35);
 }
 
 .u-btn--primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgba(247, 148, 29, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -4px rgba(247, 148, 29, 0.45);
+  filter: brightness(1.05);
 }
 
+.u-btn--primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px -2px rgba(247, 148, 29, 0.3);
+}
+
+/* ---------- SECONDARY — рамка + hover акцент ---------- */
+
 .u-btn--secondary {
-  background: transparent;
+  background: var(--glass-bg);
   color: var(--btn-secondary-text);
-  border: 2px solid var(--btn-secondary-border);
+  border: 1.5px solid var(--btn-secondary-border);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .u-btn--secondary:hover {
   border-color: #F7941D;
   color: #F7941D;
   background: var(--btn-secondary-hover-bg);
+  box-shadow: 0 4px 12px -2px rgba(247, 148, 29, 0.15);
+  transform: translateY(-1px);
 }
+
+.u-btn--secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ---------- GHOST — мягкая, прозрачная ---------- */
 
 .u-btn--ghost {
   background: transparent;
@@ -113,26 +145,49 @@ withDefaults(defineProps<Props>(), {
   background: var(--glass-bg);
 }
 
+.u-btn--ghost:active {
+  background: var(--glass-hover-bg);
+}
+
+/* ---------- DANGER — красная ---------- */
+
 .u-btn--danger {
-  background: #dc2626;
-  color: white;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+  box-shadow: 0 4px 14px -2px rgba(220, 38, 38, 0.3);
 }
 
 .u-btn--danger:hover {
-  background: #b91c1c;
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -4px rgba(220, 38, 38, 0.4);
+  filter: brightness(1.05);
 }
 
+.u-btn--danger:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px -2px rgba(220, 38, 38, 0.25);
+}
+
+/* ---------- SUCCESS — зелёная ---------- */
+
 .u-btn--success {
-  background: #00A651;
-  color: white;
-  box-shadow: 0 10px 15px -3px rgba(0, 166, 81, 0.3);
+  background: linear-gradient(135deg, #00A651, #059669);
+  color: #fff;
+  box-shadow: 0 4px 14px -2px rgba(0, 166, 81, 0.3);
 }
 
 .u-btn--success:hover {
-  background: #008541;
-  transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgba(0, 166, 81, 0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px -4px rgba(0, 166, 81, 0.4);
+  filter: brightness(1.05);
 }
+
+.u-btn--success:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px -2px rgba(0, 166, 81, 0.25);
+}
+
+/* ---------- Модификаторы ---------- */
 
 .u-btn--block {
   width: 100%;
@@ -142,5 +197,16 @@ withDefaults(defineProps<Props>(), {
   opacity: 0.5;
   cursor: not-allowed;
   pointer-events: none;
+}
+
+.u-btn__spinner {
+  width: 1rem;
+  height: 1rem;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

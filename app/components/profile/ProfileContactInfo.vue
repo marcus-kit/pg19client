@@ -255,7 +255,7 @@ onUnmounted(() => {
             size="sm"
             variant="primary"
             :loading="telegramLoading"
-            class="!bg-[#0088cc] hover:!bg-[#0077b5] text-xs px-3 py-1"
+            
             @click="startTelegramLink"
           >
             <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1" />
@@ -279,11 +279,11 @@ onUnmounted(() => {
           </template>
           <!-- Бейджи статуса -->
           <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
-            Подтверждён
-          </UiBadge>
-          <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
-            Не подтверждён
-          </UiBadge>
+          Подтверждён
+        </UiBadge>
+        <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
+          Не подтверждён
+        </UiBadge>
         </div>
       </div>
       

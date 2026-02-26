@@ -12,8 +12,7 @@
  */
 
 import type { Ticket, TicketCategory } from '~/types/ticket'
-import type { ChatMessage } from '~/types/chat'
-import { formatFileSize, formatRelativeDate } from '~/composables/useFormatters'
+import { formatRelativeDate } from '~/composables/useFormatters'
 
 definePageMeta({
   middleware: 'auth'
@@ -25,7 +24,6 @@ definePageMeta({
 
 const route = useRoute()
 const router = useRouter()
-const chatStore = useChatStore()
 const userStore = useUserStore()
 const { fetchTickets, createTicket } = useTickets()
 const { fetchFaq } = useFaq()
@@ -37,18 +35,7 @@ const { fetchFaq } = useFaq()
 const { tickets, pending: ticketsPending, error: ticketsError, refresh: refreshTickets } = await fetchTickets()
 const { faq, pending: faqPending } = await fetchFaq()
 
-// useChat — composable для работы с чатом (session, messages, send, upload)
-const {
-  session,
-  messages,
-  isLoading: chatLoading,
-  isSending,
-  isUploading,
-  error: chatError,
-  initSession,
-  uploadFile,
-  sendMessage
-} = useChat()
+// Bitrix24 чат — используем iframe вместо текущего чата
 
 // =============================================================================
 // STATE — локальное состояние страницы
@@ -60,16 +47,8 @@ const initialTab = (['faq', 'chat'].includes(route.query.tab as string)
   : 'chat') as 'faq' | 'chat'
 const activeTab = ref<'faq' | 'chat'>(initialTab)
 
-// Чат
-const messageText = ref('')                              // Текст сообщения в поле ввода
-const messagesContainer = ref<HTMLElement | null>(null)  // Ref на контейнер сообщений (для скролла)
-const chatInitialized = ref(false)                       // Флаг: чат уже инициализирован
-const isOperatorTyping = ref(false)                      // Показать индикатор "оператор печатает"
-
-// Вложения в чате
-const fileInput = ref<HTMLInputElement | null>(null)     // Скрытый input[type=file]
-const pendingFile = ref<File | null>(null)               // Выбранный файл (до отправки)
-const pendingPreview = ref<string | null>(null)          // Preview URL для изображений
+// Bitrix24 чат URL
+const bitrix24ChatUrl = 'https://pg19.bitrix24.ru/online/testbot2'
 
 // FAQ
 const expandedFaq = ref<number | null>(null)             // ID развёрнутого вопроса
@@ -87,8 +66,7 @@ const newTicket = ref({
 // COMPUTED
 // =============================================================================
 
-// Отслеживаем последнее сообщение — скрываем typing когда пришёл ответ
-const lastMessage = computed(() => messages.value[messages.value.length - 1])
+// Удалено: больше не используем текущий чат
 
 // Количество активных тикетов (для badge в табе)
 const activeTicketsCount = computed(() => {
@@ -99,8 +77,7 @@ const activeTicketsCount = computed(() => {
 // CONSTANTS
 // =============================================================================
 
-const ACCEPT_FILES = 'image/jpeg,image/png,image/gif,image/webp,.pdf,.doc,.docx,.xls,.xlsx'
-const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
+// Удалено: константы для файлов больше не нужны
 
 // Конфигурация статусов тикетов для UI (цвета и лейблы)
 const statusConfig: Record<string, { label: string; variant: 'info' | 'warning' | 'success' | 'neutral'; color: string }> = {
@@ -125,139 +102,7 @@ const categories = [
 // METHODS
 // =============================================================================
 
-// Скролл к последнему сообщению
-function scrollToBottom() {
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
-    }
-  })
-}
-
-// Ленивая инициализация чата (только при открытии вкладки)
-async function initChatSession() {
-  if (chatInitialized.value) return
-  chatInitialized.value = true
-
-  // Пробуем восстановить существующую сессию из store
-  const savedSessionId = chatStore.sessionId
-  if (savedSessionId) {
-    try {
-      await initSession({ chatId: savedSessionId, userId: userStore.user?.id })
-      if (session.value) {
-          chatStore.setSessionId((session.value as { id: string }).id)
-        scrollToBottom()
-      }
-    } catch {
-      // Сессия не найдена — сбрасываем
-      chatStore.sessionId = null
-    }
-  }
-
-  // Создаём новую сессию если нет существующей
-  if (!savedSessionId && !session.value && userStore.isAuthenticated) {
-    await initSession({ userId: userStore.user?.id })
-    if (session.value) {
-        chatStore.setSessionId((session.value as { id: string }).id)
-      scrollToBottom()
-    }
-  }
-}
-
-// Открыть диалог выбора файла
-function openFileDialog() {
-  fileInput.value?.click()
-}
-
-// Обработка выбора файла
-function handleFileSelect(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
-  input.value = '' // Сброс input для повторного выбора того же файла
-
-  // Проверка размера
-  if (file.size > MAX_FILE_SIZE) {
-    alert('Размер файла не должен превышать 10 МБ')
-    return
-  }
-
-  pendingFile.value = file
-  // Создаём preview только для изображений
-  pendingPreview.value = file.type.startsWith('image/') ? URL.createObjectURL(file) : null
-}
-
-// Удалить выбранный файл
-function removePendingFile() {
-  pendingFile.value = null
-  if (pendingPreview.value) {
-    URL.revokeObjectURL(pendingPreview.value) // Освобождаем память
-    pendingPreview.value = null
-  }
-}
-
-// Определение типа отправителя
-const msgIsUser = (msg: ChatMessage) => msg.sender_type === 'user'
-const msgIsOperator = (msg: ChatMessage) => msg.sender_type === 'admin' || msg.sender_type === 'bot'
-const msgIsSystem = (msg: ChatMessage) => msg.sender_type === 'system'
-
-// Проверка типа вложения
-const msgIsImage = (msg: ChatMessage) => msg.content_type === 'image'
-const msgIsFile = (msg: ChatMessage) => msg.content_type === 'file'
-const msgHasAttachment = (msg: ChatMessage) => !!msg.attachment_url
-
-// Форматирование времени сообщения (ЧЧ:ММ)
-function formatMsgTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-}
-
-// Имя отправителя для отображения
-function getMsgSenderLabel(msg: ChatMessage): string {
-  if (msgIsOperator(msg)) return msg.sender_name || 'Оператор'
-  if (msgIsSystem(msg)) return 'Система'
-  return 'Вы'
-}
-
-// Отправка сообщения в чате
-async function handleSendMessage() {
-  // Проверяем что есть текст или файл
-  if ((!messageText.value.trim() && !pendingFile.value) || isSending.value || isUploading.value) return
-
-  const text = messageText.value
-  const file = pendingFile.value
-
-  // Очищаем поля сразу (optimistic UI)
-  messageText.value = ''
-  removePendingFile()
-
-  try {
-    // Загружаем файл если есть
-    let attachment
-    if (file) {
-      attachment = await uploadFile(file)
-    }
-
-    await sendMessage(text, attachment)
-    chatStore.clearUnread()
-
-    // Показываем typing с небольшой задержкой (имитация ответа)
-    setTimeout(() => {
-      isOperatorTyping.value = true
-    }, 300)
-  } catch {
-    // При ошибке восстанавливаем текст
-    messageText.value = text
-  }
-}
-
-// Отправка по Enter (Shift+Enter — перенос строки)
-function handleChatKeydown(e: KeyboardEvent) {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault()
-    handleSendMessage()
-  }
-}
+// Удалено: вся логика текущего чата заменена на Bitrix24 iframe
 
 // Переключение FAQ аккордеона
 function toggleFaq(id: number) {
@@ -319,7 +164,7 @@ function preventBodyScroll(prevent: boolean) {
   }
 }
 
-// Инициализация чата при загрузке страницы (если чат — активная вкладка)
+// Инициализация при загрузке страницы
 onMounted(() => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
@@ -327,7 +172,6 @@ onMounted(() => {
   }
   
   if (activeTab.value === 'chat') {
-    initChatSession()
     preventBodyScroll(true)
   }
 })
@@ -343,32 +187,13 @@ onUnmounted(() => {
 // WATCHERS
 // =============================================================================
 
-// Скрываем typing когда пришёл ответ от бота/оператора
-watch(lastMessage, (newMsg) => {
-  if (!newMsg) return
-  if (newMsg.sender_type === 'bot' || newMsg.sender_type === 'admin') {
-    isOperatorTyping.value = false
-  }
-})
-
-// Инициализация чата при переключении на вкладку
-watch(activeTab, async (tab) => {
+// Управление скроллом при переключении вкладок
+watch(activeTab, (tab) => {
   if (tab === 'chat') {
-    if (!chatInitialized.value) {
-      await initChatSession()
-    }
     preventBodyScroll(true)
   } else {
     preventBodyScroll(false)
   }
-})
-
-// Автоскролл при новых сообщениях
-watch(messages, scrollToBottom, { deep: true })
-
-// Автоскролл при появлении typing indicator
-watch(isOperatorTyping, (typing) => {
-  if (typing) scrollToBottom()
 })
 </script>
 
@@ -401,10 +226,6 @@ watch(isOperatorTyping, (typing) => {
         title="Чат с поддержкой"
       >
         <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 flex-shrink-0" />
-        <!-- Badge непрочитанных сообщений -->
-        <span v-if="chatStore.unreadCount > 0" class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-500 text-white text-[10px] flex items-center justify-center">
-          {{ chatStore.unreadCount > 9 ? '9+' : chatStore.unreadCount }}
-        </span>
       </button>
 
       <!-- FAQ -->
@@ -446,10 +267,6 @@ watch(isOperatorTyping, (typing) => {
         >
           <Icon name="heroicons:chat-bubble-left-right" class="w-5 h-5 flex-shrink-0" />
           <span>Чат с поддержкой</span>
-          <!-- Badge непрочитанных сообщений -->
-          <span v-if="chatStore.unreadCount > 0" class="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-red-500 text-white">
-            {{ chatStore.unreadCount }}
-          </span>
         </button>
 
         <!-- FAQ -->
@@ -482,7 +299,7 @@ watch(isOperatorTyping, (typing) => {
     <div v-if="activeTab === 'faq'" class="space-y-2 md:space-y-3">
       <!-- Loading skeleton -->
       <div v-if="faqPending" class="space-y-2 md:space-y-3">
-        <UiCard v-for="i in 5" :key="i" class="animate-pulse p-3 md:p-5">
+        <UiCard v-for="i in 5" :key="i" class="animate-pulse p-4">
           <div class="h-4 md:h-5 bg-[var(--glass-bg)] rounded w-3/4"></div>
         </UiCard>
       </div>
@@ -495,7 +312,7 @@ watch(isOperatorTyping, (typing) => {
           class="p-0 overflow-hidden cursor-pointer"
           @click="toggleFaq(item.id)"
         >
-          <div class="p-3 md:p-5">
+          <div class="p-4">
             <!-- Вопрос -->
             <div class="flex items-center justify-between gap-4">
               <h3 class="text-sm md:text-base font-medium text-[var(--text-primary)]">{{ item.question }}</h3>
@@ -517,7 +334,7 @@ watch(isOperatorTyping, (typing) => {
         </UiCard>
 
         <!-- CTA — не нашли ответ -->
-        <UiCard class="p-4 md:p-6 mt-4 md:mt-6">
+        <UiCard class="p-4 mt-4 md:mt-6">
           <div class="text-center">
             <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
               <Icon name="heroicons:chat-bubble-left-right" class="w-6 h-6 md:w-8 md:h-8 text-primary" />
@@ -534,10 +351,10 @@ watch(isOperatorTyping, (typing) => {
     </div>
 
     <!-- =====================================================================
-         Chat Tab — realtime чат с поддержкой
+         Chat Tab — Bitrix24 чат через iframe
          ===================================================================== -->
     <div v-if="activeTab === 'chat'" class="flex flex-col md:h-[calc(100vh-280px)] min-h-[500px] fixed inset-x-0 top-[120px] bottom-20 md:relative md:inset-x-auto md:bottom-auto md:top-0">
-      <div class="flex flex-col flex-1 h-full" style="background: var(--bg-surface);">
+      <div class="flex flex-col flex-1 h-full rounded-xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border);">
         <!-- Chat Header -->
         <div class="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0" style="border-color: var(--glass-border);">
           <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--glass-bg);">
@@ -546,217 +363,21 @@ watch(isOperatorTyping, (typing) => {
           <div class="flex-1 min-w-0">
             <h3 class="text-sm font-semibold text-[var(--text-primary)]">Чат с поддержкой</h3>
             <p class="text-xs text-[var(--text-muted)] truncate">
-              {{ session?.status === 'closed' ? 'Чат закрыт' : session ? 'Оператор онлайн' : 'Подключение...' }}
+              Онлайн консультация через Bitrix24
             </p>
           </div>
         </div>
 
-        <!-- Chat Loading -->
-        <div v-if="chatLoading" class="flex-1 flex items-center justify-center">
-          <Icon name="heroicons:arrow-path" class="w-8 h-8 text-primary animate-spin" />
+        <!-- Bitrix24 Chat iframe -->
+        <div class="flex-1 min-h-0 relative">
+          <iframe
+            :src="bitrix24ChatUrl"
+            class="w-full h-full border-0"
+            frameborder="0"
+            allow="microphone; camera"
+            title="Чат поддержки Bitrix24"
+          ></iframe>
         </div>
-
-        <!-- Chat Content -->
-        <template v-else>
-          <div class="flex flex-col flex-1 min-h-0">
-            <!-- Messages Area -->
-            <div
-              ref="messagesContainer"
-              class="flex-1 overflow-y-auto px-4 py-4 space-y-3 min-h-0 custom-scrollbar"
-            >
-            <!-- Welcome message (если нет сообщений) -->
-            <div v-if="messages.length === 0" class="text-center py-12">
-              <div class="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center" style="background: var(--glass-bg);">
-                <Icon name="heroicons:chat-bubble-left-right" class="w-6 h-6 text-primary" />
-              </div>
-              <h4 class="text-sm font-semibold text-[var(--text-primary)] mb-1">Добро пожаловать!</h4>
-              <p class="text-xs text-[var(--text-muted)]">
-                Напишите ваш вопрос и наш оператор ответит вам
-              </p>
-            </div>
-
-            <!-- Messages -->
-            <div
-              v-for="msg in messages"
-              :key="msg.id"
-              class="flex gap-2"
-              :class="msgIsUser(msg) ? 'flex-row-reverse' : 'flex-row'"
-            >
-              <!-- Аватар отправителя -->
-              <div
-                class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center"
-                :class="{
-                  'bg-primary/20': msgIsUser(msg),
-                  'bg-accent/20': msgIsOperator(msg),
-                  'bg-white/5': msgIsSystem(msg)
-                }"
-              >
-                <Icon
-                  :name="msgIsUser(msg) ? 'heroicons:user' : msgIsOperator(msg) ? 'heroicons:user-circle' : 'heroicons:information-circle'"
-                  class="w-3.5 h-3.5"
-                  :class="{
-                    'text-primary': msgIsUser(msg),
-                    'text-accent': msgIsOperator(msg),
-                    'text-[var(--text-muted)]': msgIsSystem(msg)
-                  }"
-                />
-              </div>
-
-              <!-- Блок сообщения -->
-              <div
-                class="max-w-[75%] rounded-xl px-3 py-2"
-                :class="{
-                  'bg-primary text-white': msgIsUser(msg),
-                  'bg-[var(--glass-bg)] text-[var(--text-primary)]': !msgIsUser(msg)
-                }"
-              >
-                <!-- Имя отправителя (только для не-пользователя) -->
-                <div
-                  v-if="!msgIsUser(msg)"
-                  class="text-xs font-medium mb-1"
-                  :class="{
-                    'text-accent': msgIsOperator(msg),
-                    'text-[var(--text-muted)]': msgIsSystem(msg)
-                  }"
-                >
-                  {{ getMsgSenderLabel(msg) }}
-                </div>
-
-                <!-- Текст сообщения -->
-                <p v-if="msg.content" class="text-sm whitespace-pre-wrap break-words">
-                  {{ msg.content }}
-                </p>
-
-                <!-- Вложение: изображение -->
-                <div v-if="msgIsImage(msg) && msgHasAttachment(msg)" class="mt-2">
-                  <a :href="msg.attachment_url!" target="_blank" class="block">
-                    <img
-                      :src="msg.attachment_url!"
-                      :alt="msg.attachment_name || 'Изображение'"
-                      class="max-w-full max-h-64 rounded-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    />
-                  </a>
-                </div>
-
-                <!-- Вложение: файл -->
-                <a
-                  v-else-if="msgIsFile(msg) && msgHasAttachment(msg)"
-                  :href="msg.attachment_url!"
-                  target="_blank"
-                  class="mt-2 flex items-center gap-2 p-2 rounded-lg transition-colors"
-                  :class="msgIsUser(msg) ? 'bg-white/10 hover:bg-white/20' : 'bg-white/5 hover:bg-white/10'"
-                >
-                  <Icon name="heroicons:document" class="w-5 h-5 flex-shrink-0" :class="msgIsUser(msg) ? 'text-white/80' : 'text-primary'" />
-                  <div class="flex-1 min-w-0">
-                    <p class="text-sm truncate">{{ msg.attachment_name }}</p>
-                    <p class="text-xs" :class="msgIsUser(msg) ? 'text-white/60' : 'text-[var(--text-muted)]'">
-                      {{ formatFileSize(msg.attachment_size) }}
-                    </p>
-                  </div>
-                  <Icon name="heroicons:arrow-down-tray" class="w-4 h-4 flex-shrink-0" :class="msgIsUser(msg) ? 'text-white/60' : 'text-[var(--text-muted)]'" />
-                </a>
-
-                <!-- Время отправки -->
-                <div
-                  class="text-[10px] mt-1"
-                  :class="msgIsUser(msg) ? 'text-white/70 text-right' : 'text-[var(--text-muted)]'"
-                >
-                  {{ formatMsgTime(msg.created_at) }}
-                </div>
-              </div>
-            </div>
-
-            <!-- Typing indicator -->
-            <div v-if="isOperatorTyping" class="flex gap-2">
-              <div class="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center bg-accent/20">
-                <Icon name="heroicons:user-circle" class="w-3.5 h-3.5 text-accent" />
-              </div>
-              <div class="bg-[var(--glass-bg)] rounded-xl px-3 py-2">
-                <div class="flex items-center gap-1">
-                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 0ms"></span>
-                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 150ms"></span>
-                  <span class="w-1.5 h-1.5 bg-accent rounded-full animate-bounce" style="animation-delay: 300ms"></span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Input Area -->
-          <div class="px-4 py-3 border-t flex-shrink-0" style="border-color: var(--glass-border);">
-            <!-- Error message -->
-            <div v-if="chatError" class="text-red-400 text-sm mb-2">{{ chatError }}</div>
-
-            <!-- Pending file preview -->
-            <div v-if="pendingFile" class="mb-3 p-2 rounded-lg flex items-center gap-2" style="background: var(--glass-bg);">
-              <img
-                v-if="pendingPreview"
-                :src="pendingPreview"
-                class="w-12 h-12 rounded object-cover flex-shrink-0"
-              />
-              <div v-else class="w-12 h-12 rounded bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Icon name="heroicons:document" class="w-6 h-6 text-primary" />
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="text-sm truncate text-[var(--text-primary)]">{{ pendingFile.name }}</p>
-                <p class="text-xs text-[var(--text-muted)]">{{ formatFileSize(pendingFile.size) }}</p>
-              </div>
-              <button
-                @click="removePendingFile"
-                class="p-1.5 rounded-lg hover:bg-white/10 transition-colors flex-shrink-0"
-              >
-                <Icon name="heroicons:x-mark" class="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
-            </div>
-
-            <!-- Hidden file input -->
-            <input
-              ref="fileInput"
-              type="file"
-              :accept="ACCEPT_FILES"
-              class="hidden"
-              @change="handleFileSelect"
-            />
-
-            <!-- Input row -->
-            <div class="flex items-end gap-2">
-              <!-- Attach button -->
-              <button
-                @click="openFileDialog"
-                :disabled="isSending || isUploading"
-                class="w-10 h-10 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/5"
-                style="background: var(--glass-bg);"
-                title="Прикрепить файл"
-              >
-                <Icon name="heroicons:paper-clip" class="w-4 h-4 text-[var(--text-muted)]" />
-              </button>
-
-              <!-- Text input -->
-              <textarea
-                v-model="messageText"
-                @keydown="handleChatKeydown"
-                placeholder="Напишите сообщение..."
-                rows="1"
-                class="flex-1 px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all resize-none max-h-32"
-                style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-                :disabled="isSending || isUploading"
-              ></textarea>
-
-              <!-- Send button -->
-              <button
-                @click="handleSendMessage"
-                :disabled="(!messageText.trim() && !pendingFile) || isSending || isUploading"
-                class="w-10 h-10 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-white transition-all"
-              >
-                <Icon
-                  :name="isSending || isUploading ? 'heroicons:arrow-path' : 'heroicons:paper-airplane'"
-                  class="w-4 h-4"
-                  :class="{ 'animate-spin': isSending || isUploading }"
-                />
-              </button>
-            </div>
-          </div>
-          </div>
-        </template>
       </div>
     </div>
 

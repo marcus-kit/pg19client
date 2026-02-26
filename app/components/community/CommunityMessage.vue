@@ -47,7 +47,7 @@ const formattedTime = computed(() => {
 // Display name: nickname > firstName
 const displayName = computed(() => {
   if (!props.message.user) return 'Аноним'
-  return props.message.user.firstName || 'Аноним'
+  return props.message.user.nickname || props.message.user.firstName || 'Аноним'
 })
 
 // =============================================================================

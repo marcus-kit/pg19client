@@ -3,8 +3,8 @@
  * DashboardBalanceCard — две карточки: статус услуги и подключение
  *
  * Особенности:
- * - Левая карточка: индикатор статуса (активен/заблокирован), дата оплаты, кнопка оплаты
- * - Правая карточка: статус подключения, услуга активна, адрес
+ * - Левая карточка: статус-пилюля (активен/заблокирован), договор, дата оплаты, сумма, кнопка оплаты
+ * - Правая карточка: статус подключения, адреса с раскрытием
  */
 
 // =============================================================================
@@ -41,6 +41,8 @@ const showAllAddresses = ref(false)
 // COMPUTED
 // =============================================================================
 
+const { formatKopeks, formatContractNumber } = useFormatters()
+
 // Следующая дата оплаты по дню договора (payDay); при отсутствии договора — null
 const nextPaymentDate = computed(() => {
   if (!accountStore.account) return null
@@ -55,33 +57,42 @@ const nextPaymentDate = computed(() => {
   }
   return next.toLocaleDateString('ru-RU', {
     day: 'numeric',
-    month: 'long'
+    month: 'long',
+    year: 'numeric'
   })
 })
 
-// Конфигурация статуса: нет договора / заблокирован / активен
+// Сумма к оплате по неоплаченным счетам (в копейках)
+const amountToPayKopeks = computed(() => {
+  return unpaidInvoices.value.reduce((s, inv) => s + inv.amount, 0)
+})
+
+// Конфигурация статуса — пилюля с точкой и текстом
 const statusConfig = computed(() => {
   if (!accountStore.account) {
     return {
       text: 'Нет активного договора',
-      color: 'bg-[var(--text-muted)]',
-      icon: 'heroicons:minus-circle',
-      iconColor: 'text-[var(--text-muted)]'
+      pillClass: 'bg-[var(--text-muted)]/25',
+      dotClass: 'bg-[var(--text-muted)]',
+      textClass: 'text-[var(--text-muted)]',
+      borderClass: 'border-[var(--text-muted)]/50'
     }
   }
   if (accountStore.isBlocked) {
     return {
       text: 'Заблокирован',
-      color: 'bg-red-500',
-      icon: 'heroicons:x-circle',
-      iconColor: 'text-red-400'
+      pillClass: 'bg-red-500/25',
+      dotClass: 'bg-red-400',
+      textClass: 'text-red-400',
+      borderClass: 'border-red-500/50'
     }
   }
   return {
     text: 'Активен',
-    color: 'bg-accent',
-    icon: 'heroicons:check-circle',
-    iconColor: 'text-accent'
+    pillClass: 'bg-accent/25',
+    dotClass: 'bg-accent',
+    textClass: 'text-accent',
+    borderClass: 'border-accent/50'
   }
 })
 
@@ -125,59 +136,51 @@ const visibleAddresses = computed(() => {
 // METHODS
 // =============================================================================
 
-// Обработчик клика на кнопку оплаты
 function handlePayClick(): void {
-  if (unpaidInvoices.value.length > 0) {
-    const first = unpaidInvoices.value[0]
-    if (first) {
-      window.open(`https://invoice.doka.team/invoice/${first.id}`, '_blank')
-    }
-  } else {
-    showAllPaidModal.value = true
-  }
+  navigateTo('/invoices?filter=unpaid')
 }
 </script>
 
 <template>
   <div class="space-y-4">
-    <!-- Карточка: Статус услуги -->
+    <!-- Карточка: Статус договора -->
     <UiCard hover>
-    <div class="flex items-start justify-between mb-4">
-      <div>
-        <p class="text-sm text-[var(--text-muted)] mb-1">Статус договора</p>
-        <div class="flex items-center gap-3 mt-2">
-          <span class="relative flex h-3 w-3">
-            <span
-              class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"
-              :class="statusConfig.color"
-            ></span>
-            <span
-              class="relative inline-flex rounded-full h-3 w-3"
-              :class="statusConfig.color"
-            ></span>
-          </span>
-          <span class="text-xl font-semibold text-[var(--text-primary)]">
-            {{ statusConfig.text }}
+      <!-- Верхняя строка: подпись + статус-пилюля -->
+      <div class="flex items-center justify-between gap-4 mb-5">
+        <p class="text-sm font-medium text-[var(--text-secondary)] mb-0">
+          Статус договора
+        </p>
+        <span
+          class="flex-shrink-0 inline-flex items-center gap-2.5 rounded-full py-2 px-4 text-base font-semibold border"
+          :class="[statusConfig.pillClass, statusConfig.textClass, statusConfig.borderClass]"
+        >
+          <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" :class="statusConfig.dotClass" aria-hidden="true" />
+          {{ statusConfig.text }}
+        </span>
+      </div>
+
+      <!-- Строки: подпись слева, значение справа -->
+      <div class="space-y-3 mb-5">
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">Договор:</span>
+          <span class="text-sm text-[var(--text-primary)]">№ {{ formatContractNumber(accountStore.account?.contractNumber) }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">След. платеж:</span>
+          <span class="text-sm text-[var(--text-primary)]">{{ nextPaymentDate ?? '—' }}</span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">К оплате:</span>
+          <span class="text-sm text-[var(--text-primary)]">
+            <span class="font-bold">{{ formatKopeks(amountToPayKopeks) }}</span>
+            <span class="font-normal"> ₽</span>
           </span>
         </div>
       </div>
-      <div class="icon-container">
-        <Icon :name="statusConfig.icon" class="w-6 h-6" :class="statusConfig.iconColor" />
-      </div>
-    </div>
 
-    <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2 text-[var(--text-muted)]">
-        <Icon name="heroicons:calendar" class="w-4 h-4" />
-        <span class="text-sm">
-          Следующая оплата
-          <span class="block md:inline text-[var(--text-primary)] font-medium md:ml-1">{{ nextPaymentDate ?? '—' }}</span>
-        </span>
-      </div>
-      <UiButton v-if="accountStore.account" size="sm" variant="secondary" @click="handlePayClick">
+      <UiButton v-if="accountStore.account" size="sm" variant="primary" class="w-full sm:w-auto" @click="handlePayClick">
         Оплатить сейчас
       </UiButton>
-    </div>
     </UiCard>
 
     <!-- Карточка: Подключение -->
@@ -195,7 +198,6 @@ function handlePayClick(): void {
       </div>
 
       <div class="space-y-4">
-        <!-- Список адресов подключения -->
         <p v-if="connectionAddresses.length === 0" class="text-sm text-[var(--text-muted)]">
           Нет данных об адресах подключения
         </p>
@@ -204,32 +206,21 @@ function handlePayClick(): void {
             <Icon name="heroicons:map-pin" class="w-4 h-4 text-[var(--text-muted)] mt-0.5 flex-shrink-0" />
             <span class="text-sm text-[var(--text-primary)] flex-1">{{ address }}</span>
           </div>
-          <div class="flex items-center gap-3 pl-7">
-            <span class="relative flex h-3 w-3">
-              <span
-                class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 bg-accent"
-              ></span>
-              <span
-                class="relative inline-flex rounded-full h-3 w-3 bg-accent"
-              ></span>
-            </span>
-            <span class="text-sm text-[var(--text-secondary)]">
-              Услуга активна
-            </span>
+          <div class="flex items-center gap-2 pl-7">
+            <span class="h-1.5 w-1.5 rounded-full bg-accent/70 flex-shrink-0" aria-hidden="true" />
+            <span class="text-sm text-[var(--text-secondary)]">Услуга активна</span>
           </div>
-          <!-- Разделитель между адресами (кроме последнего видимого) -->
           <div v-if="index < visibleAddresses.length - 1" class="pt-2 border-t" style="border-color: var(--glass-border);"></div>
         </div>
 
-        <!-- Кнопка разворачивания/сворачивания -->
         <button
           v-if="showExpandButton"
           @click="showAllAddresses = !showAllAddresses"
           class="w-full flex items-center justify-center gap-2 py-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
         >
           <span>{{ showAllAddresses ? 'Свернуть' : `Показать ещё ${connectionAddresses.length - 3}` }}</span>
-          <Icon 
-            name="heroicons:chevron-down" 
+          <Icon
+            name="heroicons:chevron-down"
             class="w-4 h-4 transition-transform duration-200"
             :class="{ 'rotate-180': showAllAddresses }"
           />

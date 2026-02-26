@@ -4,6 +4,8 @@
 // =============================================================================
 
 export default defineNuxtConfig({
+  ssr: false,
+
   // Дата совместимости — включает все изменения Nuxt до этой даты
   compatibilityDate: '2026-01-22',
 
@@ -41,12 +43,11 @@ export default defineNuxtConfig({
   // Модули Nuxt
   // ---------------------------------------------------------------------------
   modules: [
+    '@pinia/nuxt',                      // State management (первым!)
     '@nuxtjs/tailwindcss',              // CSS-фреймворк
     '@nuxt/icon',                       // Иконки (Heroicons, Simple Icons)
-    // Шрифт Outfit — self-hosted в public/fonts/, @font-face в main.css
     '@nuxtjs/color-mode',               // Переключение dark/light темы
-    '@pinia/nuxt',                      // State management
-    'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage (для кастомной авторизации!)
+    'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage
     '@nuxtjs/supabase'                  // Supabase клиент (только БД + Realtime, НЕ Auth)
   ],
 
@@ -86,9 +87,10 @@ export default defineNuxtConfig({
   // Цветовая тема
   // ---------------------------------------------------------------------------
   colorMode: {
-    classSuffix: '',     // Без суффикса: класс "dark", а не "dark-mode"
-    preference: 'dark',  // По умолчанию тёмная тема
-    fallback: 'dark'     // Fallback если preference не определён
+    classSuffix: '',      // Без суффикса: класс "dark", а не "dark-mode"
+    preference: 'system', // Автоопределение по prefers-color-scheme браузера
+    fallback: 'dark',     // Fallback если matchMedia недоступен
+    storageKey: 'pg19-theme' // Новый ключ — сбрасывает старое значение 'dark' из cookie
   },
 
   // ---------------------------------------------------------------------------
@@ -103,6 +105,15 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
       ]
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Vite — совместимость CJS-пакетов с ESM (cookie@1.x не экспортирует ESM)
+  // ---------------------------------------------------------------------------
+  vite: {
+    optimizeDeps: {
+      include: ['cookie']
     }
   }
 })

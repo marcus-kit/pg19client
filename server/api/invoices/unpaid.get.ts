@@ -24,7 +24,7 @@ export default defineEventHandler(async (event) => {
     accountId: sessionUser.accountId!,
     contractId: row.contract_id ?? '',
     status: 'pending' as InvoiceStatus,
-    amount: Number(row.total_amount ?? 0),
+    amount: Math.round(Number(row.total_amount ?? 0) * 100),
     description: row.operation_type ?? '',
     periodStart: null,
     periodEnd: null,

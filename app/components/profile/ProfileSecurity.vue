@@ -14,8 +14,6 @@ import { formatRelativeDate } from '~/composables/useFormatters'
 // =============================================================================
 
 const sessionsStore = useSessionsStore()
-const sessionsApi = useSessionsApi()
-const { logout } = useAuthInit()
 
 // =============================================================================
 // STATE — реактивное состояние
@@ -62,32 +60,18 @@ function handlePasswordChange(): void {
 }
 
 // Завершить одну сессию
-async function terminateSession(sessionId: string): Promise<void> {
-  if (!confirm('Завершить сессию?')) return
-  const { ok, currentSessionTerminated } = await sessionsApi.terminate(sessionId)
-  if (ok) {
+function terminateSession(sessionId: string): void {
+  if (confirm('Завершить сессию?')) {
     sessionsStore.remove(sessionId)
-    if (currentSessionTerminated) {
-      logout()
-      await navigateTo('/login')
-    }
   }
 }
 
 // Завершить все сессии кроме текущей
-async function terminateAllSessions(): Promise<void> {
-  if (!confirm('Завершить все сессии кроме текущей?')) return
-  const toTerminate = sessionsStore.sessions.filter(s => !s.current)
-  for (const s of toTerminate) {
-    const { ok, currentSessionTerminated } = await sessionsApi.terminate(s.id)
-    if (ok) {
-      sessionsStore.remove(s.id)
-      if (currentSessionTerminated) {
-        logout()
-        await navigateTo('/login')
-        return
-      }
-    }
+function terminateAllSessions(): void {
+  if (confirm('Завершить все сессии кроме текущей?')) {
+    sessionsStore.sessions
+      .filter(s => !s.current)
+      .forEach(s => sessionsStore.remove(s.id))
   }
 }
 </script>
