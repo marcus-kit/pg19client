@@ -34,8 +34,7 @@ export default defineEventHandler(async (event) => {
     })
   } else {
     // Восстановление: один активный договор — находим/создаём аккаунт и обновляем сессию
-    const token = getSessionToken(event)
-    if (token) {
+    {
       const asOwner = await prisma.contract.findMany({
         where: { owner_user_id: sessionUser.id, status: 'active' },
         select: { id: true }
@@ -109,10 +108,14 @@ export default defineEventHandler(async (event) => {
           })
           account = created
         }
-        await prisma.authSession.updateMany({
-          where: { session_token: token },
-          data: { account_id: account.id }
-        })
+        const jti = await getSessionJti(event)
+        if (jti) {
+          await refreshSessionAccount(event, sessionUser.id, account.id, jti)
+          await prisma.authSession.updateMany({
+            where: { id: jti },
+            data: { account_id: account.id }
+          })
+        }
       }
     }
   }

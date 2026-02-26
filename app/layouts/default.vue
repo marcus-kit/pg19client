@@ -65,10 +65,14 @@ function toggleTheme(): void {
 }
 
 // Выход из аккаунта
-function handleLogout(): void {
+async function handleLogout(): Promise<void> {
   showMoreMenu.value = false
-  logout()
-  navigateTo('/login')
+  try {
+    await $fetch('/api/auth/logout', { method: 'POST' })
+  } finally {
+    logout()
+    navigateTo('/login')
+  }
 }
 
 // -----------------------------------------------------------------------------

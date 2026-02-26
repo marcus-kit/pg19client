@@ -19,15 +19,16 @@ export function useSessionsApi() {
     }
   }
 
-  async function terminate(sessionId: string): Promise<boolean> {
+  async function terminate(sessionId: string): Promise<{ ok: boolean; currentSessionTerminated?: boolean }> {
     try {
-      await $fetch(`/api/user/sessions/${sessionId}`, {
-        method: 'DELETE'
-      })
-      return true
+      const res = await $fetch<{ success: boolean; currentSessionTerminated?: boolean }>(
+        `/api/user/sessions/${sessionId}`,
+        { method: 'DELETE' }
+      )
+      return { ok: true, currentSessionTerminated: res.currentSessionTerminated }
     } catch (error) {
       console.error('Failed to terminate session:', error)
-      return false
+      return { ok: false }
     }
   }
 

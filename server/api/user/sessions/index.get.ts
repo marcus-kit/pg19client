@@ -1,9 +1,9 @@
 import type { LoginSession } from '~/types/session'
-import { getSessionToken } from '../../../utils/userAuth'
+import { getSessionJti } from '../../../utils/userAuth'
 
 export default defineEventHandler(async (event): Promise<LoginSession[]> => {
   const sessionUser = await requireUser(event)
-  const currentToken = getSessionToken(event)
+  const currentJti = await getSessionJti(event)
 
   const prisma = usePrisma()
   const sessions = await prisma.authSession.findMany({
@@ -38,7 +38,7 @@ export default defineEventHandler(async (event): Promise<LoginSession[]> => {
       ip,
       location,
       lastActive: (s.expires_at ?? s.created_at).toISOString(),
-      current: currentToken ? s.session_token === currentToken : false
+      current: currentJti ? s.id === currentJti : false
     }
   })
 

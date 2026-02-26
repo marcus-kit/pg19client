@@ -26,7 +26,7 @@ export default defineEventHandler(async (event): Promise<GetModeratorsResponse> 
       user_id,
       role,
       user:users!community_members_user_id_fkey(
-        id, first_name, last_name, nickname, avatar
+        id, first_name, last_name, avatar
       )
     `)
     .eq('room_id', roomId)
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event): Promise<GetModeratorsResponse> 
 
   const moderators = (members || []).map(m => {
     const user = m.user as any
-    const displayName = user?.nickname || user?.first_name || 'Пользователь'
+    const displayName = user?.first_name || 'Пользователь'
     return {
       userId: m.user_id,
       displayName,

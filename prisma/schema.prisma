@@ -27,7 +27,6 @@ model User {
   last_name          String?
   middle_name        String?
   full_name          String?
-  nickname           String?            @unique
   email              String?            @unique
   phone              String?
   telegram_id        String?
@@ -298,6 +297,7 @@ model Contract {
   start_date         DateTime?          @db.Date
   id_1c              BigInt?
   is_blocked         Boolean            @default(false)
+  contract_password  String?
   created_at         DateTime           @default(now())
   updated_at         DateTime
   contract_services  ContractService[]

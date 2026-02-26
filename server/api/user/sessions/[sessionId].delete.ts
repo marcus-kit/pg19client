@@ -9,8 +9,10 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const prisma = usePrisma()
+  const currentJti = await getSessionJti(event)
+  const isCurrentSession = currentJti === sessionId
 
+  const prisma = usePrisma()
   const deleted = await prisma.authSession.deleteMany({
     where: {
       id: sessionId,
@@ -25,5 +27,9 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  return { success: true }
+  if (isCurrentSession) {
+    clearSessionCookie(event)
+  }
+
+  return { success: true, currentSessionTerminated: isCurrentSession }
 })

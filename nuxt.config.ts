@@ -71,6 +71,7 @@ export default defineNuxtConfig({
     callVerifyWebhookSecret: process.env.CALL_VERIFY_WEBHOOK_SECRET || '', // Секрет для webhook от телефонии (звонок)
     supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',       // Service role ключ Supabase
     openaiApiKey: process.env.OPENAI_API_KEY || '',                 // API ключ OpenAI (AI-бот в чате)
+    jwtSecret: process.env.JWT_SECRET || '',                     // Секрет для подписи JWT (авторизация)
 
     // Публичные переменные (доступны на клиенте)
     public: {
