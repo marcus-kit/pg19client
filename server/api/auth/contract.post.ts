@@ -1,61 +1,63 @@
 interface ContractAuthData {
   contractNumber: string
-  lastName: string
-  firstName: string
+  password: string
 }
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ContractAuthData>(event)
 
-  if (!body.contractNumber || !body.lastName || !body.firstName) {
-    throw createError({ statusCode: 400, message: 'Заполните все поля' })
+  if (!body.contractNumber?.trim() || body.password === undefined || body.password === null) {
+    throw createError({ statusCode: 400, message: 'Заполните номер договора и пароль' })
   }
 
   const prisma = usePrisma()
   const contractNumber = String(body.contractNumber).trim()
+  const password = String(body.password)
 
   const contract = await prisma.contract.findFirst({
-    where: { contract_number: contractNumber },
-    select: { id: true, owner_user_id: true, contract_number: true, balance: true, status: true, is_blocked: true, pay_day: true, address_full: true, start_date: true }
+    where: {
+      contract_number: contractNumber,
+      contract_password: password
+    },
+    select: {
+      id: true,
+      owner_user_id: true,
+      contract_number: true,
+      balance: true,
+      status: true,
+      is_blocked: true,
+      pay_day: true,
+      address_full: true,
+      start_date: true
+    }
   })
 
   if (!contract) {
-    throw createError({ statusCode: 404, message: 'Договор не найден' })
+    throw createError({ statusCode: 401, message: 'Неверный номер договора или пароль' })
   }
 
-  const customerLinks = await prisma.customerContract.findMany({
-    where: { contract_id: contract.id },
-    select: { customer_id: true }
+  const user = await prisma.user.findUnique({
+    where: { id: contract.owner_user_id },
+    select: {
+      id: true,
+      first_name: true,
+      last_name: true,
+      middle_name: true,
+      email: true,
+      phone: true,
+      telegram_id: true,
+      telegram_username: true,
+      birth_date: true,
+      avatar: true,
+      vk_id: true,
+      status: true
+    }
   })
-  const candidateUserIds = [
-    contract.owner_user_id,
-    ...customerLinks.map(c => c.customer_id)
-  ].filter(Boolean) as string[]
-
-  if (candidateUserIds.length === 0) {
-    throw createError({ statusCode: 404, message: 'Пользователь по договору не найден' })
-  }
-
-  const users = await prisma.user.findMany({
-    where: { id: { in: candidateUserIds } },
-    select: { id: true, first_name: true, last_name: true, middle_name: true, email: true, phone: true, telegram_id: true, telegram_username: true, birth_date: true, avatar: true, vk_id: true, status: true }
-  })
-
-  if (!users.length) {
-    throw createError({ statusCode: 404, message: 'Пользователь не найден' })
-  }
-
-  const lastNameLower = body.lastName.toLowerCase().trim()
-  const firstNameLower = body.firstName.toLowerCase().trim()
-  const user = users.find(
-    u =>
-      u.last_name?.toLowerCase() === lastNameLower &&
-      u.first_name?.toLowerCase() === firstNameLower
-  )
 
   if (!user) {
-    throw createError({ statusCode: 401, message: 'Неверные данные. Проверьте фамилию и имя.' })
+    throw createError({ statusCode: 404, message: 'Владелец договора не найден' })
   }
+
   if (user.status === 'suspended' || user.status === 'terminated') {
     throw createError({ statusCode: 403, message: 'Ваш аккаунт заблокирован' })
   }
@@ -102,10 +104,7 @@ export default defineEventHandler(async (event) => {
   const internetService = contractServices.find((s: { type: string | null }) => s.type === 'internet')
   const tariffName = internetService?.name ?? contractServices[0]?.name ?? 'Не подключен'
 
-  await createUserSession(event, user.id, accountId, 'contract', body.contractNumber, {
-    last_name: body.lastName,
-    first_name: body.firstName
-  })
+  await createUserSession(event, user.id, accountId, 'contract', contractNumber, {})
 
   return {
     success: true,

@@ -55,8 +55,7 @@ const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
 // Форма авторизации по договору
 const form = reactive({
   contractNumber: '',
-  lastName: '',
-  firstName: ''
+  password: ''
 })
 
 const isLoading = ref(false)  // Загрузка формы договора
@@ -121,78 +120,8 @@ async function startCallVerification(): Promise<void> {
 async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
-  // ВРЕМЕННЫЙ ОБХОД: если поля пустые, используем дефолтные данные
-  const contractNumber = form.contractNumber || '12345'
-  const lastName = form.lastName || 'Тестовый'
-  const firstName = form.firstName || 'Пользователь'
-
-  // Если все поля пустые, используем обход авторизации
-  if (!form.contractNumber && !form.lastName && !form.firstName) {
-    isLoading.value = true
-    try {
-      // Пытаемся авторизоваться через API с дефолтными данными
-      try {
-        const response = await $fetch<{
-          success: boolean
-          user: any
-          account: any
-        }>('/api/auth/contract', {
-          method: 'POST',
-          body: {
-            contractNumber: contractNumber,
-            lastName: lastName,
-            firstName: firstName
-          }
-        })
-
-        await authInit(response.user, response.account)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      } catch (apiError: any) {
-        // Если API не работает, используем прямой обход
-        console.warn('API авторизация не удалась, используем обход:', apiError)
-        
-        const defaultUser = {
-          id: 'temp-user-id',
-          firstName: 'Тестовый',
-          lastName: 'Пользователь',
-          middleName: 'Временный',
-          phone: '+79001234567',
-          email: 'test@example.com',
-          telegram: '',
-          telegramId: null,
-          vkId: '',
-          avatar: null,
-          birthDate: null,
-          role: 'user' as const
-        }
-
-        const defaultAccount = {
-          contractNumber: 12345,
-          balance: 0,
-          status: 'active' as const,
-          tariff: 'ИНТЕРНЕТ ПЖ19',
-          address: 'обл Ростовская, г Таганрог, пер Комсомольский, д. 27',
-          startDate: new Date().toISOString()
-        }
-
-        await authInit(defaultUser, defaultAccount)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      }
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Ошибка авторизации'
-    } finally {
-      isLoading.value = false
-    }
-    return
-  }
-
-  // Обычная авторизация с заполненными полями
-  if (!form.contractNumber || !form.lastName || !form.firstName) {
-    error.value = 'Заполните все поля'
+  if (!form.contractNumber?.trim() || !form.password) {
+    error.value = 'Заполните номер договора и пароль'
     return
   }
 
@@ -206,9 +135,8 @@ async function handleContractSubmit(): Promise<void> {
     }>('/api/auth/contract', {
       method: 'POST',
       body: {
-        contractNumber: form.contractNumber,
-        lastName: form.lastName,
-        firstName: form.firstName
+        contractNumber: form.contractNumber.trim(),
+        password: form.password
       }
     })
 
@@ -516,7 +444,7 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               ДОГОВОР — авторизация по номеру договора + ФИО
+               ДОГОВОР — авторизация по номеру договора и паролю
                ----------------------------------------------------------------- -->
           <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
             <UiInput
@@ -528,10 +456,11 @@ onUnmounted(() => {
             />
 
             <UiInput
-              v-model="form.lastName"
-              type="text"
-              label="Логин"
-              placeholder="Логин"
+              v-model="form.password"
+              type="password"
+              label="Пароль"
+              placeholder="Пароль"
+              autocomplete="current-password"
             />
 
             <UiButton type="submit" variant="primary" block :loading="isLoading">
