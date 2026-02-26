@@ -4,109 +4,62 @@ interface CallVerifyRequest {
   phone: string
 }
 
-/**
- * POST /api/auth/call-verify/request
- * Создание запроса на верификацию по входящему звонку
- */
 export default defineEventHandler(async (event) => {
-  // Rate limiting: 3 попытки за 5 минут
   requireRateLimit(event, RATE_LIMIT_CONFIGS.callVerify)
 
   const body = await readBody<CallVerifyRequest>(event)
-
   if (!body.phone) {
-    throw createError({
-      statusCode: 400,
-      message: 'Укажите номер телефона'
-    })
+    throw createError({ statusCode: 400, message: 'Укажите номер телефона' })
   }
 
-  // Нормализация: оставляем только цифры, формат 79XXXXXXXXX
-  const normalizedPhone = body.phone.replace(/\D/g, '').replace(/^8/, '7')
-
+  const normalizedPhone = String(body.phone).replace(/\D/g, '').replace(/^8/, '7').trim()
   if (!/^7\d{10}$/.test(normalizedPhone)) {
-    throw createError({
-      statusCode: 400,
-      message: 'Неверный формат номера телефона'
-    })
+    throw createError({ statusCode: 400, message: 'Неверный формат номера телефона' })
   }
 
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [{ phone: normalizedPhone }, { phone: `+${normalizedPhone}` }]
+    },
+    select: { id: true, status: true }
+  })
 
-  // В БД телефоны хранятся с + (например +79604555668)
-  // Ищем и с + и без для совместимости
-  const phoneWithPlus = `+${normalizedPhone}`
-
-  // Ищем пользователя по телефону
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('id, status, phone')
-    .or(`phone.eq.${phoneWithPlus},phone.eq.${normalizedPhone}`)
-    .single()
-
-  if (userError || !user) {
-    throw createError({
-      statusCode: 404,
-      message: 'Пользователь с таким номером не найден'
-    })
+  if (!user) {
+    if (process.dev) console.log('[CallVerify] No user for phone:', normalizedPhone)
+    throw createError({ statusCode: 404, message: 'Пользователь с таким номером не найден' })
   }
-
   if (user.status === 'suspended' || user.status === 'terminated') {
-    throw createError({
-      statusCode: 403,
-      message: 'Ваш аккаунт заблокирован'
-    })
+    throw createError({ statusCode: 403, message: 'Ваш аккаунт заблокирован' })
   }
 
-  // Ищем аккаунт пользователя
-  const { data: account, error: accountError } = await supabase
-    .from('contracts')
-    .select('id')
-    .eq('user_id', user.id)
-    .single()
+  const account = await prisma.account.findFirst({
+    where: { user_id: user.id },
+    select: { id: true }
+  })
 
-  if (accountError || !account) {
-    throw createError({
-      statusCode: 404,
-      message: 'Аккаунт не найден'
-    })
-  }
+  await prisma.phoneVerificationRequest.updateMany({
+    where: { phone: normalizedPhone, status: 'pending' },
+    data: { status: 'expired' }
+  })
 
-  // Отменяем предыдущие pending запросы для этого телефона
-  await supabase
-    .from('phone_verification_requests')
-    .update({ status: 'expired' })
-    .eq('phone', normalizedPhone)
-    .eq('status', 'pending')
-
-  // Генерируем токен для polling
   const token = crypto.randomBytes(16).toString('hex')
-  const expiresAt = new Date(Date.now() + 3 * 60 * 1000) // 3 минуты
+  const expiresAt = new Date(Date.now() + 3 * 60 * 1000)
 
-  // Создаём новый запрос
-  const { error: insertError } = await supabase
-    .from('phone_verification_requests')
-    .insert({
+  await prisma.phoneVerificationRequest.create({
+    data: {
+      id: crypto.randomUUID(),
       token,
       phone: normalizedPhone,
+      code: '',
       user_id: user.id,
-      account_id: account.id,
-      expires_at: expiresAt.toISOString(),
-      ip_address: getClientIdentifier(event)
-    })
-
-  if (insertError) {
-    console.error('[CallVerify] Insert error:', insertError)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка создания запроса'
-    })
-  }
+      account_id: account?.id ?? null,
+      status: 'pending',
+      expires_at: expiresAt
+    }
+  })
 
   const config = useRuntimeConfig()
-
-  console.log('[CallVerify] Request created:', { phone: normalizedPhone, token })
-
   return {
     success: true,
     token,

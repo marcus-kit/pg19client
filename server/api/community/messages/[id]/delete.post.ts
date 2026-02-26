@@ -44,7 +44,7 @@ export default defineEventHandler(async (event) => {
 
   // Также проверяем глобальную роль admin
   const { data: user } = await supabase
-    .from('users')
+    .schema('client').from('users')
     .select('role')
     .eq('id', sessionUser.id)
     .single()

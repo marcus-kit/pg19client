@@ -46,8 +46,15 @@ ENV SUPABASE_URL=${SUPABASE_URL}
 ENV SUPABASE_KEY=${SUPABASE_KEY}
 ENV TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
 
+# Генерируем Prisma Client (иначе в рантайме нет .prisma/client)
+RUN pnpm exec prisma generate
+
 # Собираем production-версию
 RUN pnpm build
+
+# Копируем сгенерированный .prisma в вывод Nitro (pnpm кладёт его в .pnpm/.../node_modules/.prisma)
+RUN PRISMA_DIR="$(find node_modules -type d -name '.prisma' 2>/dev/null | head -1)" && \
+    ([ -n "$PRISMA_DIR" ] && cp -r "$PRISMA_DIR" .output/server/node_modules/) || (echo "ERROR: .prisma not found after prisma generate" && exit 1)
 
 # -----------------------------------------------------------------------------
 # Этап 3: Production-образ

@@ -1,141 +1,135 @@
 interface ContractAuthData {
-  /** Номер договора или логин */
-  login: string
-  /** Пароль (для будущей проверки; пока не используется) */
+  contractNumber: string
   password: string
 }
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ContractAuthData>(event)
 
-  if (!body.login?.trim()) {
-    throw createError({
-      statusCode: 400,
-      message: 'Введите номер договора или логин'
-    })
+  if (!body.contractNumber?.trim() || body.password === undefined || body.password === null) {
+    throw createError({ statusCode: 400, message: 'Заполните номер договора и пароль' })
   }
 
-  const login = body.login.trim()
-  // Номер договора — только цифры
-  const contractNum = /^\d+$/.test(login) ? parseInt(login, 10) : null
-  if (contractNum == null) {
-    throw createError({
-      statusCode: 400,
-      message: 'Введите номер договора (цифры)'
-    })
-  }
+  const prisma = usePrisma()
+  const contractNumber = String(body.contractNumber).trim()
+  const password = String(body.password)
 
-  const supabase = useSupabaseServer()
-
-  // Ищем аккаунт по номеру договора (в БД — таблица client.contracts)
-  const { data: account, error: accountError } = await supabase
-    .from('contracts')
-    .select(`
-      id,
-      user_id,
-      contract_number,
-      balance,
-      status,
-      address_full,
-      start_date
-    `)
-    .eq('contract_number', contractNum)
-    .single()
-
-  if (accountError || !account) {
-    throw createError({
-      statusCode: 404,
-      message: 'Договор не найден'
-    })
-  }
-
-  // Получаем пользователя
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select(`
-      id,
-      first_name,
-      last_name,
-      middle_name,
-      full_name,
-      email,
-      phone,
-      telegram_id,
-      telegram_username,
-      birth_date,
-      avatar,
-      vk_id,
-      status
-    `)
-    .eq('id', account.user_id)
-    .single()
-
-  if (userError || !user) {
-    throw createError({
-      statusCode: 404,
-      message: 'Пользователь не найден'
-    })
-  }
-
-  // TODO: когда в БД появится поле пароля — проверять body.password
-  void body.password
-
-  // Проверяем статус пользователя
-  if (user.status === 'suspended' || user.status === 'terminated') {
-    throw createError({
-      statusCode: 403,
-      message: 'Ваш аккаунт заблокирован'
-    })
-  }
-
-  // Получаем подписки с тарифами
-  const { data: subscriptions } = await supabase
-    .from('subscriptions')
-    .select(`
-      id,
-      status,
-      services (
-        id,
-        name,
-        type
-      )
-    `)
-    .eq('account_id', account.id)
-    .eq('status', 'active')
-
-  // Определяем основной тариф (интернет)
-  const internetSub = subscriptions?.find(s => s.services?.type === 'internet')
-  const tariffName = internetSub?.services?.name || 'Не подключен'
-
-  // Создаём сессию с httpOnly cookie
-  await createUserSession(event, user.id, account.id, 'contract', String(account.contract_number), {
-    login: body.login
+  const contract = await prisma.contract.findFirst({
+    where: {
+      contract_number: contractNumber,
+      contract_password: password
+    },
+    select: {
+      id: true,
+      owner_user_id: true,
+      contract_number: true,
+      balance: true,
+      status: true,
+      is_blocked: true,
+      pay_day: true,
+      address_full: true,
+      start_date: true
+    }
   })
 
-  // Возвращаем данные для клиента
+  if (!contract) {
+    throw createError({ statusCode: 401, message: 'Неверный номер договора или пароль' })
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: contract.owner_user_id },
+    select: {
+      id: true,
+      first_name: true,
+      last_name: true,
+      middle_name: true,
+      email: true,
+      phone: true,
+      telegram_id: true,
+      telegram_username: true,
+      birth_date: true,
+      avatar: true,
+      vk_id: true,
+      status: true
+    }
+  })
+
+  if (!user) {
+    throw createError({ statusCode: 404, message: 'Владелец договора не найден' })
+  }
+
+  if (user.status === 'suspended' || user.status === 'terminated') {
+    throw createError({ statusCode: 403, message: 'Ваш аккаунт заблокирован' })
+  }
+
+  let accountId: string
+  const existingAccount = await prisma.account.findFirst({
+    where: { user_id: user.id, contract_id: contract.id },
+    select: { id: true }
+  })
+
+  if (existingAccount) {
+    accountId = existingAccount.id
+    await prisma.account.update({
+      where: { id: existingAccount.id },
+      data: {
+        contract_number: contract.contract_number ?? undefined,
+        balance: contract.balance ?? undefined,
+        status: contract.status ?? undefined,
+        address_full: contract.address_full ?? undefined,
+        start_date: contract.start_date ?? undefined,
+        updated_at: new Date()
+      }
+    })
+  } else {
+    const newAccount = await prisma.account.create({
+      data: {
+        user_id: user.id,
+        contract_id: contract.id,
+        contract_number: contract.contract_number ?? '',
+        balance: contract.balance ?? 0,
+        status: contract.status ?? 'active',
+        address_full: contract.address_full ?? null,
+        start_date: contract.start_date ?? null
+      },
+      select: { id: true }
+    })
+    accountId = newAccount.id
+  }
+
+  const contractServices = await prisma.contractService.findMany({
+    where: { contract_id: contract.id, is_active: true },
+    select: { name: true, type: true }
+  })
+  const internetService = contractServices.find((s: { type: string | null }) => s.type === 'internet')
+  const tariffName = internetService?.name ?? contractServices[0]?.name ?? 'Не подключен'
+
+  await createUserSession(event, user.id, accountId, 'contract', contractNumber, {})
+
   return {
     success: true,
     user: {
       id: user.id,
-      firstName: user.first_name,
-      lastName: user.last_name,
-      middleName: user.middle_name,
-      phone: user.phone || '',
-      email: user.email || '',
+      firstName: user.first_name ?? '',
+      lastName: user.last_name ?? '',
+      middleName: user.middle_name ?? '',
+      phone: user.phone ?? '',
+      email: user.email ?? '',
       telegram: user.telegram_username ? `@${user.telegram_username}` : '',
-      telegramId: user.telegram_id || null,
-      vkId: user.vk_id || '',
-      avatar: user.avatar || null,
-      birthDate: user.birth_date || null,
+      telegramId: user.telegram_id ?? null,
+      vkId: user.vk_id ?? '',
+      avatar: user.avatar ?? null,
+      birthDate: user.birth_date ?? null,
       role: 'user'
     },
     account: {
-      contractNumber: account.contract_number,
-      balance: account.balance, // в копейках
-      status: account.status,
+      contractNumber: contract.contract_number ?? '',
+      balance: Number(contract.balance ?? 0),
+      status: (contract.is_blocked ? 'blocked' : 'active') as 'active' | 'blocked',
       tariff: tariffName,
-      address: account.address_full || '',
-      startDate: account.start_date
+      address: contract.address_full ?? '',
+      startDate: contract.start_date,
+      payDay: contract.pay_day ?? 20
     }
   }
 })

@@ -39,7 +39,6 @@ export default defineEventHandler(async (event) => {
         first_name,
         last_name,
         avatar,
-        nickname,
         online_status,
         last_seen_at
       )
@@ -68,7 +67,6 @@ export default defineEventHandler(async (event) => {
         firstName: user.first_name,
         lastName: user.last_name,
         avatar: user.avatar,
-        nickname: user.nickname,
         lastSeenAt: user.last_seen_at
       }
     })

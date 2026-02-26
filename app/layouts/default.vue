@@ -59,13 +59,15 @@ const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.hre
 const isScrolled = ref(false)    // true когда страница прокручена > 20px
 const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
 
-// Переключение темы: dark ↔ light (из useThemeDetect)
-
 // Выход из аккаунта
-function handleLogout(): void {
+async function handleLogout(): Promise<void> {
   showMoreMenu.value = false
-  logout()
-  navigateTo('/login')
+  try {
+    await $fetch('/api/auth/logout', { method: 'POST' })
+  } finally {
+    logout()
+    navigateTo('/login')
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -125,7 +127,7 @@ onUnmounted(() => {
 
           <!-- Desktop: профиль и действия -->
           <div class="hidden md:flex items-center gap-3">
-            <!-- Переключатель темы: system → dark → light -->
+            <!-- Переключатель темы: system -> dark -> light -->
             <button
               @click="cycleTheme"
               class="theme-toggle"
@@ -140,7 +142,7 @@ onUnmounted(() => {
             <!-- Имя пользователя и номер договора -->
             <div class="text-right">
               <p class="text-sm font-medium text-[var(--text-primary)]">{{ userStore.shortName }}</p>
-              <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber }}</p>
+              <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber ?? '—' }}</p>
             </div>
 
             <!-- Кнопка выхода -->
@@ -155,7 +157,7 @@ onUnmounted(() => {
 
           <!-- Mobile: иконки в шапке -->
           <div class="flex md:hidden items-center gap-2">
-            <!-- Переключатель темы: system → dark → light -->
+            <!-- Переключатель темы: system -> dark -> light -->
             <button
               @click="cycleTheme"
               class="p-2 text-[var(--text-muted)] hover:text-primary rounded-lg transition-colors"

@@ -1,36 +1,21 @@
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
 
-  let queryBuilder = supabase
-    .from('news')
-    .select('*')
-    .eq('status', 'published')
-    .order('is_pinned', { ascending: false })
-    .order('published_at', { ascending: false })
-
-  // Фильтр по категории
-  if (query.category) {
-    queryBuilder = queryBuilder.eq('category', query.category)
+  const where: { status: string; category?: string; OR?: { expires_at: null }[] | { expires_at: { gt: Date } }[] } = {
+    status: 'published'
   }
-
-  // Фильтр активных (не истёкших)
+  if (query.category) where.category = String(query.category)
   if (query.active === 'true') {
-    queryBuilder = queryBuilder.or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`)
+    where.OR = [{ expires_at: null }, { expires_at: { gt: new Date() } }]
   }
 
-  const { data, error } = await queryBuilder
+  const data = await prisma.news.findMany({
+    where,
+    orderBy: [{ is_pinned: 'desc' }, { published_at: 'desc' }]
+  })
 
-  if (error) {
-    console.error('Failed to fetch news:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при загрузке новостей'
-    })
-  }
-
-  // Преобразование snake_case → camelCase
-  const news = (data || []).map((item: any) => ({
+  const news = data.map((item: { id: string; title: string | null; summary: string | null; content: string | null; category: string | null; status: string | null; published_at: Date | null; expires_at: Date | null; is_pinned: boolean | null; date_created: Date | null; date_updated: Date | null }) => ({
     id: item.id,
     title: item.title,
     summary: item.summary,
@@ -43,6 +28,5 @@ export default defineEventHandler(async (event) => {
     createdAt: item.date_created,
     updatedAt: item.date_updated
   }))
-
   return { news }
 })

@@ -1,96 +1,52 @@
-// GET /api/support/tickets
-// Возвращает тикеты пользователя
-
 import type { Ticket, TicketStatus, TicketCategory, TicketPriority } from '~/types/ticket'
 
-interface TicketRow {
-  id: string | number
-  number: string
-  user_id: string | number
-  user_name: string | null
-  user_email: string | null
-  user_phone: string | null
-  subject: string
-  description: string
-  category: TicketCategory
-  status: TicketStatus
-  priority: TicketPriority
-  first_response_at: string | null
-  resolved_at: string | null
-  closed_at: string | null
-  created_at: string
-  updated_at: string
-  comments_count?: number
-}
-
 export default defineEventHandler(async (event) => {
-  const supabase = useSupabaseServer()
-
-  // Получаем пользователя из сессии
   const sessionUser = await getUserFromSession(event)
-  if (!sessionUser) {
-    throw createError({ statusCode: 401, message: 'Требуется авторизация' })
-  }
+  if (!sessionUser) throw createError({ statusCode: 401, message: 'Требуется авторизация' })
 
-  // Query параметры
   const query = getQuery(event)
   const status = query.status as TicketStatus | undefined
 
-  // Запрос тикетов
-  let dbQuery = supabase
-    .from('tickets')
-    .select('*')
-    .eq('user_id', sessionUser.id)
-    .order('created_at', { ascending: false })
+  const prisma = usePrisma()
+  const where: { user_id: string; status?: TicketStatus } = { user_id: sessionUser.id }
+  if (status) where.status = status
 
-  if (status) {
-    dbQuery = dbQuery.eq('status', status)
-  }
+  const data = await prisma.ticket.findMany({
+    where,
+    orderBy: { created_at: 'desc' }
+  })
 
-  const { data, error } = await dbQuery
-
-  if (error) {
-    console.error('Error fetching tickets:', error)
-    throw createError({ statusCode: 500, message: 'Ошибка загрузки тикетов' })
-  }
-
-  // Получаем количество комментариев для каждого тикета
-  const ticketIds = (data || []).map(t => t.id)
-
+  const ticketIds = data.map(t => t.id)
   let commentsCounts: Record<string, number> = {}
   if (ticketIds.length > 0) {
-    const { data: commentsData } = await supabase
-      .from('ticket_comments')
-      .select('ticket_id')
-      .in('ticket_id', ticketIds)
-      .eq('is_internal', false)
-
-    for (const c of commentsData || []) {
-      const ticketId = String(c.ticket_id)
-      commentsCounts[ticketId] = (commentsCounts[ticketId] || 0) + 1
+    const comments = await prisma.ticketComment.groupBy({
+      by: ['ticket_id'],
+      where: { ticket_id: { in: ticketIds }, is_internal: false },
+      _count: { ticket_id: true }
+    })
+    for (const c of comments) {
+      commentsCounts[c.ticket_id] = c._count.ticket_id
     }
   }
 
-  // Маппинг в camelCase
-  const tickets: Ticket[] = (data as TicketRow[]).map(row => ({
+  const tickets: Ticket[] = data.map(row => ({
     id: String(row.id),
-    number: row.number,
-    userId: String(row.user_id),
-    userName: row.user_name,
-    userEmail: row.user_email,
-    userPhone: row.user_phone,
-    subject: row.subject,
-    description: row.description,
-    category: row.category,
-    status: row.status,
-    priority: row.priority,
-    firstResponseAt: row.first_response_at,
-    resolvedAt: row.resolved_at,
-    closedAt: row.closed_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-    commentsCount: commentsCounts[String(row.id)] || 0
+    number: row.number ?? '',
+    userId: String(row.user_id ?? ''),
+    userName: row.user_name ?? null,
+    userEmail: row.user_email ?? null,
+    userPhone: row.user_phone ?? null,
+    subject: row.subject ?? '',
+    description: row.description ?? '',
+    category: (row.category ?? 'other') as TicketCategory,
+    status: (row.status ?? 'new') as TicketStatus,
+    priority: (row.priority ?? 'normal') as TicketPriority,
+    firstResponseAt: row.first_response_at?.toISOString() ?? null,
+    resolvedAt: row.resolved_at?.toISOString() ?? null,
+    closedAt: row.closed_at?.toISOString() ?? null,
+    createdAt: row.created_at?.toISOString() ?? '',
+    updatedAt: row.updated_at?.toISOString() ?? '',
+    commentsCount: commentsCounts[row.id] ?? 0
   }))
-
   return { tickets }
 })

@@ -52,9 +52,9 @@ const {
 // Текущий метод авторизации (таб)
 const authMethod = ref<'telegram' | 'contract' | 'call'>('telegram')
 
-// Форма авторизации по договору: номер договора/логин + пароль
+// Форма авторизации по договору
 const form = reactive({
-  login: '',
+  contractNumber: '',
   password: ''
 })
 
@@ -105,12 +105,12 @@ function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
 }
 
 // Только цифры (номер договора)
-function sanitizeLogin(value: string): string {
+function sanitizeContractNumber(value: string): string {
   return value.replace(/\D/g, '')
 }
 
 // Разрешить только цифры и служебные клавиши в поле номера договора
-function onLoginKeydown(e: KeyboardEvent): void {
+function onContractKeydown(e: KeyboardEvent): void {
   const key = e.key
   if (key >= '0' && key <= '9') return
   if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
@@ -119,10 +119,10 @@ function onLoginKeydown(e: KeyboardEvent): void {
 }
 
 // При вставке в поле договора — оставить только цифры
-function onLoginPaste(e: ClipboardEvent): void {
+function onContractPaste(e: ClipboardEvent): void {
   e.preventDefault()
   const pasted = e.clipboardData?.getData('text') ?? ''
-  form.login = sanitizeLogin(form.login + pasted)
+  form.contractNumber = sanitizeContractNumber(form.contractNumber + pasted)
 }
 
 // Только латиница, цифры и символы — без русских букв (печатные ASCII)
@@ -135,7 +135,7 @@ function onPasswordKeydown(e: KeyboardEvent): void {
   const key = e.key
   if (key.length === 1) {
     const code = key.charCodeAt(0)
-    if (code >= 0x20 && code <= 0x7E) return // печатные ASCII
+    if (code >= 0x20 && code <= 0x7E) return
   }
   if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
   if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
@@ -166,77 +166,8 @@ async function startCallVerification(): Promise<void> {
 async function handleContractSubmit(): Promise<void> {
   error.value = ''
 
-  // ВРЕМЕННЫЙ ОБХОД: если поля пустые, используем дефолтные данные
-  const login = form.login || '12345'
-  const password = form.password || ''
-
-  // Если оба поля пустые, используем обход авторизации
-  if (!form.login && !form.password) {
-    isLoading.value = true
-    try {
-      // Пытаемся авторизоваться через API с дефолтными данными
-      try {
-        const response = await $fetch<{
-          success: boolean
-          user: any
-          account: any
-        }>('/api/auth/contract', {
-          method: 'POST',
-          body: { login: login, password: password }
-        })
-
-        await authInit(response.user, response.account)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      } catch (apiError: any) {
-        // Если API не работает, используем прямой обход
-        console.warn('API авторизация не удалась, используем обход:', apiError)
-        
-        const defaultUser = {
-          id: 'temp-user-id',
-          firstName: 'Тестовый',
-          lastName: 'Пользователь',
-          middleName: 'Временный',
-          phone: '+79001234567',
-          email: 'test@example.com',
-          telegram: '',
-          telegramId: null,
-          vkId: '',
-          avatar: null,
-          birthDate: null,
-          role: 'user' as const
-        }
-
-        const defaultAccount = {
-          contractNumber: 12345,
-          balance: 0,
-          status: 'active' as const,
-          tariff: 'ИНТЕРНЕТ ПЖ19',
-          address: 'обл Ростовская, г Таганрог, пер Комсомольский, д. 27',
-          startDate: new Date().toISOString()
-        }
-
-        await authInit(defaultUser, defaultAccount)
-        await nextTick()
-        await navigateTo('/dashboard')
-        return
-      }
-    } catch (e: any) {
-      error.value = e.data?.message || e.message || 'Ошибка авторизации'
-    } finally {
-      isLoading.value = false
-    }
-    return
-  }
-
-  // Обычная авторизация: номер договора/логин и пароль
-  if (!form.login?.trim()) {
-    error.value = 'Введите номер договора или логин'
-    return
-  }
-  if (!form.password) {
-    error.value = 'Введите пароль'
+  if (!form.contractNumber?.trim() || !form.password) {
+    error.value = 'Заполните номер договора и пароль'
     return
   }
 
@@ -250,7 +181,7 @@ async function handleContractSubmit(): Promise<void> {
     }>('/api/auth/contract', {
       method: 'POST',
       body: {
-        login: form.login.trim(),
+        contractNumber: form.contractNumber.trim(),
         password: form.password
       }
     })
@@ -332,10 +263,10 @@ function initPhoneMask(): void {
 // WATCHERS — реактивные наблюдатели
 // =============================================================================
 
-// Автоматический вход при успешной верификации звонка
+// Автоматический вход при успешной верификации звонка (account может быть null — пользователь без договора)
 watch(callStatus, async (newStatus) => {
-  if (newStatus === 'verified' && verifiedData.value?.user && verifiedData.value?.account) {
-    await authInit(verifiedData.value.user, verifiedData.value.account)
+  if (newStatus === 'verified' && verifiedData.value?.user) {
+    await authInit(verifiedData.value.user, verifiedData.value.account ?? null)
     await nextTick()
     await navigateTo('/dashboard')
   }
@@ -357,8 +288,8 @@ watch(callStatus, async (newStatus) => {
 watch(telegramStatus, async (newStatus) => {
   if (newStatus === 'verified' && telegramVerifiedData.value) {
     const data = telegramVerifiedData.value as any
-    if (data.user && data.account) {
-      await authInit(data.user, data.account)
+    if (data.user) {
+      await authInit(data.user, data.account ?? null)
       await nextTick()
       await navigateTo('/dashboard')
     }
@@ -558,29 +489,28 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               ДОГОВОР — авторизация по номеру договора/логину и паролю
+               ДОГОВОР — авторизация по номеру договора и паролю
                ----------------------------------------------------------------- -->
           <form v-else-if="authMethod === 'contract'" @submit.prevent="handleContractSubmit" class="space-y-5">
-            <!-- Поле только цифры: нативный input с привязкой :value и @input для гарантированной фильтрации -->
             <div class="w-full">
               <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                Номер договора / Логин
+                Номер договора
               </label>
               <input
-                :value="form.login"
+                :value="form.contractNumber"
                 type="text"
                 inputmode="numeric"
                 autocomplete="username"
+                placeholder="12345"
                 maxlength="20"
                 class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
                 style="background: var(--glass-bg); border: 1px solid var(--glass-border);"
-                @input="form.login = sanitizeLogin(($event.target as HTMLInputElement).value)"
-                @keydown="onLoginKeydown"
-                @paste="onLoginPaste"
+                @input="form.contractNumber = sanitizeContractNumber(($event.target as HTMLInputElement).value)"
+                @keydown="onContractKeydown"
+                @paste="onContractPaste"
               />
             </div>
 
-            <!-- Пароль: только англ, цифры, символы + глаз показать/скрыть -->
             <div class="w-full">
               <label class="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                 Пароль

@@ -4,6 +4,8 @@
 // =============================================================================
 
 export default defineNuxtConfig({
+  ssr: false,
+
   // Дата совместимости — включает все изменения Nuxt до этой даты
   compatibilityDate: '2026-01-22',
 
@@ -41,12 +43,11 @@ export default defineNuxtConfig({
   // Модули Nuxt
   // ---------------------------------------------------------------------------
   modules: [
+    '@pinia/nuxt',                      // State management (первым!)
     '@nuxtjs/tailwindcss',              // CSS-фреймворк
     '@nuxt/icon',                       // Иконки (Heroicons, Simple Icons)
-    // Шрифт Outfit — self-hosted в public/fonts/, @font-face в main.css
     '@nuxtjs/color-mode',               // Переключение dark/light темы
-    '@pinia/nuxt',                      // State management
-    'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage (для кастомной авторизации!)
+    'pinia-plugin-persistedstate/nuxt', // Сохранение stores в localStorage
     '@nuxtjs/supabase'                  // Supabase клиент (только БД + Realtime, НЕ Auth)
   ],
 
@@ -68,8 +69,10 @@ export default defineNuxtConfig({
     // Серверные переменные (недоступны на клиенте)
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN || '',         // Токен Telegram бота
     telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '', // Секрет для проверки webhook от Telegram
+    callVerifyWebhookSecret: process.env.CALL_VERIFY_WEBHOOK_SECRET || '', // Секрет для webhook от телефонии (звонок)
     supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',       // Service role ключ Supabase
     openaiApiKey: process.env.OPENAI_API_KEY || '',                 // API ключ OpenAI (AI-бот в чате)
+    jwtSecret: process.env.JWT_SECRET || '',                     // Секрет для подписи JWT (авторизация)
 
     // Публичные переменные (доступны на клиенте)
     public: {
@@ -102,6 +105,15 @@ export default defineNuxtConfig({
       link: [
         { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' }
       ]
+    }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Vite — совместимость CJS-пакетов с ESM (cookie@1.x не экспортирует ESM)
+  // ---------------------------------------------------------------------------
+  vite: {
+    optimizeDeps: {
+      include: ['cookie']
     }
   }
 })

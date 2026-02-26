@@ -16,20 +16,31 @@ import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/serv
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
-import { useMockInvoices } from '~/composables/useMockInvoices'
 
 // =============================================================================
 // STORES & COMPOSABLES
 // =============================================================================
 
 const { fetchSubscriptions } = useServices()
-const { lastThreeInvoices } = useMockInvoices()
 
 // =============================================================================
-// DATA — загрузка подписок
+// DATA — загрузка подписок и счетов
 // =============================================================================
 
 const { subscriptions } = await fetchSubscriptions()
+
+const invoices = ref<Invoice[]>([])
+
+onMounted(async () => {
+  try {
+    const data = await $fetch<{ invoices: Invoice[] }>('/api/invoices')
+    invoices.value = data.invoices ?? []
+  } catch {
+    invoices.value = []
+  }
+})
+
+const lastThreeInvoices = computed(() => invoices.value.slice(0, 3))
 
 const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
 

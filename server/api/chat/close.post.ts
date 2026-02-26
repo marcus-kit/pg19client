@@ -4,7 +4,6 @@ interface CloseRequest {
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<CloseRequest>(event)
-  const supabase = useSupabaseServer()
 
   if (!body.chatId) {
     throw createError({
@@ -13,12 +12,12 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Проверяем чат
-  const { data: chat } = await supabase
-    .from('chats')
-    .select('id, status')
-    .eq('id', body.chatId)
-    .single()
+  const prisma = usePrisma()
+
+  const chat = await prisma.chat.findUnique({
+    where: { id: body.chatId },
+    select: { id: true, status: true }
+  })
 
   if (!chat) {
     throw createError({
@@ -31,22 +30,13 @@ export default defineEventHandler(async (event) => {
     return { success: true, message: 'Чат уже закрыт' }
   }
 
-  // Закрываем чат
-  const { error } = await supabase
-    .from('chats')
-    .update({
+  await prisma.chat.update({
+    where: { id: body.chatId },
+    data: {
       status: 'closed',
-      closed_at: new Date().toISOString()
-    })
-    .eq('id', body.chatId)
-
-  if (error) {
-    console.error('Error closing chat:', error)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при закрытии чата'
-    })
-  }
+      closed_at: new Date()
+    }
+  })
 
   return { success: true, message: 'Чат закрыт' }
 })

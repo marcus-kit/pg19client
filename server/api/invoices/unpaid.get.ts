@@ -1,64 +1,38 @@
-// GET /api/invoices/unpaid
-// Возвращает неоплаченные счета для dashboard из billing.invoices
-
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
 
-interface InvoiceRow {
-  id: string
-  invoice_number: string
-  account_id: string
-  contract_id: string | null
-  status: InvoiceStatus
-  amount: number
-  description: string | null
-  period_start: string | null
-  period_end: string | null
-  issued_at: string | null
-  due_date: string | null
-  paid_at: string | null
-  created_at: string
-  updated_at: string
-}
-
 export default defineEventHandler(async (event) => {
-  const supabase = useSupabaseServer()
-
-  // Получаем пользователя из сессии
   const sessionUser = await getUserFromSession(event)
-  if (!sessionUser) {
-    throw createError({ statusCode: 401, message: 'Требуется авторизация' })
-  }
+  if (!sessionUser) throw createError({ statusCode: 401, message: 'Требуется авторизация' })
+  if (!sessionUser.accountId) return { invoices: [] as Invoice[] }
 
-  // Неоплаченные статусы: pending, sent, viewed, expired
-  const { data, error } = await supabase
-    .from('invoices')
-    .select('*')
-    .eq('account_id', sessionUser.accountId)
-    .in('status', ['pending', 'sent', 'viewed', 'expired'])
-    .order('due_date', { ascending: true, nullsFirst: false })
+  const prisma = usePrisma()
+  const account = await prisma.account.findFirst({
+    where: { id: sessionUser.accountId, user_id: sessionUser.id },
+    select: { contract_id: true }
+  })
+  if (!account?.contract_id) return { invoices: [] as Invoice[] }
 
-  if (error) {
-    console.error('Error fetching unpaid invoices:', error)
-    throw createError({ statusCode: 500, message: 'Ошибка загрузки счетов' })
-  }
+  const data = await prisma.invoiceLog.findMany({
+    where: { contract_id: account.contract_id, NOT: { operation_type: 'paid' } },
+    orderBy: { created_at: 'desc' },
+    select: { id: true, contract_id: true, operation_type: true, total_amount: true, created_at: true }
+  })
 
-  // Маппинг в camelCase
-  const invoices: Invoice[] = (data as InvoiceRow[]).map(row => ({
+  const invoices: Invoice[] = data.map(row => ({
     id: row.id,
-    invoiceNumber: row.invoice_number,
-    accountId: row.account_id,
-    contractId: row.contract_id,
-    status: row.status,
-    amount: row.amount,
-    description: row.description,
-    periodStart: row.period_start,
-    periodEnd: row.period_end,
-    issuedAt: row.issued_at,
-    dueDate: row.due_date,
-    paidAt: row.paid_at,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at
+    invoiceNumber: row.id.slice(0, 8),
+    accountId: sessionUser.accountId!,
+    contractId: row.contract_id ?? '',
+    status: 'pending' as InvoiceStatus,
+    amount: Math.round(Number(row.total_amount ?? 0) * 100),
+    description: row.operation_type ?? '',
+    periodStart: null,
+    periodEnd: null,
+    issuedAt: row.created_at?.toISOString() ?? '',
+    dueDate: null,
+    paidAt: null,
+    createdAt: row.created_at?.toISOString() ?? '',
+    updatedAt: row.created_at?.toISOString() ?? ''
   }))
-
   return { invoices }
 })

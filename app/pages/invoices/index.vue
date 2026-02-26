@@ -2,31 +2,47 @@
 /**
  * Страница счетов — история выставленных счетов:
  * - Фильтрация: все / к оплате / оплаченные
- * - Клик по счёту открывает его на invoice.doka.team
+ * - Клик по счёту открывает детальную страницу
  *
  * Статусы счетов:
  * - pending, sent, viewed — неоплаченные
  * - paid — оплаченный
  * - expired — просроченный
  */
-import type { InvoiceStatus } from '~/types/invoice'
+import type { Invoice, InvoiceStatus } from '~/types/invoice'
 import { invoiceStatusLabels, invoiceStatusColors } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
-import { useMockInvoices } from '~/composables/useMockInvoices'
 
 definePageMeta({
   middleware: 'auth'
 })
 
 // =============================================================================
-// DATA — счета (общая генерация из composable)
+// DATA — счета из API
 // =============================================================================
 
-const { invoices } = useMockInvoices()
+const invoices = ref<Invoice[]>([])
 const pending = ref(false)
 const error = ref<string | null>(null)
 
-function refresh() {}
+async function loadInvoices() {
+  pending.value = true
+  error.value = null
+  try {
+    const data = await $fetch<{ invoices: Invoice[] }>('/api/invoices')
+    invoices.value = data.invoices ?? []
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    error.value = err.data?.message || 'Не удалось загрузить счета'
+    invoices.value = []
+  } finally {
+    pending.value = false
+  }
+}
+
+function refresh() {
+  loadInvoices()
+}
 
 // =============================================================================
 // STATE — фильтр
@@ -35,7 +51,9 @@ function refresh() {}
 const filter = ref<'all' | 'unpaid' | 'paid'>('all')
 const route = useRoute()
 
-onMounted(() => {
+onMounted(async () => {
+  await loadInvoices()
+
   const filterParam = route.query.filter as string
   if (filterParam && ['all', 'unpaid', 'paid'].includes(filterParam)) {
     filter.value = filterParam as 'all' | 'unpaid' | 'paid'
@@ -46,7 +64,6 @@ onMounted(() => {
 // COMPUTED
 // =============================================================================
 
-// Отфильтрованный список счетов
 const filteredInvoices = computed(() => {
   if (filter.value === 'unpaid') {
     return invoices.value.filter(inv => unpaidStatuses.includes(inv.status))
@@ -57,20 +74,12 @@ const filteredInvoices = computed(() => {
   return invoices.value
 })
 
-// Путь к изображению счета
-const invoiceImageSrc = computed(() => {
-  // Используем encodeURI для правильной обработки кириллицы в URL
-  return encodeURI('/Счет_101533.jpg')
-})
-
 // =============================================================================
 // CONSTANTS
 // =============================================================================
 
-// Статусы неоплаченных счетов
 const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
 
-// Опции фильтра
 const filters = [
   { value: 'all', label: 'Все' },
   { value: 'unpaid', label: 'К оплате' },
@@ -81,14 +90,12 @@ const filters = [
 // METHODS
 // =============================================================================
 
-// Получить CSS-класс для бейджа статуса
 function getStatusBadgeClass(status: InvoiceStatus): string {
-  // Неоплаченные счета - красный фон
   const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
   if (unpaidStatuses.includes(status)) {
     return 'bg-red-500/20 text-red-400'
   }
-  
+
   const colorMap: Record<string, string> = {
     gray: 'bg-gray-600/20 text-gray-400',
     primary: 'bg-primary/20 text-primary',
@@ -103,17 +110,13 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 
 <template>
   <div class="invoices-page space-y-8">
-    <!-- =====================================================================
-         PAGE HEADER
-         ===================================================================== -->
+    <!-- PAGE HEADER -->
     <div>
       <h1 class="text-2xl font-bold text-[var(--text-primary)]">Счета</h1>
       <p class="text-[var(--text-muted)] mt-1">История выставленных счетов и управление оплатами</p>
     </div>
 
-    <!-- =====================================================================
-         FILTERS — фильтр по статусу оплаты
-         ===================================================================== -->
+    <!-- FILTERS -->
     <div class="flex flex-wrap gap-2 p-1 rounded-2xl" style="background: var(--glass-bg); border: 1px solid var(--glass-border); width: fit-content;">
       <button
         v-for="f in filters"
@@ -128,10 +131,8 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
       </button>
     </div>
 
-    <!-- =====================================================================
-         LOADING — скелетон загрузки (отключен для моковых данных)
-         ===================================================================== -->
-    <div v-if="false" class="space-y-4">
+    <!-- LOADING -->
+    <div v-if="pending" class="space-y-4">
       <UiCard v-for="i in 3" :key="i" class="animate-pulse">
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 rounded-xl bg-[var(--glass-bg)]"></div>
@@ -143,9 +144,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
       </UiCard>
     </div>
 
-    <!-- =====================================================================
-         ERROR — состояние ошибки
-         ===================================================================== -->
+    <!-- ERROR -->
     <UiCard v-else-if="error">
       <UiErrorState
         title="Ошибка загрузки"
@@ -154,9 +153,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
       />
     </UiCard>
 
-    <!-- =====================================================================
-         INVOICES TABLE — таблица счетов (desktop) + карточки (mobile)
-         ===================================================================== -->
+    <!-- INVOICES TABLE (desktop) + CARDS (mobile) -->
     <div v-else>
       <UiCard v-if="filteredInvoices.length === 0" padding="lg">
         <UiEmptyState
@@ -313,12 +310,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 </template>
 
 <style scoped>
-/* =========================================================================
-   Страница счетов
-   ========================================================================= */
-/* =========================================================================
-   GRID-LIST — desktop таблица на CSS Grid
-   ========================================================================= */
 .invoices-list {
   border-radius: 1.25rem;
   overflow: hidden;
@@ -334,7 +325,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   font-size: 0.9rem;
 }
 
-/* Сетка: Статус | Период | Сумма | Дата | Дата | Действия */
 .invoices-list__header,
 .invoices-row {
   display: grid;
@@ -356,7 +346,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   user-select: none;
 }
 
-/* Строка */
 .invoices-row {
   padding: 1rem 1.5rem;
   cursor: pointer;
@@ -375,7 +364,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   z-index: 1;
 }
 
-/* Колонка: сумма — правый текст */
 .invoices-col--amount {
   justify-content: flex-end;
   text-align: right;
@@ -387,7 +375,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   padding-left: 1.5rem;
 }
 
-/* Бейдж статуса (общий) */
 .invoices-row__badge {
   display: inline-flex;
   align-items: center;
@@ -410,7 +397,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   color: #F7941D;
 }
 
-/* Сумма */
 .invoices-row__amount {
   font-weight: 700;
   font-size: 0.9375rem;
@@ -424,26 +410,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   color: var(--text-muted);
 }
 
-/* Кнопка «Подробнее» */
-.invoices-row__link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.35rem 0.75rem;
-  border-radius: 0.625rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--text-muted);
-  transition: color 0.15s ease, background-color 0.15s ease;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.invoices-row__link:hover {
-  color: var(--text-primary);
-  background: var(--glass-bg);
-}
-
-/* Счётчик снизу */
 .invoices-list__count {
   padding: 0.75rem 1.5rem;
   font-size: 0.75rem;
@@ -451,9 +417,6 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   border-top: 1px solid var(--glass-border);
 }
 
-/* =========================================================================
-   MOBILE CARDS
-   ========================================================================= */
 .invoices-mobile {
   border-radius: 1rem;
   overflow: hidden;
@@ -523,5 +486,4 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   border-top: 1px solid var(--glass-border);
   margin-top: 0.5rem;
 }
-
 </style>

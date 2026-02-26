@@ -1,30 +1,28 @@
 /**
  * useAuthInit — оркестрация авторизации и загрузки данных
  *
- * Центральная точка инициализации после логина.
- * Загружает данные во все stores параллельно.
- *
- * Методы:
- * - init — инициализация после успешного логина
- * - logout — очистка всех stores при выходе
- * - refresh — перезагрузка данных в stores
+ * Pinia instance передаётся явно, т.к. @pinia/nuxt вызывает setActivePinia(void 0)
+ * после app:rendered, что деактивирует Pinia. Передача pinia в useStore(pinia)
+ * обходит getActivePinia() и работает надёжно.
  */
 import type { User, Account } from '~/types'
+import type { Pinia } from 'pinia'
 
 export function useAuthInit() {
-  const userStore = useUserStore()
-  const accountStore = useAccountStore()
-  const notificationsStore = useNotificationsStore()
-  const sessionsStore = useSessionsStore()
-  const achievementsStore = useAchievementsStore()
-  const referralStore = useReferralStore()
+  const nuxtApp = useNuxtApp()
+  const pinia = nuxtApp.$pinia as Pinia
 
-  async function init(user: User, account: Account) {
-    // Set core data
+  async function init(user: User, account: Account | null) {
+    const userStore = useUserStore(pinia)
+    const accountStore = useAccountStore(pinia)
+    const notificationsStore = useNotificationsStore(pinia)
+    const sessionsStore = useSessionsStore(pinia)
+    const achievementsStore = useAchievementsStore(pinia)
+    const referralStore = useReferralStore(pinia)
+
     userStore.setUser(user)
-    accountStore.setAccount(account)
+    accountStore.setAccount(account ?? null)
 
-    // Load additional data in parallel
     const [notifications, achievements, sessions, referral] = await Promise.all([
       useNotificationsApi().load(),
       useAchievementsApi().load(user.id),
@@ -39,6 +37,13 @@ export function useAuthInit() {
   }
 
   function logout() {
+    const userStore = useUserStore(pinia)
+    const accountStore = useAccountStore(pinia)
+    const notificationsStore = useNotificationsStore(pinia)
+    const sessionsStore = useSessionsStore(pinia)
+    const achievementsStore = useAchievementsStore(pinia)
+    const referralStore = useReferralStore(pinia)
+
     userStore.logout()
     accountStore.clear()
     notificationsStore.reset()
@@ -48,6 +53,12 @@ export function useAuthInit() {
   }
 
   async function refresh() {
+    const userStore = useUserStore(pinia)
+    const notificationsStore = useNotificationsStore(pinia)
+    const sessionsStore = useSessionsStore(pinia)
+    const achievementsStore = useAchievementsStore(pinia)
+    const referralStore = useReferralStore(pinia)
+
     if (!userStore.isAuthenticated || !userStore.user?.id) return
 
     const userId = userStore.user.id

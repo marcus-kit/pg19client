@@ -2,7 +2,7 @@
 /**
  * Страница счета на оплату — квитанция (как в two.html), сохранение в PDF
  */
-import { useInvoiceServices } from '~/composables/useInvoiceServices'
+import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoiceServices'
 import { formatKopeks } from '~/composables/useFormatters'
 
 definePageMeta({
@@ -15,18 +15,28 @@ const invoiceId = route.params.id as string
 
 const isSavingPdf = ref(false)
 const invoicePdfRef = ref<HTMLElement | null>(null)
+const isLoadingDetails = ref(true)
 
-// Логотип и QR — из public
 const logoSrc = '/logo.png'
 const qrSrc = '/qr-payment.png'
 
-// Получаем данные услуг для группировки по адресам
-const { getInvoiceDetails } = useInvoiceServices()
-const invoiceDetails = getInvoiceDetails(invoiceId)
+const defaultDetails: InvoiceDetails = { addresses: [], totalAmount: 0, balance: 0, totalToPay: 0 }
+const invoiceDetails = ref<InvoiceDetails>(defaultDetails)
 
-// Группируем услуги по адресам для отображения без дублирования адресов
+const invoiceServices = useInvoiceServices()
+
+onMounted(async () => {
+  try {
+    invoiceDetails.value = await invoiceServices.fetchInvoiceDetails(invoiceId)
+  } catch {
+    invoiceDetails.value = defaultDetails
+  } finally {
+    isLoadingDetails.value = false
+  }
+})
+
 const groupedServices = computed(() => {
-  return invoiceDetails.addresses.map(address => ({
+  return invoiceDetails.value.addresses.map(address => ({
     address: address.address,
     services: address.services,
     totalAmount: address.services.reduce((sum, s) => sum + s.price, 0)

@@ -5,8 +5,7 @@
 import type { Invoice } from '~/types/invoice'
 import { invoiceStatusLabels, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
-import { useInvoiceServices } from '~/composables/useInvoiceServices'
-import { useMockInvoices } from '~/composables/useMockInvoices'
+import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoiceServices'
 
 definePageMeta({
   middleware: 'auth'
@@ -15,13 +14,15 @@ definePageMeta({
 const route = useRoute()
 const invoiceId = route.params.id as string
 
-const { invoices } = useMockInvoices()
 const invoiceServices = useInvoiceServices()
-const invoiceDetailsData = invoiceServices.getInvoiceDetails(invoiceId)
 
-const invoice = computed<Invoice | undefined>(() =>
-  invoices.value.find(inv => inv.id === invoiceId)
-)
+const invoice = ref<Invoice | null>(null)
+const invoiceLoading = ref(true)
+const invoiceError = ref<string | null>(null)
+
+const defaultDetails: InvoiceDetails = { addresses: [], totalAmount: 0, balance: 0, totalToPay: 0 }
+const invoiceDetailsData = ref<InvoiceDetails>(defaultDetails)
+const detailsLoading = ref(true)
 
 const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
 
@@ -35,11 +36,29 @@ const badgeClass = computed(() => {
     ? 'invoice-detail__badge--paid'
     : 'invoice-detail__badge--unpaid'
 })
+
+onMounted(async () => {
+  try {
+    const data = await $fetch<{ invoices: Invoice[] }>('/api/invoices')
+    invoice.value = (data.invoices ?? []).find(inv => inv.id === invoiceId) ?? null
+  } catch {
+    invoiceError.value = 'Не удалось загрузить счёт'
+  } finally {
+    invoiceLoading.value = false
+  }
+
+  try {
+    invoiceDetailsData.value = await invoiceServices.fetchInvoiceDetails(invoiceId)
+  } catch {
+    invoiceDetailsData.value = defaultDetails
+  } finally {
+    detailsLoading.value = false
+  }
+})
 </script>
 
 <template>
   <div class="invoice-detail space-y-8">
-    <!-- Кнопка «Назад» -->
     <NuxtLink
       to="/invoices"
       class="inline-flex items-center gap-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
@@ -48,8 +67,12 @@ const badgeClass = computed(() => {
       Назад к счетам
     </NuxtLink>
 
-    <!-- Если счёт не найден -->
-    <UiCard v-if="!invoice" padding="lg">
+    <!-- Loading -->
+    <div v-if="invoiceLoading || detailsLoading" class="flex items-center justify-center py-12 text-[var(--text-muted)]">
+      <span>Загрузка...</span>
+    </div>
+
+    <UiCard v-else-if="!invoice" padding="lg">
       <UiEmptyState
         icon="heroicons:document-text"
         title="Счёт не найден"

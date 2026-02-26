@@ -1,0 +1,467 @@
+// Prisma Schema — PostgreSQL (client, billing, public)
+// Подключение: DATABASE_URL в .env
+//
+// Проверено через psql:
+// - client: users, auth_sessions, accounts, tickets, ticket_comments, telegram_auth_requests,
+//   phone_verification_requests, news, pages (9 таблиц)
+// - billing: contracts, customer_contracts, contract_services, invoice_logs, services_catalog,
+//   executives, pays, service_items (8 таблиц)
+// - public: таблиц нет
+// - UNIQUE: users.email, pages.slug, accounts(user_id,contract_id), session_token, token в auth/phone/telegram
+// - FK: auth_sessions→users, tickets→users, ticket_comments→tickets; contracts→users, contracts→executives;
+//   customer_contracts→users+contracts, contract_services→contracts, invoice_logs→contracts, pays→contracts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["billing", "client", "public"]
+}
+
+model User {
+  id                 String             @id
+  first_name         String?
+  last_name          String?
+  middle_name        String?
+  full_name          String?
+  email              String?            @unique
+  phone              String?
+  telegram_id        String?
+  telegram_username  String?
+  birth_date         DateTime?          @db.Date
+  avatar             String?
+  vk_id              String?
+  status             String             @default("active")
+  created_at         DateTime           @default(now())
+  updated_at         DateTime
+  contracts          Contract[]
+  customer_contracts CustomerContract[]
+  auth_sessions      AuthSession[]
+  tickets            Ticket[]
+
+  @@map("users")
+  @@schema("client")
+}
+
+model AuthSession {
+  id            String    @id
+  session_token String    @unique
+  user_id       String
+  account_id    String?
+  method        String
+  identifier    String?
+  verified      Boolean   @default(false)
+  verified_at   DateTime?
+  expires_at    DateTime
+  metadata      Json?     @default("{}")
+  created_at    DateTime  @default(now())
+  users         User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("auth_sessions")
+  @@schema("client")
+}
+
+model Account {
+  id              String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id         String
+  contract_id     String
+  contract_number String
+  balance         Decimal   @default(0) @db.Decimal
+  status          String    @default("active")
+  address_full    String?
+  start_date      DateTime? @db.Date
+  created_at      DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at      DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@unique([user_id, contract_id])
+  @@index([contract_id], map: "idx_accounts_contract_id")
+  @@index([user_id], map: "idx_accounts_user_id")
+  @@map("accounts")
+  @@schema("client")
+}
+
+model Ticket {
+  id                String          @id
+  user_id           String
+  user_name         String?
+  user_email        String?
+  user_phone        String?
+  user_telegram_id  BigInt?
+  subject           String
+  description       String
+  category          String          @default("other")
+  status            String          @default("new")
+  priority          String          @default("normal")
+  number            String?
+  created_at        DateTime        @default(now())
+  updated_at        DateTime
+  first_response_at DateTime?       @db.Timestamp(6)
+  resolved_at       DateTime?       @db.Timestamp(6)
+  closed_at         DateTime?       @db.Timestamp(6)
+  ticket_comments   TicketComment[]
+  users             User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("tickets")
+  @@schema("client")
+}
+
+model TicketComment {
+  id          String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  ticket_id   String
+  author_type String
+  author_id   String?
+  author_name String?
+  content     String
+  is_internal Boolean   @default(false)
+  is_solution Boolean   @default(false)
+  attachments Json      @default("[]")
+  created_at  DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  edited_at   DateTime? @db.Timestamp(6)
+  tickets     Ticket    @relation(fields: [ticket_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([ticket_id], map: "idx_ticket_comments_ticket_id")
+  @@map("ticket_comments")
+  @@schema("client")
+}
+
+model TelegramAuthRequest {
+  id                String    @id @default(dbgenerated("(gen_random_uuid())::text"))
+  token             String    @unique
+  purpose           String
+  user_id           String?
+  account_id        String?
+  telegram_id       BigInt?
+  telegram_username String?
+  ip_address        String?
+  user_agent        String?
+  status            String    @default("pending")
+  expires_at        DateTime? @db.Timestamp(6)
+  created_at        DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at        DateTime  @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@index([status], map: "idx_telegram_auth_requests_status")
+  @@index([token], map: "idx_telegram_auth_requests_token")
+  @@map("telegram_auth_requests")
+  @@schema("client")
+}
+
+model PhoneVerificationRequest {
+  id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  token      String   @unique
+  phone      String
+  code       String
+  user_id    String
+  account_id String?
+  status     String   @default("pending")
+  expires_at DateTime @db.Timestamp(6)
+  created_at DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@index([phone], map: "idx_phone_verification_requests_phone")
+  @@index([status], map: "idx_phone_verification_requests_status")
+  @@map("phone_verification_requests")
+  @@schema("client")
+}
+
+model News {
+  id           String    @id
+  title        String
+  summary      String?
+  content      String?
+  category     String?
+  status       String    @default("draft")
+  published_at DateTime?
+  expires_at   DateTime?
+  is_pinned    Boolean   @default(false)
+  date_created DateTime  @default(now())
+  date_updated DateTime
+  attachments  Json?     @default("[]")
+
+  @@map("news")
+  @@schema("client")
+}
+
+model Page {
+  id           String   @id
+  slug         String   @unique
+  content      String?
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime
+
+  @@map("pages")
+  @@schema("client")
+}
+
+model Chat {
+  id                 String        @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id            String?
+  user_name          String?
+  guest_name         String?
+  guest_contact      String?
+  session_token     String?
+  status             String        @default("waiting")
+  assigned_to        String?
+  last_message_at    DateTime?     @db.Timestamp(6)
+  unread_admin_count Int           @default(0)
+  unread_user_count  Int           @default(0)
+  ai_summary         String?
+  source             String        @default("web")
+  created_at         DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at         DateTime      @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  closed_at          DateTime?     @db.Timestamp(6)
+  is_bot_active      Boolean       @default(false)
+  bot_message_count  Int           @default(0)
+  escalated_at       DateTime?     @db.Timestamp(6)
+  escalation_reason  String?
+  chat_messages      ChatMessage[]
+
+  @@index([user_id], map: "idx_chats_user_id")
+  @@index([status], map: "idx_chats_status")
+  @@index([created_at], map: "idx_chats_created_at")
+  @@map("chats")
+  @@schema("client")
+}
+
+model ChatMessage {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  chat_id         String
+  sender_type     String   @default("user")
+  sender_id       String?
+  sender_name     String?
+  content         String   @default("")
+  content_type    String   @default("text")
+  attachment_url  String?
+  attachment_name String?
+  attachment_size Int?
+  is_read         Boolean  @default(false)
+  read_at         DateTime? @db.Timestamp(6)
+  created_at      DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  chats           Chat     @relation(fields: [chat_id], references: [id], onDelete: Cascade)
+
+  @@index([chat_id], map: "idx_chat_messages_chat_id")
+  @@index([created_at], map: "idx_chat_messages_created_at")
+  @@map("chat_messages")
+  @@schema("client")
+}
+
+model AiBotSettings {
+  id                   String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  is_enabled            Boolean  @default(false)
+  escalation_keywords   Json     @default("[]")
+  max_bot_messages      Int      @default(10)
+  system_prompt        String?
+  rag_enabled           Boolean  @default(false)
+  rag_match_threshold   Float?
+  rag_match_count       Int?
+  model                 String?  @default("gpt-4o-mini")
+  temperature           Float?   @default(0.7)
+  max_tokens            Int?     @default(500)
+  operator_name         String?  @default("Оператор")
+  created_at            DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at            DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@map("ai_bot_settings")
+  @@schema("client")
+}
+
+model AiBotMessage {
+  id              String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  chat_id         String
+  message_id      String
+  user_message    String
+  bot_response    String
+  rag_sources     Json     @default("[]")
+  model           String?
+  prompt_tokens   Int?
+  completion_tokens Int?
+  latency_ms      Int?
+  created_at      DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@index([chat_id], map: "idx_ai_bot_messages_chat_id")
+  @@map("ai_bot_messages")
+  @@schema("client")
+}
+
+model Contract {
+  id                 String             @id
+  contract_number    String             @unique
+  owner_user_id      String
+  balance            Decimal            @default(0) @db.Decimal(15, 2)
+  status             String             @default("active")
+  pay_day            Int                @default(20)
+  executive_id       String
+  address_full       String?
+  start_date         DateTime?          @db.Date
+  id_1c              BigInt?
+  is_blocked         Boolean            @default(false)
+  contract_password  String?
+  created_at         DateTime           @default(now())
+  updated_at         DateTime
+  contract_services  ContractService[]
+  executives         executives         @relation(fields: [executive_id], references: [id])
+  users              User               @relation(fields: [owner_user_id], references: [id])
+  customer_contracts CustomerContract[]
+  invoice_logs       InvoiceLog[]
+  pays               pays[]
+
+  @@map("contracts")
+  @@schema("billing")
+}
+
+model CustomerContract {
+  customer_id String
+  contract_id String
+  assigned_at DateTime @default(now())
+  contracts   Contract @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  users       User     @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@id([customer_id, contract_id])
+  @@map("customer_contracts")
+  @@schema("billing")
+}
+
+model ContractService {
+  id             String          @id
+  contract_id    String
+  name           String
+  type           String
+  object_address String?
+  coordinates    String?
+  is_active      Boolean         @default(true)
+  activated_at   DateTime?       @db.Date
+  id_1c          BigInt?
+  created_at     DateTime        @default(now())
+  updated_at     DateTime
+  contracts      Contract        @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+  service_items  service_items[]
+
+  @@map("contract_services")
+  @@schema("billing")
+}
+
+model InvoiceLog {
+  id             String   @id
+  contract_id    String
+  operation_type String
+  balance        Decimal  @db.Decimal(15, 2)
+  total_amount   Decimal  @db.Decimal(15, 2)
+  services       Json     @default("[]")
+  created_at     DateTime @default(now())
+  created_by     String?
+  contracts      Contract @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+
+  @@map("invoice_logs")
+  @@schema("billing")
+}
+
+model ServiceCatalog {
+  id               String          @id
+  name             String
+  service_category String
+  default_nrc      Decimal         @default(0) @db.Decimal(15, 2)
+  default_mrc      Decimal         @default(0) @db.Decimal(15, 2)
+  is_global        Boolean         @default(false)
+  suspended        Boolean
+  id_1c            BigInt
+  created_at       DateTime        @default(now())
+  updated_at       DateTime
+  service_items    service_items[]
+
+  @@map("services_catalog")
+  @@schema("billing")
+}
+
+model executives {
+  id        String     @id
+  name      String?
+  contracts Contract[]
+
+  @@schema("billing")
+}
+
+model pays {
+  id              String   @id
+  contract_id     String
+  pay_date        DateTime @db.Date
+  amount          Decimal  @db.Decimal(15, 2)
+  note            String?
+  document_number String?
+  source          String   @default("manual")
+  remote          Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime
+  contracts       Contract @relation(fields: [contract_id], references: [id], onDelete: Cascade)
+
+  @@schema("billing")
+}
+
+model service_items {
+  id                  String          @id
+  parent_service_id   String
+  catalog_id          String
+  price_nrc           Decimal?        @db.Decimal(15, 2)
+  price_mrc           Decimal?        @db.Decimal(15, 2)
+  quantity            Int             @default(1)
+  activated_at        DateTime        @default(now())
+  deactivated_at      DateTime?
+  previous_item_id    String?
+  id_1c               BigInt?
+  created_at          DateTime        @default(now())
+  updated_at          DateTime
+  services_catalog    ServiceCatalog  @relation(fields: [catalog_id], references: [id])
+  contract_services   ContractService @relation(fields: [parent_service_id], references: [id], onDelete: Cascade)
+  service_items       service_items?  @relation("service_itemsToservice_items", fields: [previous_item_id], references: [id])
+  other_service_items service_items[] @relation("service_itemsToservice_items")
+
+  @@schema("billing")
+}
+
+enum invoice_status {
+  pending
+  draft
+  issued
+  sent
+  viewed
+  paid
+  cancelled
+  expired
+
+  @@schema("billing")
+}
+
+enum operation_type {
+  charge
+  payment
+  adjustment
+  refund
+  transfer
+
+  @@schema("billing")
+}
+
+enum subscription_status {
+  active
+  paused
+  cancelled
+
+  @@schema("billing")
+}
+
+enum contract_status {
+  draft
+  active
+  suspended
+  terminated
+
+  @@schema("client")
+}
+
+enum person_type {
+  individual
+  legal
+
+  @@schema("client")
+}

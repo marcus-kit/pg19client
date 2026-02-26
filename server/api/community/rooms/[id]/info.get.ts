@@ -35,7 +35,7 @@ export default defineEventHandler(async (event): Promise<GetRoomInfoResponse> =>
     .select(`
       role,
       user:users!community_members_user_id_fkey(
-        id, first_name, last_name, nickname, avatar
+        id, first_name, last_name, avatar
       )
     `)
     .eq('room_id', roomId)
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event): Promise<GetRoomInfoResponse> =>
     const user = m.user as any
     return {
       userId: user?.id,
-      displayName: user?.nickname || user?.first_name || 'Пользователь',
+      displayName: user?.first_name || 'Пользователь',
       avatar: user?.avatar || null,
       role: m.role as 'moderator' | 'admin'
     }

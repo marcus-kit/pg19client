@@ -1,16 +1,31 @@
 /**
- * Внутренний endpoint для генерации ответа AI-бота
- *
+ * Внутренний endpoint для генерации ответа AI-бота.
  * Вызывается из /api/chat/send после сохранения сообщения пользователя.
- * Не должен вызываться напрямую клиентом.
+ * Использует Prisma (client.chats, client.chat_messages, client.ai_bot_settings, client.ai_bot_messages).
  */
 
-import type { AIBotSettings, RAGSource } from '~/server/utils/openai'
+import type { AIBotSettings, RAGSource } from '../../../utils/openai'
 import type { Chat } from '~/types/chat'
+import { generateBotResponse } from '../../../utils/openai'
 
 interface RespondRequest {
   chatId: string
   messageId: string
+}
+
+async function escalateChatToOperator(
+  prisma: ReturnType<typeof usePrisma>,
+  chatId: string,
+  reason: string
+) {
+  await prisma.chat.update({
+    where: { id: chatId },
+    data: {
+      status: 'processing',
+      escalated_at: new Date(),
+      escalation_reason: reason
+    }
+  })
 }
 
 export default defineEventHandler(async (event) => {
@@ -25,126 +40,102 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const supabase = useSupabaseServer()
+  const prisma = usePrisma()
 
-  // 1. Загружаем настройки бота
-  const { data: settings } = await supabase
-    .from('ai_bot_settings')
-    .select('*')
-    .single()
+  const settingsRow = await prisma.aiBotSettings.findFirst()
 
-  if (!settings || !settings.is_enabled) {
+  if (!settingsRow || !settingsRow.is_enabled) {
     return { skipped: true, reason: 'bot_disabled' }
   }
 
-  const botSettings = settings as AIBotSettings
+  const escalationKeywords =
+    typeof settingsRow.escalation_keywords === 'object' &&
+    Array.isArray(settingsRow.escalation_keywords)
+      ? (settingsRow.escalation_keywords as string[])
+      : []
 
-  // 2. Загружаем чат
-  const { data: chat } = await supabase
-    .from('chats')
-    .select('id, is_bot_active, bot_message_count, status')
-    .eq('id', body.chatId)
-    .single()
+  const botSettings: AIBotSettings = {
+    id: settingsRow.id,
+    is_enabled: settingsRow.is_enabled,
+    system_prompt: settingsRow.system_prompt || '',
+    model: settingsRow.model || 'gpt-4o-mini',
+    temperature: settingsRow.temperature ?? 0.7,
+    max_tokens: settingsRow.max_tokens ?? 500,
+    escalation_keywords: escalationKeywords,
+    max_bot_messages: settingsRow.max_bot_messages,
+    rag_enabled: settingsRow.rag_enabled,
+    rag_match_threshold: settingsRow.rag_match_threshold ?? 0.7,
+    rag_match_count: settingsRow.rag_match_count ?? 5,
+    operator_name: settingsRow.operator_name,
+    created_at: settingsRow.created_at.toISOString(),
+    updated_at: settingsRow.updated_at.toISOString()
+  }
+
+  const chat = await prisma.chat.findUnique({
+    where: { id: body.chatId },
+    select: { id: true, is_bot_active: true, bot_message_count: true, status: true, unread_user_count: true }
+  })
 
   if (!chat) {
     return { skipped: true, reason: 'chat_not_found' }
   }
 
-  const chatData = chat as Chat
+  const chatData = chat as Chat & { unread_user_count: number }
 
-  // Проверяем что бот активен для этого чата
   if (!chatData.is_bot_active) {
     return { skipped: true, reason: 'bot_not_active_for_chat' }
   }
 
-  // Проверяем статус чата
   if (chatData.status === 'closed') {
     return { skipped: true, reason: 'chat_closed' }
   }
 
-  // 3. Загружаем сообщение пользователя
-  const { data: userMessage } = await supabase
-    .from('chat_messages')
-    .select('*')
-    .eq('id', body.messageId)
-    .single()
+  const userMessage = await prisma.chatMessage.findUnique({
+    where: { id: body.messageId }
+  })
 
   if (!userMessage) {
     return { skipped: true, reason: 'message_not_found' }
   }
 
-  const userMessageContent = userMessage.content as string
+  const userMessageContent = userMessage.content
 
-  // 4. Проверяем на ключевые слова эскалации
   const lowerContent = userMessageContent.toLowerCase()
   const shouldEscalate = botSettings.escalation_keywords.some((keyword) =>
     lowerContent.includes(keyword.toLowerCase())
   )
 
   if (shouldEscalate) {
-    // Эскалируем на оператора
-    await supabase.rpc('escalate_chat_to_operator', {
-      p_chat_id: body.chatId,
-      p_reason: 'user_request'
-    })
-
+    await escalateChatToOperator(prisma, body.chatId, 'user_request')
     return { escalated: true, reason: 'user_request' }
   }
 
-  // 5. Проверяем лимит сообщений бота
   if (chatData.bot_message_count >= botSettings.max_bot_messages) {
-    await supabase.rpc('escalate_chat_to_operator', {
-      p_chat_id: body.chatId,
-      p_reason: 'max_messages'
-    })
-
+    await escalateChatToOperator(prisma, body.chatId, 'max_messages')
     return { escalated: true, reason: 'max_messages' }
   }
 
-  // 6. Загружаем историю диалога (последние 10 сообщений для контекста)
-  const { data: historyMessages } = await supabase
-    .from('chat_messages')
-    .select('sender_type, content')
-    .eq('chat_id', body.chatId)
-    .neq('id', body.messageId) // Исключаем текущее сообщение (добавим отдельно)
-    .in('sender_type', ['user', 'bot', 'admin'])
-    .order('created_at', { ascending: false })
-    .limit(10)
+  const historyMessages = await prisma.chatMessage.findMany({
+    where: {
+      chat_id: body.chatId,
+      id: { not: body.messageId },
+      sender_type: { in: ['user', 'bot', 'admin'] }
+    },
+    select: { sender_type: true, content: true },
+    orderBy: { created_at: 'desc' },
+    take: 10
+  })
 
-  // Переворачиваем чтобы получить хронологический порядок
-  const conversationHistory =
-    historyMessages
-      ?.reverse()
-      .map((msg) => ({
-        role: msg.sender_type === 'user' ? ('user' as const) : ('assistant' as const),
-        content: msg.content as string
-      })) || []
+  const conversationHistory = [...historyMessages]
+    .reverse()
+    .map((msg) => ({
+      role: (msg.sender_type === 'user' ? 'user' : 'assistant') as 'user' | 'assistant',
+      content: msg.content
+    }))
 
-  // 7. RAG поиск (если включён)
-  let ragContext: RAGSource[] = []
+  // RAG: search_knowledge_base в этой БД нет — контекст пустой
+  const ragContext: RAGSource[] = []
 
-  if (botSettings.rag_enabled) {
-    try {
-      // Генерируем эмбеддинг для сообщения пользователя
-      const embedding = await generateEmbedding(userMessageContent)
-
-      // Поиск в базе знаний
-      const { data: ragResults } = await supabase.rpc('search_knowledge_base', {
-        query_embedding: embedding,
-        match_threshold: botSettings.rag_match_threshold,
-        match_count: botSettings.rag_match_count
-      })
-
-      if (ragResults) {
-        ragContext = ragResults as RAGSource[]
-      }
-    } catch (ragError) {
-      console.error('RAG search error:', ragError)
-      // Продолжаем без RAG контекста
-    }
-  }
-
-  // 8. Генерируем ответ бота
   let botResponse: { response: string; usage: { prompt_tokens: number; completion_tokens: number } }
 
   try {
@@ -164,69 +155,50 @@ export default defineEventHandler(async (event) => {
     })
   } catch (error) {
     console.error('Bot response generation error:', error)
-
-    // При ошибке эскалируем на оператора
-    await supabase.rpc('escalate_chat_to_operator', {
-      p_chat_id: body.chatId,
-      p_reason: 'error'
-    })
-
+    await escalateChatToOperator(prisma, body.chatId, 'error')
     return { escalated: true, reason: 'error' }
   }
 
   const latency = Date.now() - startTime
 
-  // 9. Сохраняем сообщение бота (sender_name = имя оператора для маскировки)
-  const { data: botMessage, error: msgError } = await supabase
-    .from('chat_messages')
-    .insert({
+  const botMessage = await prisma.chatMessage.create({
+    data: {
       chat_id: body.chatId,
       sender_type: 'bot',
       sender_name: botSettings.operator_name || 'Оператор',
       content: botResponse.response,
       content_type: 'text'
-    })
-    .select()
-    .single()
-
-  if (msgError) {
-    console.error('Error saving bot message:', msgError)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при сохранении ответа бота'
-    })
-  }
-
-  // 10. Логируем в ai_bot_messages
-  await supabase.from('ai_bot_messages').insert({
-    chat_id: body.chatId,
-    message_id: botMessage.id,
-    user_message: userMessageContent,
-    bot_response: botResponse.response,
-    rag_sources: ragContext.map((r) => ({
-      type: r.source_type,
-      id: r.id,
-      similarity: r.similarity,
-      question: r.question.slice(0, 200), // Превью вопроса
-      answer_preview: r.answer.slice(0, 200) // Превью ответа
-    })),
-    model: botSettings.model,
-    prompt_tokens: botResponse.usage.prompt_tokens,
-    completion_tokens: botResponse.usage.completion_tokens,
-    latency_ms: latency
+    }
   })
 
-  // 11. Обновляем счётчики чата
-  await supabase
-    .from('chats')
-    .update({
+  await prisma.aiBotMessage.create({
+    data: {
+      chat_id: body.chatId,
+      message_id: botMessage.id,
+      user_message: userMessageContent,
+      bot_response: botResponse.response,
+      rag_sources: ragContext.map((r) => ({
+        type: r.source_type,
+        id: r.id,
+        similarity: r.similarity,
+        question: r.question.slice(0, 200),
+        answer_preview: r.answer.slice(0, 200)
+      })),
+      model: botSettings.model,
+      prompt_tokens: botResponse.usage.prompt_tokens,
+      completion_tokens: botResponse.usage.completion_tokens,
+      latency_ms: latency
+    }
+  })
+
+  await prisma.chat.update({
+    where: { id: body.chatId },
+    data: {
       bot_message_count: chatData.bot_message_count + 1,
-      unread_user_count: (chat as { unread_user_count?: number }).unread_user_count
-        ? ((chat as { unread_user_count: number }).unread_user_count + 1)
-        : 1,
-      last_message_at: new Date().toISOString()
-    })
-    .eq('id', body.chatId)
+      unread_user_count: (chatData.unread_user_count ?? 0) + 1,
+      last_message_at: new Date()
+    }
+  })
 
   return {
     success: true,

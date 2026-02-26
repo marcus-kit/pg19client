@@ -119,6 +119,8 @@ function initPhoneMask(): void {
   phoneInputRef.value.addEventListener('click', phoneClickHandler)
 }
 
+const { init: authInit } = useAuthInit()
+
 function openContractPdf() {
   window.open('/dogovor-oferta.pdf', '_blank')
 }
@@ -126,13 +128,22 @@ function openContractPdf() {
 async function submitContract() {
   isLoading.value = true
   error.value = ''
-  
+
   try {
-    // TODO: Реализовать отправку данных на сервер
-    console.log('Данные договора:', form)
-    // await $fetch('/api/contract', { method: 'POST', body: form })
+    const response = await $fetch<{ user: import('~/types').User; account: import('~/types').Account | null }>('/api/auth/register', {
+      method: 'POST',
+      body: {
+        lastName: form.lastName.trim(),
+        firstName: form.firstName.trim(),
+        middleName: form.middleName.trim(),
+        email: form.email?.trim() || undefined,
+        phone: form.phone
+      }
+    })
+    await authInit(response.user, response.account ?? null)
+    await navigateTo('/')
   } catch (e: any) {
-    error.value = e.message || 'Произошла ошибка при отправке данных'
+    error.value = e.data?.message ?? e.message ?? 'Произошла ошибка при отправке данных'
   } finally {
     isLoading.value = false
   }

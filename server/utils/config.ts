@@ -1,35 +1,33 @@
 /**
- * Валидация runtime конфигурации
- * Проверяет наличие всех необходимых environment переменных при старте сервера
+ * Валидация runtime конфигурации при старте сервера.
+ * Обязательных переменных нет: при отсутствии сервисов выводим предупреждения, приложение стартует.
  */
+
+/** Токен бота: из runtimeConfig (NUXT_TELEGRAM_BOT_TOKEN) или из TELEGRAM_BOT_TOKEN — без префикса NUXT_ */
+export function getTelegramBotToken(): string {
+  const config = useRuntimeConfig()
+  return (config.telegramBotToken || process.env.TELEGRAM_BOT_TOKEN || '').trim()
+}
+
 export function validateConfig() {
   const config = useRuntimeConfig()
-  const errors: string[] = []
+  const warnings: string[] = []
 
-  // Public variables (доступны на клиенте)
-  if (!config.public.supabaseUrl) {
-    errors.push('SUPABASE_URL is not set')
-  }
-  if (!config.public.supabaseKey) {
-    errors.push('SUPABASE_KEY is not set')
-  }
   if (!config.public.telegramBotUsername) {
-    errors.push('TELEGRAM_BOT_USERNAME is not set')
+    warnings.push('TELEGRAM_BOT_USERNAME не задан: авторизация по Telegram и deeplink будут недоступны.')
+  }
+  if (!getTelegramBotToken()) {
+    warnings.push('TELEGRAM_BOT_TOKEN не задан: вебхук и бот Telegram не будут работать.')
+  }
+  if (!config.public.supabaseUrl || !config.public.supabaseKey || !config.supabaseSecretKey) {
+    warnings.push('Supabase не настроен: загрузка аватаров и вложений чата в Storage будет недоступна.')
   }
 
-  // Server-only variables (приватные)
-  if (!config.supabaseSecretKey) {
-    errors.push('NUXT_SUPABASE_SECRET_KEY is not set')
+  if (warnings.length > 0) {
+    console.warn('⚠️ Конфигурация: некоторые переменные окружения не заданы:')
+    warnings.forEach(w => console.warn(`  - ${w}`))
+    console.warn('  См. .env.example и .env.production.example')
+  } else {
+    console.log('✅ Конфигурация проверена.')
   }
-  if (!config.telegramBotToken) {
-    errors.push('NUXT_TELEGRAM_BOT_TOKEN is not set')
-  }
-
-  if (errors.length > 0) {
-    console.error('❌ Configuration validation failed:')
-    errors.forEach(err => console.error(`  - ${err}`))
-    throw new Error('Missing required environment variables. Check .env.example for reference.')
-  }
-
-  console.log('✅ Configuration validated successfully')
 }

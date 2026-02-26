@@ -4,7 +4,6 @@ export default defineEventHandler(async (event) => {
   const sessionUser = await requireUser(event)
   const userId = sessionUser.id
 
-  // Read multipart form data
   const formData = await readFormData(event)
   const file = formData.get('file') as File
 
@@ -15,7 +14,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Validate file type
   if (!file.type.startsWith('image/')) {
     throw createError({
       statusCode: 400,
@@ -23,7 +21,6 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Validate file size (5 MB)
   if (file.size > 5 * 1024 * 1024) {
     throw createError({
       statusCode: 400,
@@ -33,16 +30,13 @@ export default defineEventHandler(async (event) => {
 
   const supabase = serverSupabaseServiceRole(event)
 
-  // Generate unique filename
   const ext = file.name.split('.').pop() || 'jpg'
   const filename = `${userId}.${ext}`
 
-  // Convert File to ArrayBuffer
   const arrayBuffer = await file.arrayBuffer()
   const buffer = new Uint8Array(arrayBuffer)
 
-  // Upload to Supabase Storage (overwrite if exists)
-  const { data: uploadData, error: uploadError } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from('avatars')
     .upload(filename, buffer, {
       contentType: file.type,
@@ -57,26 +51,16 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // Get public URL
   const { data: urlData } = supabase.storage
     .from('avatars')
     .getPublicUrl(filename)
 
   const avatarUrl = urlData.publicUrl
 
-  // Update user record with avatar URL
-  const { error: updateError } = await supabase
-    .from('users')
-    .update({ avatar: avatarUrl })
-    .eq('id', userId)
-
-  if (updateError) {
-    console.error('Error updating user avatar:', updateError)
-    throw createError({
-      statusCode: 500,
-      message: 'Ошибка при сохранении аватара'
-    })
-  }
+  await usePrisma().user.update({
+    where: { id: userId },
+    data: { avatar: avatarUrl, updated_at: new Date() }
+  })
 
   return {
     success: true,

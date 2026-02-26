@@ -1,28 +1,21 @@
 /**
  * Auth Middleware — защита роутов авторизацией
- *
- * Проверяет статус авторизации пользователя и перенаправляет:
- * - Неавторизованных на /login (если пытаются открыть защищённую страницу)
- * - Авторизованных на /dashboard (если пытаются открыть /login или /)
  */
+import type { Pinia } from 'pinia'
+
 export default defineNuxtRouteMiddleware((to) => {
-  // На сервере пропускаем — localStorage недоступен
-  if (import.meta.server) {
-    return
-  }
+  if (import.meta.server) return
 
-  const userStore = useUserStore()
+  const nuxtApp = useNuxtApp()
+  const userStore = useUserStore(nuxtApp.$pinia as Pinia)
 
-  // Публичные роуты, не требующие авторизации
   const publicRoutes = ['/login']
   const isPublicRoute = publicRoutes.includes(to.path)
 
-  // Не авторизован + защищённый роут → на логин
   if (!userStore.isAuthenticated && !isPublicRoute) {
     return navigateTo('/login')
   }
 
-  // Авторизован + публичный роут (/login) → на дашборд
   if (userStore.isAuthenticated && isPublicRoute) {
     return navigateTo('/dashboard')
   }
