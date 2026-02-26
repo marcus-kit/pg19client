@@ -48,7 +48,12 @@ const initialTab = (['faq', 'chat'].includes(route.query.tab as string)
 const activeTab = ref<'faq' | 'chat'>(initialTab)
 
 // Bitrix24 чат URL
-const bitrix24ChatUrl = 'https://pg19.bitrix24.ru/online/testbot2'
+const bitrix24ChatUrl = 'https://pg19.bitrix24.ru/online/support'
+
+// Переход в чат поддержки
+function openSupportChat() {
+  window.open(bitrix24ChatUrl, '_blank')
+}
 
 // FAQ
 const expandedFaq = ref<number | null>(null)             // ID развёрнутого вопроса
@@ -170,10 +175,6 @@ onMounted(() => {
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateIsMobile)
   }
-  
-  if (activeTab.value === 'chat') {
-    preventBodyScroll(true)
-  }
 })
 
 onUnmounted(() => {
@@ -187,14 +188,7 @@ onUnmounted(() => {
 // WATCHERS
 // =============================================================================
 
-// Управление скроллом при переключении вкладок
-watch(activeTab, (tab) => {
-  if (tab === 'chat') {
-    preventBodyScroll(true)
-  } else {
-    preventBodyScroll(false)
-  }
-})
+// Управление скроллом больше не нужно, так как чат заменен на кнопку
 </script>
 
 <template>
@@ -209,13 +203,7 @@ watch(activeTab, (tab) => {
     <!-- =====================================================================
          Action Bar — иконки чата, FAQ и создания заявки на одном уровне (mobile)
          ===================================================================== -->
-    <div 
-      class="md:hidden flex items-center gap-2"
-      :class="{
-        'fixed top-16 left-0 right-0 px-4 py-2 z-50': activeTab === 'chat' && isMobile
-      }"
-      :style="activeTab === 'chat' && isMobile ? 'background: var(--bg-base);' : ''"
-    >
+    <div class="md:hidden flex items-center gap-2">
       <!-- Чат -->
       <button
         @click="activeTab = 'chat'"
@@ -351,34 +339,41 @@ watch(activeTab, (tab) => {
     </div>
 
     <!-- =====================================================================
-         Chat Tab — Bitrix24 чат через iframe
+         Chat Tab — кнопка перехода в чат поддержки Bitrix24
          ===================================================================== -->
-    <div v-if="activeTab === 'chat'" class="flex flex-col md:h-[calc(100vh-280px)] min-h-[500px] fixed inset-x-0 top-[120px] bottom-20 md:relative md:inset-x-auto md:bottom-auto md:top-0">
-      <div class="flex flex-col flex-1 h-full rounded-xl overflow-hidden" style="background: var(--bg-surface); border: 1px solid var(--glass-border);">
-        <!-- Chat Header -->
-        <div class="flex items-center gap-3 px-4 py-3 border-b flex-shrink-0" style="border-color: var(--glass-border);">
-          <div class="w-8 h-8 rounded-full flex items-center justify-center" style="background: var(--glass-bg);">
-            <Icon name="heroicons:chat-bubble-left-right" class="w-4 h-4 text-primary" />
-          </div>
-          <div class="flex-1 min-w-0">
-            <h3 class="text-sm font-semibold text-[var(--text-primary)]">Чат с поддержкой</h3>
-            <p class="text-xs text-[var(--text-muted)] truncate">
-              Онлайн консультация через Bitrix24
-            </p>
-          </div>
+    <div v-if="activeTab === 'chat'" class="flex flex-col items-center justify-center min-h-[500px] md:min-h-[600px]">
+      <UiCard class="w-full max-w-md p-8 md:p-12 text-center">
+        <!-- Иконка чата -->
+        <div class="w-16 h-16 md:w-20 md:h-20 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-6">
+          <Icon name="heroicons:chat-bubble-left-right" class="w-8 h-8 md:w-10 md:h-10 text-primary" />
         </div>
 
-        <!-- Bitrix24 Chat iframe -->
-        <div class="flex-1 min-h-0 relative">
-          <iframe
-            :src="bitrix24ChatUrl"
-            class="w-full h-full border-0"
-            frameborder="0"
-            allow="microphone; camera"
-            title="Чат поддержки Bitrix24"
-          ></iframe>
-        </div>
-      </div>
+        <!-- Заголовок -->
+        <h3 class="text-xl md:text-2xl font-semibold text-[var(--text-primary)] mb-3">
+          Чат с поддержкой
+        </h3>
+
+        <!-- Описание -->
+        <p class="text-sm md:text-base text-[var(--text-muted)] mb-6">
+          Перейдите в онлайн-чат Bitrix24 для общения с операторами поддержки
+        </p>
+
+        <!-- Кнопка перехода -->
+        <UiButton
+          size="lg"
+          variant="primary"
+          class="w-full md:w-auto px-8"
+          @click="openSupportChat"
+        >
+          <Icon name="heroicons:arrow-right" class="w-5 h-5 mr-2" />
+          Перейти в чат поддержки
+        </UiButton>
+
+        <!-- Дополнительная информация -->
+        <p class="text-xs text-[var(--text-muted)] mt-6">
+          Чат откроется в новой вкладке
+        </p>
+      </UiCard>
     </div>
 
     <!-- =====================================================================
