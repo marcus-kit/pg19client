@@ -229,14 +229,14 @@ onUnmounted(() => {
       </button>
 
       <!-- Создать заявку -->
-      <button
+      <!-- <button
         @click="showNewTicketModal = true"
         class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-[var(--glass-bg)] text-[var(--text-primary)] hover:text-primary ml-auto"
         title="Создать заявку"
       >
         <span class="text-sm font-medium">Создать заявку</span>
         <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
-      </button>
+      </button> -->
     </div>
 
     <!-- =====================================================================
@@ -272,13 +272,13 @@ onUnmounted(() => {
       </div>
 
       <!-- Создать заявку (desktop) -->
-      <button
+      <!-- <button
         @click="showNewTicketModal = true"
         class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors bg-[var(--glass-bg)] text-[var(--text-primary)] hover:text-primary"
       >
         <span class="text-sm font-medium">Создать заявку</span>
         <Icon name="heroicons:plus" class="w-4 h-4 flex-shrink-0" />
-      </button>
+      </button> -->
     </div>
 
     <!-- =====================================================================
@@ -329,10 +329,10 @@ onUnmounted(() => {
             </div>
             <h3 class="text-base md:text-lg font-semibold text-[var(--text-primary)] mb-1 md:mb-2">Не нашли ответ?</h3>
             <p class="text-xs md:text-base text-[var(--text-muted)] mb-3 md:mb-4">Создайте заявку, и мы ответим в течение 15 минут</p>
-            <UiButton size="sm" @click="showNewTicketModal = true">
+            <!-- <UiButton size="sm" @click="showNewTicketModal = true">
               <Icon name="heroicons:pencil-square" class="w-4 h-4 md:w-5 md:h-5 mr-2" />
               Создать заявку
-            </UiButton>
+            </UiButton> -->
           </div>
         </UiCard>
       </template>
