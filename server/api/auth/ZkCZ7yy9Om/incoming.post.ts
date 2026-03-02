@@ -1,16 +1,38 @@
+function extractPhoneFromBody(body: Record<string, unknown> | null | undefined): string | null {
+  if (!body) return null
+  const candidates = [
+    body.phone,
+    body.from,
+    body.caller_id,
+    body.caller,
+    (body.data && typeof body.data === 'object') ? (body.data as Record<string, unknown>).from : undefined,
+    (body.data && typeof body.data === 'object') ? (body.data as Record<string, unknown>).phone : undefined
+  ]
+  for (const v of candidates) {
+    if (typeof v === 'string' && v.trim()) return v
+  }
+  return null
+}
+
 /**
- * POST /api/auth/call-verify/incoming
+ * POST /api/auth/ZkCZ7yy9Om/incoming
  * Публичный endpoint для телефонии: принимает номер телефона звонящего
  * и помечает соответствующий запрос верификации как подтверждённый.
  *
  * Не требует секрета — телефония не может передавать заголовки авторизации.
  * Всегда возвращает { ok: true } независимо от результата (не раскрывает детали).
+ *
+ * Поддерживаемые форматы тела (JSON и form-urlencoded):
+ * - { "phone": "79001234567" }
+ * - { "from": "79001234567" }  — типично для телефонии
+ * - { "caller_id": "79001234567" }
+ * - { "data": { "from": "79001234567" } } — вложенная структура
  */
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ phone?: string }>(event).catch(() => ({}))
-  const rawPhone = body?.phone
+  const body = await readBody<Record<string, unknown>>(event).catch(() => ({}))
+  const rawPhone = extractPhoneFromBody(body)
 
-  if (!rawPhone || typeof rawPhone !== 'string') {
+  if (!rawPhone) {
     return { ok: true }
   }
 
