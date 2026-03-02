@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Страница авторизации — три метода входа:
- * 1. Telegram — через OIDC (oauth.telegram.org, Authorization Code + PKCE)
+ * 1. Telegram — через официальный Telegram Login Widget (JS callback + серверная верификация)
  * 2. Договор — по номеру договора + паролю (синхронный API запрос)
  * 3. Звонок — верификация по входящему звонку (Realtime подписка)
  *
@@ -20,7 +20,10 @@ const { init: authInit } = useAuthInit()
 // STORES & COMPOSABLES — подключаем логику авторизации
 // =============================================================================
 
-// Telegram OIDC — кнопка редиректа на oauth.telegram.org
+// Telegram Login Widget — официальный виджет, авторизация без webhook
+const config = useRuntimeConfig()
+const botUsername = computed(() => config.public.telegramBotUsername || 'PG19CONNECTBOT')
+const tgWidgetRef = ref<HTMLDivElement | null>(null)
 const telegramLoading = ref(false)
 const telegramError = ref<string | null>(null)
 
@@ -281,7 +284,8 @@ watch(authMethod, async (method) => {
     await nextTick()
     setTimeout(() => initPhoneMask(), 50)
   } else if (method === 'telegram') {
-    telegramError.value = null
+    await nextTick()
+    setTimeout(() => initTelegramWidget(), 50)
   }
 
   if (method !== 'call') {
@@ -296,37 +300,73 @@ watch(authMethod, async (method) => {
 })
 
 // =============================================================================
-// TELEGRAM OIDC
+// TELEGRAM WIDGET
 // =============================================================================
 
-function startTelegramLogin(): void {
+const telegramWidgetLoaded = ref(false)
+
+function initTelegramWidget(): void {
+  if (!tgWidgetRef.value || !import.meta.client) return
+
+  tgWidgetRef.value.innerHTML = ''
+  telegramWidgetLoaded.value = false
   telegramError.value = null
-  telegramLoading.value = true
-  // Редирект на наш API, который перенаправит на oauth.telegram.org
-  window.location.href = '/api/auth/telegram/authorize'
+
+  const script = document.createElement('script')
+  script.src = 'https://telegram.org/js/telegram-widget.js?22'
+  script.setAttribute('data-telegram-login', botUsername.value)
+  script.setAttribute('data-size', 'large')
+  script.setAttribute('data-userpic', 'false')
+  script.setAttribute('data-onauth', 'onTelegramAuthCallback(user)')
+  script.setAttribute('data-request-access', 'write')
+  script.async = true
+
+  script.onload = () => {
+    telegramWidgetLoaded.value = true
+  }
+
+  script.onerror = () => {
+    telegramError.value = 'Не удалось загрузить Telegram виджет. Проверьте подключение к интернету.'
+  }
+
+  setTimeout(() => {
+    if (!tgWidgetRef.value?.querySelector('iframe')) {
+      telegramError.value =
+        `Telegram виджет не загрузился. Убедитесь, что в BotFather для бота @${botUsername.value} выполнена команда /setdomain и указан домен без https:// (пример: master-dev.doka.team).`
+    }
+  }, 5000)
+
+  tgWidgetRef.value.appendChild(script)
 }
 
 // =============================================================================
 // LIFECYCLE — жизненный цикл компонента
 // =============================================================================
 
-const route = useRoute()
-
 onMounted(() => {
-  // Показать ошибку из query (?error=...) после редиректа с OIDC callback
-  const errorFromQuery = route.query.error as string
-  if (errorFromQuery && authMethod.value === 'telegram') {
+  ;(window as any).onTelegramAuthCallback = async (user: Record<string, unknown>) => {
+    telegramLoading.value = true
+    telegramError.value = null
     try {
-      telegramError.value = decodeURIComponent(errorFromQuery)
-    } catch {
-      telegramError.value = errorFromQuery
+      const response = await $fetch<{ success: boolean; user: any; account: any }>(
+        '/api/auth/telegram/verify',
+        { method: 'POST', body: user }
+      )
+      await authInit(response.user, response.account)
+      await nextTick()
+      await navigateTo('/dashboard')
+    } catch (e: any) {
+      telegramError.value = e.data?.message || e.message || 'Ошибка авторизации Telegram'
+    } finally {
+      telegramLoading.value = false
     }
-    // Убрать error из URL
-    navigateTo({ path: '/login', query: {} }, { replace: true })
   }
+  initTelegramWidget()
 })
 
 onUnmounted(() => {
+  delete (window as any).onTelegramAuthCallback
+  if (phoneClickHandler && phoneInputRef.value) {
   if (phoneClickHandler && phoneInputRef.value) {
     phoneInputRef.value.removeEventListener('click', phoneClickHandler)
     phoneClickHandler = null
@@ -400,7 +440,7 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               TELEGRAM — авторизация через OIDC (oauth.telegram.org)
+               TELEGRAM — авторизация через Telegram Login Widget
                ----------------------------------------------------------------- -->
           <div v-if="authMethod === 'telegram'" class="space-y-4">
 
@@ -409,17 +449,12 @@ onUnmounted(() => {
                 Нажмите кнопку для входа через Telegram
               </p>
 
-              <button
-                type="button"
-                :disabled="telegramLoading"
-                class="flex items-center justify-center gap-3 w-full py-3 px-4 rounded-xl font-medium text-white transition-all hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
-                style="background: #0088cc;"
-                @click="startTelegramLogin"
-              >
-                <Icon v-if="telegramLoading" name="heroicons:arrow-path" class="w-5 h-5 animate-spin" />
-                <Icon v-else name="simple-icons:telegram" class="w-6 h-6" />
-                {{ telegramLoading ? 'Перенаправление...' : 'Войти через Telegram' }}
-              </button>
+              <div ref="tgWidgetRef" class="flex justify-center min-h-[52px]"></div>
+
+              <div v-if="telegramLoading" class="flex items-center gap-2 text-[var(--text-muted)] text-sm">
+                <div class="w-4 h-4 border-2 border-[#0088cc] border-t-transparent rounded-full animate-spin"></div>
+                Выполняем вход...
+              </div>
             </div>
 
             <!-- Подсказка для новых пользователей -->
