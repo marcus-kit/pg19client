@@ -1,9 +1,8 @@
 /**
  * SSE-эндпоинт для отслеживания статуса TelegramAuthRequest.
- * Заменяет HTTP-polling: держит постоянное соединение и отправляет
- * событие, как только статус в БД изменяется с 'pending'.
+ * Использует event.node.res напрямую — надёжнее ReadableStream в Nitro.
  *
- * Поддерживает heartbeat-комментарии каждые 20 сек для поддержания соединения.
+ * Опрашивает БД каждые 1.5 сек, отправляет событие при изменении статуса.
  * Закрывает соединение при статусе 'verified', 'expired', 'used' или по таймауту 5 мин.
  */
 export default defineEventHandler(async (event) => {
@@ -13,7 +12,9 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, message: 'Неверный токен' })
   }
 
-  setResponseHeaders(event, {
+  const { res } = event.node
+
+  res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache, no-store',
     'Connection': 'keep-alive',
@@ -22,95 +23,77 @@ export default defineEventHandler(async (event) => {
 
   const prisma = usePrisma()
   const deadline = Date.now() + 5 * 60 * 1000
-  const encoder = new TextEncoder()
+  let timer: ReturnType<typeof setTimeout> | null = null
 
-  let closed = false
+  function send(data: object): void {
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(data)}\n\n`)
+    }
+  }
 
-  const stream = new ReadableStream({
-    start(controller) {
-      function send(data: object): void {
-        if (closed) return
-        try {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
-        } catch {
-          closed = true
-        }
+  function heartbeat(): void {
+    if (!res.writableEnded) {
+      res.write(': ping\n\n')
+    }
+  }
+
+  async function tick(): Promise<void> {
+    if (res.writableEnded) return
+
+    if (Date.now() > deadline) {
+      send({ status: 'expired' })
+      res.end()
+      return
+    }
+
+    try {
+      const req = await prisma.telegramAuthRequest.findUnique({
+        where: { token },
+        select: { status: true, expires_at: true }
+      })
+
+      if (!req) {
+        send({ status: 'expired' })
+        res.end()
+        return
       }
 
-      function heartbeat(): void {
-        if (closed) return
-        try {
-          controller.enqueue(encoder.encode(': ping\n\n'))
-        } catch {
-          closed = true
-        }
+      if (req.status !== 'pending') {
+        send({ status: req.status })
+        res.end()
+        return
       }
 
-      async function tick(): Promise<void> {
-        if (closed) return
-
-        // Истёк общий таймаут
-        if (Date.now() > deadline) {
-          send({ status: 'expired' })
-          closed = true
-          controller.close()
-          return
-        }
-
-        try {
-          const req = await prisma.telegramAuthRequest.findUnique({
-            where: { token },
-            select: { status: true, expires_at: true }
-          })
-
-          if (!req) {
-            send({ status: 'expired' })
-            closed = true
-            controller.close()
-            return
-          }
-
-          // Статус изменился — отправляем и закрываем
-          if (req.status !== 'pending') {
-            send({ status: req.status })
-            closed = true
-            controller.close()
-            return
-          }
-
-          // Истёк срок токена в БД
-          if (req.expires_at && new Date(req.expires_at) < new Date()) {
-            await prisma.telegramAuthRequest.update({
-              where: { token },
-              data: { status: 'expired' }
-            })
-            send({ status: 'expired' })
-            closed = true
-            controller.close()
-            return
-          }
-        } catch {
-          // При ошибке БД — продолжаем опрос
-        }
-
-        heartbeat()
-        // Опрашиваем каждые 1.5 секунды
-        setTimeout(() => tick(), 1500)
+      if (req.expires_at && new Date(req.expires_at) < new Date()) {
+        await prisma.telegramAuthRequest.update({
+          where: { token },
+          data: { status: 'expired' }
+        })
+        send({ status: 'expired' })
+        res.end()
+        return
       }
+    } catch {
+      // При ошибке БД — продолжаем опрос
+    }
 
-      // Запускаем первый опрос
-      tick()
+    heartbeat()
+    timer = setTimeout(() => tick(), 1500)
+  }
 
-      // Heartbeat каждые 20 сек для поддержания соединения через прокси/nginx
-      const heartbeatTimer = setInterval(() => {
-        if (closed) {
-          clearInterval(heartbeatTimer)
-          return
-        }
-        heartbeat()
-      }, 20000)
+  // Очищаем таймер при закрытии соединения клиентом
+  res.on('close', () => {
+    if (timer) {
+      clearTimeout(timer)
+      timer = null
     }
   })
 
-  return stream
+  await tick()
+
+  // Держим соединение открытым до закрытия клиентом или res.end()
+  return new Promise<void>((resolve) => {
+    res.on('close', resolve)
+    res.on('finish', resolve)
+  })
 })

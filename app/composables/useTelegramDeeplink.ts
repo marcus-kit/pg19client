@@ -32,6 +32,7 @@ export function useTelegramDeeplink() {
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null
   let eventSource: EventSource | null = null
+  let sseRetryTimer: ReturnType<typeof setTimeout> | null = null
 
   async function requestAuth(purpose: 'link', userId: string): Promise<DeeplinkResponse> {
     stopAll()
@@ -93,11 +94,22 @@ export function useTelegramDeeplink() {
 
     eventSource.onerror = () => {
       closeSSE()
-      // Не меняем статус — пользователь всё ещё может ждать
+      // Повторное подключение через 3 сек если всё ещё ждём
+      if (status.value === 'waiting' && token.value) {
+        sseRetryTimer = setTimeout(() => {
+          if (status.value === 'waiting' && token.value) {
+            startSSE(token.value)
+          }
+        }, 3000)
+      }
     }
   }
 
   function closeSSE(): void {
+    if (sseRetryTimer) {
+      clearTimeout(sseRetryTimer)
+      sseRetryTimer = null
+    }
     if (eventSource) {
       eventSource.close()
       eventSource = null
