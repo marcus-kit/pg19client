@@ -10,6 +10,7 @@ function extractPhoneFromBody(body: Record<string, unknown> | null | undefined):
   ]
   for (const v of candidates) {
     if (typeof v === 'string' && v.trim()) return v
+    if (typeof v === 'number' && !Number.isNaN(v)) return String(v)
   }
   return null
 }
