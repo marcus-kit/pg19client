@@ -2,7 +2,7 @@
  * GET /api/auth/session — текущая сессия (user + account)
  * Используется для гидратации store после входа через OIDC, когда клиент не получает user/account напрямую.
  */
-import { getUserFromSession } from '../../../utils/userAuth'
+import { getUserFromSession } from '../../utils/userAuth'
 
 export default defineEventHandler(async (event) => {
   const sessionUser = await getUserFromSession(event)
