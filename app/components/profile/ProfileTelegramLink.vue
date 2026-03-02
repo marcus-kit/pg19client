@@ -58,11 +58,10 @@ onUnmounted(() => {
 // Обновление store после успешной привязки
 watch(status, (newStatus) => {
   if (newStatus === 'verified' && verifiedData.value) {
-    const data = verifiedData.value as any
-    if (data.telegramId) {
+    if (verifiedData.value.telegramId) {
       userStore.updateUser({
-        telegramId: data.telegramId,
-        telegram: data.telegramUsername ? `@${data.telegramUsername}` : ''
+        telegramId: verifiedData.value.telegramId,
+        telegram: verifiedData.value.telegramUsername ? `@${verifiedData.value.telegramUsername}` : ''
       })
     }
   }
@@ -189,11 +188,17 @@ watch(status, (newStatus) => {
         </div>
       </template>
 
-      <!-- Error Message -->
-      <div v-if="error" class="p-3 rounded-lg bg-red-500/10 text-red-400 text-sm flex items-center gap-2">
-        <Icon name="heroicons:exclamation-circle" class="w-5 h-5" />
-        {{ error }}
-      </div>
+      <!-- Шаг 5: Ошибка -->
+      <template v-else-if="status === 'error'">
+        <div class="text-center py-4">
+          <Icon name="heroicons:exclamation-circle" class="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <p class="font-medium text-[var(--text-primary)] mb-1">Ошибка привязки</p>
+          <p v-if="error" class="text-sm text-red-400 mb-3">{{ error }}</p>
+          <UiButton variant="primary" size="sm" @click="reset">
+            Попробовать снова
+          </UiButton>
+        </div>
+      </template>
     </div>
   </UiCard>
 </template>

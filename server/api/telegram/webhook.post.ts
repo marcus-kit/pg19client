@@ -140,10 +140,11 @@ export default defineEventHandler(async (event) => {
       ? '✅ Авторизация подтверждена!\n\nНажмите кнопку ниже, чтобы перейти в личный кабинет.'
       : '✅ Telegram успешно привязан!\n\nНажмите кнопку ниже, чтобы вернуться в профиль.'
 
+  const { public: { siteUrl } } = useRuntimeConfig()
   const buttonUrl =
     authRequest.purpose === 'login'
-      ? 'https://pg19v3client.doka.team/dashboard'
-      : 'https://pg19v3client.doka.team/profile'
+      ? `${siteUrl}/dashboard`
+      : `${siteUrl}/profile`
 
   const buttonText =
     authRequest.purpose === 'login' ? '🏠 Открыть личный кабинет' : '👤 Вернуться в профиль'

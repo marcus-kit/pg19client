@@ -78,7 +78,8 @@ export default defineNuxtConfig({
       supabaseUrl: process.env.SUPABASE_URL || 'https://supabase.doka.team',
       supabaseKey: process.env.SUPABASE_KEY || '',              // Anon ключ Supabase
       telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || 'PG19CONNECTBOT',
-      beelineCallNumber: '+7 960 459-69-45'                     // Номер для авторизации по звонку
+      beelineCallNumber: '+7 960 459-69-45',                    // Номер для авторизации по звонку
+      siteUrl: process.env.SITE_URL || 'https://master-dev.doka.team' // Базовый URL сайта
     }
   },
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Страница авторизации — три метода входа:
- * 1. Telegram — через deeplink (открывает Telegram → /start → Realtime подписка)
+ * 1. Telegram — через официальный Telegram Login Widget (JS callback + серверная верификация)
  * 2. Договор — по номеру договора + ФИО (синхронный API запрос)
  * 3. Звонок — верификация по входящему звонку (Realtime подписка)
  *
@@ -20,18 +20,12 @@ const { init: authInit } = useAuthInit()
 // STORES & COMPOSABLES — подключаем логику авторизации
 // =============================================================================
 
-// Telegram Deeplink — создаёт токен, слушает Realtime, получает данные при /start
-const {
-  isLoading: telegramLoading,
-  error: telegramError,
-  status: telegramStatus,         // 'idle' | 'waiting' | 'verified' | 'expired'
-  deeplink: telegramDeeplink,     // URL для открытия бота
-  remainingSeconds: telegramRemainingSeconds,
-  verifiedData: telegramVerifiedData,
-  botUsername,
-  requestAuth: requestTelegramAuth,
-  reset: resetTelegram
-} = useTelegramDeeplink()
+// Telegram Login Widget — официальный виджет, авторизация без webhook
+const config = useRuntimeConfig()
+const botUsername = computed(() => config.public.telegramBotUsername || 'PG19CONNECTBOT')
+const tgWidgetRef = ref<HTMLDivElement | null>(null)
+const telegramLoading = ref(false)
+const telegramError = ref<string | null>(null)
 
 // Call Verification — создаёт номер, слушает Realtime, подтверждает при звонке
 const {
@@ -89,7 +83,6 @@ function formatTimer(seconds: number): string {
   return `${mins}:${secs}`
 }
 
-const telegramTimer = computed(() => formatTimer(telegramRemainingSeconds.value))
 const callTimer = computed(() => formatTimer(remainingSeconds.value))
 
 // =============================================================================
@@ -101,7 +94,7 @@ function setAuthMethod(method: 'telegram' | 'contract' | 'call'): void {
   authMethod.value = method
   error.value = ''
   if (method !== 'call') resetCall()
-  if (method !== 'telegram') resetTelegram()
+  if (method === 'telegram') telegramError.value = null
 }
 
 // Только цифры (номер договора)
@@ -147,12 +140,6 @@ function onPasswordPaste(e: ClipboardEvent): void {
   e.preventDefault()
   const pasted = e.clipboardData?.getData('text') ?? ''
   form.password = sanitizePassword(form.password + pasted)
-}
-
-// Запуск Telegram авторизации — создаёт токен и показывает deeplink
-async function startTelegramAuth(): Promise<void> {
-  error.value = ''
-  await requestTelegramAuth('login')
 }
 
 // Запуск верификации по звонку — создаёт номер для звонка
@@ -284,18 +271,6 @@ watch(callStatus, async (newStatus) => {
   }
 })
 
-// Автоматический вход при успешной Telegram авторизации
-watch(telegramStatus, async (newStatus) => {
-  if (newStatus === 'verified' && telegramVerifiedData.value) {
-    const data = telegramVerifiedData.value as any
-    if (data.user) {
-      await authInit(data.user, data.account ?? null)
-      await nextTick()
-      await navigateTo('/dashboard')
-    }
-  }
-})
-
 // Синхронизация маски при программном изменении callPhone
 watch(callPhone, (newValue) => {
   if (phoneMask && phoneMask.unmaskedValue !== newValue) {
@@ -303,12 +278,18 @@ watch(callPhone, (newValue) => {
   }
 })
 
-// Инициализация маски при переключении на таб "Звонок"
+// Инициализация маски / виджета при переключении табов
 watch(authMethod, async (method) => {
   if (method === 'call') {
     await nextTick()
     setTimeout(() => initPhoneMask(), 50)
-  } else {
+  } else if (method === 'telegram') {
+    // Переинициализируем виджет, так как div пересоздаётся
+    await nextTick()
+    setTimeout(() => initTelegramWidget(), 50)
+  }
+
+  if (method !== 'call') {
     // При переключении с таба "call" уничтожаем маску и обработчик
     if (phoneClickHandler && phoneInputRef.value) {
       phoneInputRef.value.removeEventListener('click', phoneClickHandler)
@@ -320,11 +301,50 @@ watch(authMethod, async (method) => {
 })
 
 // =============================================================================
+// TELEGRAM WIDGET
+// =============================================================================
+
+function initTelegramWidget(): void {
+  if (!tgWidgetRef.value || !import.meta.client) return
+  tgWidgetRef.value.innerHTML = ''
+  const script = document.createElement('script')
+  script.src = 'https://telegram.org/js/telegram-widget.js?22'
+  script.setAttribute('data-telegram-login', botUsername.value)
+  script.setAttribute('data-size', 'large')
+  script.setAttribute('data-userpic', 'false')
+  script.setAttribute('data-onauth', 'onTelegramAuthCallback(user)')
+  script.setAttribute('data-request-access', 'write')
+  script.async = true
+  tgWidgetRef.value.appendChild(script)
+}
+
+// =============================================================================
 // LIFECYCLE — жизненный цикл компонента
 // =============================================================================
 
+onMounted(() => {
+  ;(window as any).onTelegramAuthCallback = async (user: Record<string, unknown>) => {
+    telegramLoading.value = true
+    telegramError.value = null
+    try {
+      const response = await $fetch<{ success: boolean; user: any; account: any }>(
+        '/api/auth/telegram/verify',
+        { method: 'POST', body: user }
+      )
+      await authInit(response.user, response.account)
+      await nextTick()
+      await navigateTo('/dashboard')
+    } catch (e: any) {
+      telegramError.value = e.data?.message || e.message || 'Ошибка авторизации Telegram'
+    } finally {
+      telegramLoading.value = false
+    }
+  }
+  initTelegramWidget()
+})
+
 onUnmounted(() => {
-  resetTelegram()
+  delete (window as any).onTelegramAuthCallback
   if (phoneClickHandler && phoneInputRef.value) {
     phoneInputRef.value.removeEventListener('click', phoneClickHandler)
     phoneClickHandler = null
@@ -398,94 +418,33 @@ onUnmounted(() => {
           </div>
 
           <!-- -----------------------------------------------------------------
-               TELEGRAM — авторизация через deeplink
-               Состояния: idle → waiting → verified/expired
+               TELEGRAM — авторизация через Telegram Login Widget
                ----------------------------------------------------------------- -->
           <div v-if="authMethod === 'telegram'" class="space-y-4">
 
-            <!-- Шаг 1: Начальный экран — кнопка входа -->
-            <template v-if="telegramStatus === 'idle'">
+            <!-- Контейнер виджета + состояние загрузки -->
+            <div class="flex flex-col items-center gap-4 py-2">
               <p class="text-sm text-[var(--text-muted)] text-center">
                 Нажмите кнопку для входа через Telegram
               </p>
 
-              <UiButton
-                variant="primary"
-                block
-                :loading="telegramLoading"
-                @click="startTelegramAuth"
-              >
-                <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
-                Войти через Telegram
-              </UiButton>
+              <!-- Telegram Login Widget вставляется сюда в onMounted -->
+              <div ref="tgWidgetRef" class="flex justify-center min-h-[52px]"></div>
 
-              <!-- Подсказка для новых пользователей -->
-              <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
-                <p class="text-[var(--text-muted)]">
-                  <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
-                  Если ваш Telegram не привязан к аккаунту, войдите по номеру договора и привяжите его в профиле.
-                </p>
+              <!-- Индикатор загрузки после нажатия на виджет -->
+              <div v-if="telegramLoading" class="flex items-center gap-2 text-[var(--text-muted)] text-sm">
+                <div class="w-4 h-4 border-2 border-[#0088cc] border-t-transparent rounded-full animate-spin"></div>
+                Выполняем вход...
               </div>
-            </template>
+            </div>
 
-            <!-- Шаг 2: Ожидание подтверждения — показываем ссылку на бота -->
-            <template v-else-if="telegramStatus === 'waiting'">
-              <div class="text-center">
-                <p class="text-[var(--text-muted)] mb-3 text-sm md:text-base">
-                  Откройте Telegram и нажмите Start в боте
-                </p>
-
-                <!-- Кнопка-ссылка на Telegram бота -->
-                <a
-                  :href="telegramDeeplink"
-                  target="_blank"
-                  class="inline-flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-lg md:rounded-xl font-medium text-sm md:text-base text-white bg-[#0088cc] hover:bg-[#0077b5] transition-colors mb-3 md:mb-6"
-                >
-                  <Icon name="simple-icons:telegram" class="w-4 h-4 md:w-5 md:h-5" />
-                  Открыть @{{ botUsername }}
-                </a>
-
-                <!-- Таймер обратного отсчёта -->
-                <div class="flex items-center justify-center gap-1.5 md:gap-2 text-[var(--text-muted)] mb-3 md:mb-6 text-xs md:text-sm">
-                  <Icon name="heroicons:clock" class="w-4 h-4 md:w-5 md:h-5" />
-                  <span class="font-mono">{{ telegramTimer }}</span>
-                </div>
-
-                <!-- Анимация ожидания (спиннер) - компактная на мобилке -->
-                <div class="relative w-12 h-12 md:w-20 md:h-20 mx-auto mb-3 md:mb-6">
-                  <div class="absolute inset-0 rounded-full border-2 md:border-4 border-[#0088cc]/20"></div>
-                  <div class="absolute inset-0 rounded-full border-2 md:border-4 border-[#0088cc] border-t-transparent animate-spin"></div>
-                  <Icon name="simple-icons:telegram" class="absolute inset-0 m-auto w-5 h-5 md:w-8 md:h-8 text-[#0088cc]" />
-                </div>
-
-                <button
-                  @click="resetTelegram"
-                  class="text-xs md:text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                >
-                  Отмена
-                </button>
-              </div>
-            </template>
-
-            <!-- Шаг 3: Успешная авторизация — редирект на дашборд -->
-            <template v-else-if="telegramStatus === 'verified'">
-              <div class="text-center py-4">
-                <Icon name="heroicons:check-circle" class="w-16 h-16 text-accent mx-auto mb-4" />
-                <p class="text-lg font-medium text-[var(--text-primary)]">Авторизация успешна!</p>
-                <p class="text-sm text-[var(--text-muted)]">Перенаправляем в личный кабинет...</p>
-              </div>
-            </template>
-
-            <!-- Шаг 4: Время истекло — предложение повторить -->
-            <template v-else-if="telegramStatus === 'expired'">
-              <div class="text-center py-4">
-                <Icon name="heroicons:x-circle" class="w-16 h-16 text-red-500 mx-auto mb-4" />
-                <p class="text-lg font-medium text-[var(--text-primary)] mb-4">Время истекло</p>
-                <UiButton variant="primary" @click="resetTelegram">
-                  Попробовать снова
-                </UiButton>
-              </div>
-            </template>
+            <!-- Подсказка для новых пользователей -->
+            <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
+              <p class="text-[var(--text-muted)]">
+                <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
+                Если ваш Telegram не привязан к аккаунту, войдите по номеру договора и привяжите его в профиле.
+              </p>
+            </div>
           </div>
 
           <!-- -----------------------------------------------------------------

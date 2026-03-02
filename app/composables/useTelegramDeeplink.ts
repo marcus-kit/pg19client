@@ -1,6 +1,7 @@
 /**
- * Composable для авторизации через Telegram Deeplink.
- * Использует polling статуса (без Supabase Realtime).
+ * Composable для привязки Telegram к аккаунту через deeplink.
+ * Использует SSE (Server-Sent Events) вместо HTTP-polling для мгновенного
+ * обнаружения изменения статуса в БД.
  */
 
 interface DeeplinkResponse {
@@ -10,58 +11,29 @@ interface DeeplinkResponse {
   expiresInSeconds: number
 }
 
-interface LoginCompleteResponse {
-  success: boolean
-  user: {
-    id: string
-    firstName: string
-    lastName: string
-    middleName?: string
-    phone: string
-    email: string
-    telegram: string
-    telegramId: string | null
-    vkId: string
-    avatar: string | null
-    birthDate: string | null
-    role: string
-  }
-  account: {
-    contractNumber: number
-    balance: number
-    status: string
-    tariff: string
-    address: string
-    startDate: string
-  }
-}
-
 interface LinkCompleteResponse {
   success: boolean
   telegramId: string
   telegramUsername: string | null
 }
 
-type CompleteResponse = LoginCompleteResponse | LinkCompleteResponse
+type Status = 'idle' | 'waiting' | 'verified' | 'expired' | 'error'
 
 export function useTelegramDeeplink() {
   const config = useRuntimeConfig()
 
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const status = ref<'idle' | 'waiting' | 'verified' | 'expired'>('idle')
+  const status = ref<Status>('idle')
   const deeplink = ref<string | null>(null)
   const token = ref<string | null>(null)
   const remainingSeconds = ref(0)
-  const verifiedData = ref<CompleteResponse | null>(null)
+  const verifiedData = ref<LinkCompleteResponse | null>(null)
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null
-  let pollInterval: ReturnType<typeof setInterval> | null = null
+  let eventSource: EventSource | null = null
 
-  async function requestAuth(
-    purpose: 'login' | 'link',
-    userId?: string
-  ): Promise<DeeplinkResponse> {
+  async function requestAuth(purpose: 'link', userId: string): Promise<DeeplinkResponse> {
     stopAll()
     isLoading.value = true
     error.value = null
@@ -69,10 +41,7 @@ export function useTelegramDeeplink() {
     try {
       const response = await $fetch<DeeplinkResponse>('/api/auth/telegram-deeplink/request', {
         method: 'POST',
-        body: {
-          purpose,
-          userId
-        }
+        body: { purpose, userId }
       })
 
       token.value = response.token
@@ -80,7 +49,7 @@ export function useTelegramDeeplink() {
       remainingSeconds.value = response.expiresInSeconds
       status.value = 'waiting'
 
-      startPolling(response.token)
+      startSSE(response.token)
       startCountdown()
 
       if (import.meta.client && response.deeplink) {
@@ -97,53 +66,57 @@ export function useTelegramDeeplink() {
     }
   }
 
-  function startPolling(authToken: string): void {
-    if (pollInterval) return
+  function startSSE(authToken: string): void {
+    if (!import.meta.client) return
+    closeSSE()
 
-    pollInterval = setInterval(async () => {
-      if (status.value !== 'waiting') {
-        stopPolling()
-        return
-      }
+    eventSource = new EventSource(`/api/auth/telegram-deeplink/stream/${authToken}`)
 
+    eventSource.onmessage = async (e: MessageEvent) => {
       try {
-        const response = await $fetch<{ status: string }>(`/api/auth/telegram-deeplink/status/${authToken}`)
+        const data = JSON.parse(e.data as string) as { status: string }
 
-        if (response.status === 'verified') {
-          stopAll()
-
+        if (data.status === 'verified') {
+          closeSSE()
+          stopCountdown()
           const result = await completeAuth()
-          if (result) {
-            status.value = 'verified'
-          }
-        } else if (response.status === 'expired') {
-          stopAll()
+          status.value = result ? 'verified' : 'error'
+        } else if (data.status === 'expired' || data.status === 'used') {
+          closeSSE()
+          stopCountdown()
           status.value = 'expired'
         }
       } catch {
-        // ignore poll errors
+        // игнорируем ошибки парсинга heartbeat-комментариев
       }
-    }, 3000)
-  }
+    }
 
-  function stopPolling(): void {
-    if (pollInterval) {
-      clearInterval(pollInterval)
-      pollInterval = null
+    eventSource.onerror = () => {
+      closeSSE()
+      // Не меняем статус — пользователь всё ещё может ждать
     }
   }
 
-  async function completeAuth(): Promise<CompleteResponse | null> {
+  function closeSSE(): void {
+    if (eventSource) {
+      eventSource.close()
+      eventSource = null
+    }
+  }
+
+  async function completeAuth(): Promise<LinkCompleteResponse | null> {
     if (!token.value) return null
 
     try {
-      const response = await $fetch<CompleteResponse>(`/api/auth/telegram-deeplink/complete/${token.value}`)
+      const response = await $fetch<LinkCompleteResponse>(
+        `/api/auth/telegram-deeplink/complete/${token.value}`
+      )
       verifiedData.value = response
       return response
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } }
       console.error('[TelegramDeeplink] Complete error:', e)
-      error.value = err.data?.message || 'Ошибка завершения авторизации'
+      error.value = err.data?.message || 'Ошибка завершения привязки'
       return null
     }
   }
@@ -161,12 +134,16 @@ export function useTelegramDeeplink() {
     }, 1000)
   }
 
-  function stopAll(): void {
+  function stopCountdown(): void {
     if (countdownInterval) {
       clearInterval(countdownInterval)
       countdownInterval = null
     }
-    stopPolling()
+  }
+
+  function stopAll(): void {
+    stopCountdown()
+    closeSSE()
   }
 
   function reset(): void {
