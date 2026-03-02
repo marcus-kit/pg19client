@@ -4,7 +4,7 @@
  */
 import { getCookie, deleteCookie } from 'h3'
 import * as jose from 'jose'
-import { createUserSession } from '~/server/utils/userAuth'
+import { createUserSession } from '../../../utils/userAuth'
 
 const PKCE_COOKIE_NAME = 'tg_oidc_pkce'
 const JWKS_URL = 'https://oauth.telegram.org/.well-known/jwks.json'
