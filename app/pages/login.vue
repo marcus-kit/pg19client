@@ -367,7 +367,6 @@ onMounted(() => {
 onUnmounted(() => {
   delete (window as any).onTelegramAuthCallback
   if (phoneClickHandler && phoneInputRef.value) {
-  if (phoneClickHandler && phoneInputRef.value) {
     phoneInputRef.value.removeEventListener('click', phoneClickHandler)
     phoneClickHandler = null
   }
