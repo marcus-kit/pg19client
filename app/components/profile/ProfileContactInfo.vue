@@ -175,11 +175,12 @@ onMounted(() => {
 // Обновление store после успешной привязки Telegram
 watch(telegramStatus, (newStatus) => {
   if (newStatus === 'verified' && telegramVerifiedData.value) {
-    const data = telegramVerifiedData.value as any
-    if (data.telegramId) {
+    if (telegramVerifiedData.value.telegramId) {
       userStore.updateUser({
-        telegramId: data.telegramId,
-        telegram: data.telegramUsername ? `@${data.telegramUsername}` : ''
+        telegramId: telegramVerifiedData.value.telegramId,
+        telegram: telegramVerifiedData.value.telegramUsername
+          ? `@${telegramVerifiedData.value.telegramUsername}`
+          : ''
       })
     }
   }
@@ -249,19 +250,18 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Кнопка привязки Telegram -->
+          <!-- Кнопка привязки Telegram (idle / error / expired → показываем кнопку) -->
           <UiButton
-            v-if="contact.isTelegram && !isTelegramLinked"
+            v-if="contact.isTelegram && !isTelegramLinked && telegramStatus !== 'waiting'"
             size="sm"
             variant="primary"
             :loading="telegramLoading"
-            
             @click="startTelegramLink"
           >
             <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1" />
-            Привязать
+            {{ telegramStatus === 'expired' || telegramStatus === 'error' ? 'Повторить' : 'Привязать' }}
           </UiButton>
-          <!-- Статус Telegram привязки -->
+          <!-- Статус ожидания: deeplink + таймер -->
           <template v-else-if="contact.isTelegram && telegramStatus === 'waiting'">
             <div class="flex flex-col items-end gap-1">
               <a
@@ -275,22 +275,32 @@ onUnmounted(() => {
               <span class="text-xs text-[var(--text-muted)] font-mono">
                 {{ formatTelegramTimer(telegramRemainingSeconds) }}
               </span>
+              <button
+                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                @click="resetTelegram"
+              >
+                Отмена
+              </button>
             </div>
           </template>
           <!-- Бейджи статуса -->
           <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
-          Подтверждён
-        </UiBadge>
-        <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
-          Не подтверждён
-        </UiBadge>
+            Подтверждён
+          </UiBadge>
+          <UiBadge v-else-if="contact.value" variant="neutral" size="sm">
+            Не подтверждён
+          </UiBadge>
         </div>
       </div>
-      
-      <!-- Сообщение об ошибке Telegram -->
+
+      <!-- Сообщения о статусе Telegram -->
       <div v-if="telegramError" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
-        <Icon name="heroicons:exclamation-circle" class="w-4 h-4" />
+        <Icon name="heroicons:exclamation-circle" class="w-4 h-4 shrink-0" />
         {{ telegramError }}
+      </div>
+      <div v-else-if="telegramStatus === 'expired'" class="p-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs flex items-center gap-2 mt-2">
+        <Icon name="heroicons:clock" class="w-4 h-4 shrink-0" />
+        Время истекло. Нажмите «Повторить» для новой попытки.
       </div>
     </div>
 
