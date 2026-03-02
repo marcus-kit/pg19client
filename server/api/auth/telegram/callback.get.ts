@@ -125,9 +125,12 @@ export default defineEventHandler(async (event) => {
   const prisma = usePrisma()
 
   // Привязка в профиле (purpose=link)
+  // linkUserId из PKCE cookie — записывается только после проверки сессии в authorize.
+  // Сессионная cookie может не отправляться при редиректе с oauth.telegram.org, поэтому
+  // доверяем linkUserId при валидном PKCE. Отклоняем только если сессия есть и userId не совпадает.
   if (purpose === 'link' && linkUserId) {
     const sessionUser = await getUserFromSession(event)
-    if (!sessionUser || sessionUser.id !== linkUserId) {
+    if (sessionUser && sessionUser.id !== linkUserId) {
       return sendRedirect(event, '/profile?error=' + encodeURIComponent('Сессия истекла. Войдите снова и повторите'))
     }
 
