@@ -2,10 +2,8 @@
 /**
  * ProfileTelegramLink — привязка Telegram к аккаунту
  *
- * Особенности:
- * - Deeplink авторизация (purpose: 'link')
- * - Таймер ожидания подтверждения
- * - Автообновление store после привязки
+ * Использует OIDC (oauth.telegram.org) — тот же метод, что и вход.
+ * Позволяет привязать или перепривязать Telegram.
  */
 
 // =============================================================================
@@ -13,18 +11,9 @@
 // =============================================================================
 
 const userStore = useUserStore()
+const route = useRoute()
 
-const {
-  isLoading,
-  error,
-  status,
-  deeplink,
-  remainingSeconds,
-  verifiedData,
-  botUsername,
-  requestAuth,
-  reset
-} = useTelegramDeeplink()
+const isLinking = ref(false)
 
 // =============================================================================
 // COMPUTED
@@ -37,33 +26,27 @@ const telegramUsername = computed(() => userStore.user?.telegram || '')
 // METHODS
 // =============================================================================
 
-// Запуск привязки Telegram
-async function startLink(): Promise<void> {
+// Запуск привязки через OIDC
+function startLink(): void {
   if (!userStore.user?.id) return
-  await requestAuth('link', userStore.user.id)
+  isLinking.value = true
+  window.location.href = '/api/auth/telegram/authorize?purpose=link'
 }
 
 // =============================================================================
-// LIFECYCLE
+// LIFECYCLE & WATCHERS
 // =============================================================================
 
-onUnmounted(() => {
-  reset()
-})
-
-// =============================================================================
-// WATCHERS
-// =============================================================================
-
-// Обновление store после успешной привязки
-watch(status, (newStatus) => {
-  if (newStatus === 'verified' && verifiedData.value) {
-    if (verifiedData.value.telegramId) {
-      userStore.updateUser({
-        telegramId: verifiedData.value.telegramId,
-        telegram: verifiedData.value.telegramUsername ? `@${verifiedData.value.telegramUsername}` : ''
-      })
+onMounted(async () => {
+  // Успешная привязка — обновить store из API
+  if (route.query.telegram_linked === '1') {
+    try {
+      const user = await $fetch<{ telegramId: string | null; telegram: string }>('/api/user/me')
+      userStore.updateUser({ telegramId: user.telegramId, telegram: user.telegram })
+    } catch {
+      // ignore
     }
+    navigateTo({ path: '/profile', query: {} }, { replace: true })
   }
 })
 </script>
@@ -79,126 +62,71 @@ watch(status, (newStatus) => {
     </div>
 
     <!-- Telegram привязан -->
-    <div v-if="isLinked" class="flex items-center gap-4">
-      <div class="p-3 rounded-xl bg-[#0088cc]/10">
-        <Icon name="simple-icons:telegram" class="w-8 h-8 text-[#0088cc]" />
+    <div v-if="isLinked" class="space-y-4">
+      <div class="flex items-center gap-4">
+        <div class="p-3 rounded-xl bg-[#0088cc]/10">
+          <Icon name="simple-icons:telegram" class="w-8 h-8 text-[#0088cc]" />
+        </div>
+        <div>
+          <p class="text-[var(--text-primary)] font-medium">{{ telegramUsername || 'Привязан' }}</p>
+          <p class="text-sm text-[var(--text-muted)]">
+            Вы можете входить в личный кабинет через Telegram
+          </p>
+        </div>
       </div>
-      <div>
-        <p class="text-[var(--text-primary)] font-medium">{{ telegramUsername || 'Привязан' }}</p>
-        <p class="text-sm text-[var(--text-muted)]">
-          Вы можете входить в личный кабинет через Telegram
-        </p>
-      </div>
+      <p class="text-sm text-[var(--text-muted)]">
+        Если вход через Telegram не работает, нажмите «Перепривязать» — это обновит привязку на новый метод OAuth.
+      </p>
+      <UiButton
+        variant="secondary"
+        size="sm"
+        :loading="isLinking"
+        @click="startLink"
+      >
+        <Icon name="simple-icons:telegram" class="w-4 h-4 mr-1" />
+        Перепривязать Telegram
+      </UiButton>
     </div>
 
     <!-- Telegram не привязан -->
     <div v-else class="space-y-4">
-      <!-- Шаг 1: Начальный экран -->
-      <template v-if="status === 'idle'">
-        <p class="text-sm text-[var(--text-muted)]">
-          Привяжите Telegram для быстрого входа в личный кабинет
-        </p>
+      <p class="text-sm text-[var(--text-muted)]">
+        Привяжите Telegram для быстрого входа в личный кабинет
+      </p>
 
-        <UiButton
-          variant="primary"
-          block
-          :loading="isLoading"
-          
-          @click="startLink"
-        >
-          <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
-          Привязать Telegram
-        </UiButton>
+      <UiButton
+        variant="primary"
+        block
+        :loading="isLinking"
+        @click="startLink"
+      >
+        <Icon name="simple-icons:telegram" class="w-5 h-5 mr-2" />
+        Привязать Telegram
+      </UiButton>
 
-        <!-- Benefits -->
-        <div class="p-4 rounded-lg space-y-2" style="background: var(--glass-bg);">
-          <p class="text-sm font-medium text-[var(--text-primary)]">Преимущества:</p>
-          <ul class="text-sm text-[var(--text-muted)] space-y-1">
-            <li class="flex items-center gap-2">
-              <Icon name="heroicons:bolt" class="w-4 h-4 text-primary" />
-              Мгновенный вход без пароля
-            </li>
-            <li class="flex items-center gap-2">
-              <Icon name="heroicons:bell" class="w-4 h-4 text-primary" />
-              Уведомления в Telegram
-            </li>
-            <li class="flex items-center gap-2">
-              <Icon name="heroicons:shield-check" class="w-4 h-4 text-primary" />
-              Двухфакторная защита
-            </li>
-          </ul>
-        </div>
-      </template>
+      <!-- Benefits -->
+      <div class="p-4 rounded-lg space-y-2" style="background: var(--glass-bg);">
+        <p class="text-sm font-medium text-[var(--text-primary)]">Преимущества:</p>
+        <ul class="text-sm text-[var(--text-muted)] space-y-1">
+          <li class="flex items-center gap-2">
+            <Icon name="heroicons:bolt" class="w-4 h-4 text-primary" />
+            Мгновенный вход без пароля
+          </li>
+          <li class="flex items-center gap-2">
+            <Icon name="heroicons:bell" class="w-4 h-4 text-primary" />
+            Уведомления в Telegram
+          </li>
+          <li class="flex items-center gap-2">
+            <Icon name="heroicons:shield-check" class="w-4 h-4 text-primary" />
+            Двухфакторная защита
+          </li>
+        </ul>
+      </div>
 
-      <!-- Шаг 2: Ожидание подтверждения -->
-      <template v-else-if="status === 'waiting'">
-        <div class="text-center">
-          <p class="text-[var(--text-muted)] mb-4">
-            Откройте Telegram и нажмите Start
-          </p>
-
-          <!-- Кнопка-ссылка -->
-          <a
-            :href="deeplink"
-            target="_blank"
-            class="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium text-white bg-[#0088cc] hover:bg-[#0077b5] transition-colors mb-4"
-          >
-            <Icon name="simple-icons:telegram" class="w-5 h-5" />
-            Открыть @{{ botUsername }}
-          </a>
-
-          <!-- Таймер -->
-          <div class="flex items-center justify-center gap-2 text-[var(--text-muted)] mb-4">
-            <Icon name="heroicons:clock" class="w-5 h-5" />
-            <span class="font-mono">{{ Math.floor(remainingSeconds / 60) }}:{{ String(remainingSeconds % 60).padStart(2, '0') }}</span>
-          </div>
-
-          <!-- Анимация -->
-          <div class="relative w-16 h-16 mx-auto mb-4">
-            <div class="absolute inset-0 rounded-full border-4 border-[#0088cc]/20"></div>
-            <div class="absolute inset-0 rounded-full border-4 border-[#0088cc] border-t-transparent animate-spin"></div>
-            <Icon name="simple-icons:telegram" class="absolute inset-0 m-auto w-6 h-6 text-[#0088cc]" />
-          </div>
-
-          <button
-            @click="reset"
-            class="text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-          >
-            Отмена
-          </button>
-        </div>
-      </template>
-
-      <!-- Шаг 3: Успех -->
-      <template v-else-if="status === 'verified'">
-        <div class="text-center py-4">
-          <Icon name="heroicons:check-circle" class="w-12 h-12 text-accent mx-auto mb-3" />
-          <p class="text-lg font-medium text-[var(--text-primary)]">Telegram привязан!</p>
-        </div>
-      </template>
-
-      <!-- Шаг 4: Истекло -->
-      <template v-else-if="status === 'expired'">
-        <div class="text-center py-4">
-          <Icon name="heroicons:x-circle" class="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p class="font-medium text-[var(--text-primary)] mb-3">Время истекло</p>
-          <UiButton variant="primary" size="sm" @click="reset">
-            Попробовать снова
-          </UiButton>
-        </div>
-      </template>
-
-      <!-- Шаг 5: Ошибка -->
-      <template v-else-if="status === 'error'">
-        <div class="text-center py-4">
-          <Icon name="heroicons:exclamation-circle" class="w-12 h-12 text-red-500 mx-auto mb-3" />
-          <p class="font-medium text-[var(--text-primary)] mb-1">Ошибка привязки</p>
-          <p v-if="error" class="text-sm text-red-400 mb-3">{{ error }}</p>
-          <UiButton variant="primary" size="sm" @click="reset">
-            Попробовать снова
-          </UiButton>
-        </div>
-      </template>
+      <!-- Ошибка из query -->
+      <p v-if="route.query?.error" class="text-sm text-red-400">
+        {{ decodeURIComponent(String(route.query.error)) }}
+      </p>
     </div>
   </UiCard>
 </template>

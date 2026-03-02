@@ -122,7 +122,7 @@ function sanitizePassword(value: string): string {
 
 // Разрешить только печатные ASCII и служебные клавиши в поле пароля
 function onPasswordKeydown(e: KeyboardEvent): void {
-  const key = e.key
+  const key = e.key ?? ''
   if (key.length === 1) {
     const code = key.charCodeAt(0)
     if (code >= 0x20 && code <= 0x7E) return
@@ -191,21 +191,19 @@ function initPhoneMask(): void {
     overwrite: true, // Перезаписывать символы вместо вставки
     autofix: true, // Автоматически исправлять неполные значения
     prepare: (appended: string, masked: any) => {
-      // Защита от удаления статической части (+7)
-      if (masked.value && !masked.value.startsWith('+7')) {
-        return ''
-      }
-      return appended
+      const val = masked?.value
+      if (val && !val.startsWith('+7')) return ''
+      return appended ?? ''
     }
   })
   
   phoneMask.on('accept', () => {
-    // Синхронизируем значение с реактивной переменной
-    callPhone.value = phoneMask!.unmaskedValue
-    
-    // Дополнительная защита: восстанавливаем +7 если его случайно удалили
-    if (phoneMask!.value && !phoneMask!.value.startsWith('+7')) {
-      const digits = phoneMask!.unmaskedValue.replace(/\D/g, '')
+    const val = phoneMask!.unmaskedValue ?? ''
+    callPhone.value = val
+
+    const maskVal = phoneMask!.value ?? ''
+    if (maskVal && !maskVal.startsWith('+7')) {
+      const digits = (phoneMask!.unmaskedValue ?? '').replace(/\D/g, '')
       if (digits.length > 0) {
         phoneMask!.unmaskedValue = '7' + digits.replace(/^7/, '')
       } else {
@@ -216,8 +214,9 @@ function initPhoneMask(): void {
   
   // Защита от удаления статической части при любых изменениях
   phoneMask.on('input', () => {
-    if (phoneMask!.value && !phoneMask!.value.startsWith('+7')) {
-      const digits = phoneMask!.unmaskedValue.replace(/\D/g, '')
+    const maskVal = phoneMask!.value ?? ''
+    if (maskVal && !maskVal.startsWith('+7')) {
+      const digits = (phoneMask!.unmaskedValue ?? '').replace(/\D/g, '')
       if (digits.length > 0) {
         phoneMask!.unmaskedValue = '7' + digits.replace(/^7/, '')
       } else {
@@ -229,9 +228,9 @@ function initPhoneMask(): void {
   // Защита при клике: если кликнули в область +7, не даем удалить
   phoneClickHandler = (e: Event) => {
     const target = e.target as HTMLInputElement
-    const selectionStart = target.selectionStart || 0
-    // Если курсор в области +7 (первые 2 символа), перемещаем его после
-    if (selectionStart < 2 && phoneMask!.value.startsWith('+7')) {
+    const selectionStart = target.selectionStart ?? 0
+    const maskVal = phoneMask!.value ?? ''
+    if (selectionStart < 2 && maskVal.startsWith('+7')) {
       setTimeout(() => {
         phoneMask!.updateCursor()
         if (target.setSelectionRange) {
@@ -312,8 +311,8 @@ function startTelegramLogin(): void {
 const route = useRoute()
 
 onMounted(() => {
-  const errorFromQuery = route.query.error as string
-  if (errorFromQuery && authMethod.value === 'telegram') {
+  const errorFromQuery = route.query?.error
+  if (typeof errorFromQuery === 'string' && errorFromQuery && authMethod.value === 'telegram') {
     try {
       telegramError.value = decodeURIComponent(errorFromQuery)
     } catch {
@@ -423,7 +422,7 @@ onUnmounted(() => {
             <div class="p-3 rounded-lg text-sm" style="background: var(--glass-bg);">
               <p class="text-[var(--text-muted)]">
                 <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
-                Если ваш Telegram не привязан к аккаунту, войдите по номеру договора и привяжите его в профиле.
+                Если ваш Telegram не привязан к аккаунту, войдите по <button type="button" class="underline hover:text-primary" @click="setAuthMethod('contract')">номеру договора</button> и привяжите его в профиле.
               </p>
             </div>
 

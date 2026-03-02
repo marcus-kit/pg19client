@@ -1,9 +1,11 @@
 /**
  * Telegram OIDC — инициация авторизации (Authorization Code + PKCE)
  * Редирект на oauth.telegram.org/auth
+ * purpose=link — привязка в профиле (требует сессию)
  */
 import crypto from 'crypto'
 import { setCookie } from 'h3'
+import { getUserFromSession } from '../../../utils/userAuth'
 
 const PKCE_COOKIE_NAME = 'tg_oidc_pkce'
 const PKCE_COOKIE_MAX_AGE = 600
@@ -21,6 +23,18 @@ function generateCodeChallenge(verifier: string): string {
 }
 
 export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const purpose = (query.purpose as string) || 'login'
+
+  let sessionUserId: string | undefined
+  if (purpose === 'link') {
+    const sessionUser = await getUserFromSession(event)
+    if (!sessionUser) {
+      return sendRedirect(event, '/login?error=' + encodeURIComponent('Войдите в личный кабинет и повторите привязку'))
+    }
+    sessionUserId = sessionUser.id
+  }
+
   const config = useRuntimeConfig()
   const clientId = config.telegramOidcClientId as string
   const siteUrl = (config.public.siteUrl as string) || 'https://master-dev.doka.team'
@@ -37,7 +51,16 @@ export default defineEventHandler(async (event) => {
   const codeChallenge = generateCodeChallenge(codeVerifier)
   const state = base64UrlEncode(crypto.randomBytes(16))
 
-  setCookie(event, PKCE_COOKIE_NAME, JSON.stringify({ codeVerifier, state }), {
+  const cookieData: { codeVerifier: string; state: string; purpose?: string; userId?: string } = {
+    codeVerifier,
+    state
+  }
+  if (purpose === 'link' && sessionUserId) {
+    cookieData.purpose = 'link'
+    cookieData.userId = sessionUserId
+  }
+
+  setCookie(event, PKCE_COOKIE_NAME, JSON.stringify(cookieData), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',

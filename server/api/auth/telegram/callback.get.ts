@@ -1,10 +1,12 @@
 /**
  * Telegram OIDC — callback после авторизации
- * Обменивает code на tokens, валидирует id_token, создаёт сессию
+ * Обменивает code на tokens, валидирует id_token
+ * purpose=login — создаёт сессию, редирект на /dashboard
+ * purpose=link — привязывает telegram_id к пользователю, редирект на /profile
  */
 import { getCookie, deleteCookie } from 'h3'
 import * as jose from 'jose'
-import { createUserSession } from '../../../utils/userAuth'
+import { createUserSession, getUserFromSession } from '../../../utils/userAuth'
 
 const PKCE_COOKIE_NAME = 'tg_oidc_pkce'
 const JWKS_URL = 'https://oauth.telegram.org/.well-known/jwks.json'
@@ -54,6 +56,9 @@ export default defineEventHandler(async (event) => {
   if (pkceData.state !== state) {
     return sendRedirect(event, '/login?error=' + encodeURIComponent('Неверный state. Возможная CSRF атака'))
   }
+
+  const purpose = (pkceData as { purpose?: string }).purpose || 'login'
+  const linkUserId = (pkceData as { userId?: string }).userId
 
   const config = useRuntimeConfig()
   const clientId = config.telegramOidcClientId as string
@@ -119,6 +124,34 @@ export default defineEventHandler(async (event) => {
 
   const prisma = usePrisma()
 
+  // Привязка в профиле (purpose=link)
+  if (purpose === 'link' && linkUserId) {
+    const sessionUser = await getUserFromSession(event)
+    if (!sessionUser || sessionUser.id !== linkUserId) {
+      return sendRedirect(event, '/profile?error=' + encodeURIComponent('Сессия истекла. Войдите снова и повторите'))
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: { telegram_id: telegramId },
+      select: { id: true }
+    })
+    if (existingUser && existingUser.id !== linkUserId) {
+      return sendRedirect(event, '/profile?error=' + encodeURIComponent('Этот Telegram уже привязан к другому аккаунту'))
+    }
+
+    await prisma.user.update({
+      where: { id: linkUserId },
+      data: {
+        telegram_id: telegramId,
+        telegram_username: telegramUsername,
+        updated_at: new Date()
+      }
+    })
+
+    return sendRedirect(event, '/profile?telegram_linked=1')
+  }
+
+  // Вход (purpose=login)
   const user = await prisma.user.findFirst({
     where: { telegram_id: telegramId },
     select: {
