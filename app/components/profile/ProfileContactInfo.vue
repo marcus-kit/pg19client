@@ -15,17 +15,7 @@
 
 const userStore = useUserStore()
 
-const {
-  isLoading: telegramLoading,
-  error: telegramError,
-  status: telegramStatus,
-  deeplink: telegramDeeplink,
-  remainingSeconds: telegramRemainingSeconds,
-  verifiedData: telegramVerifiedData,
-  botUsername,
-  requestAuth: requestTelegramAuth,
-  reset: resetTelegram
-} = useTelegramDeeplink()
+const telegramOidcLinking = ref(false)
 
 // =============================================================================
 // STATE — реактивное состояние
@@ -152,37 +142,29 @@ async function saveChanges(): Promise<void> {
   }
 }
 
-// Запуск привязки Telegram
-async function startTelegramLink(): Promise<void> {
+// Запуск привязки/перепривязки Telegram через OIDC
+function startTelegramLink(): void {
   if (!userStore.user?.id) return
-  await requestTelegramAuth('link', userStore.user.id)
+  telegramOidcLinking.value = true
+  window.location.href = '/api/auth/telegram/authorize?purpose=link'
 }
 
-// Форматирование таймера Telegram
-function formatTelegramTimer(seconds: number): string {
-  const mins = Math.floor(seconds / 60)
-  const secs = String(seconds % 60).padStart(2, '0')
-  return `${mins}:${secs}`
-}
+const route = useRoute()
 
-onMounted(() => {
+onMounted(async () => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateIsMobile)
   }
-})
-
-// Обновление store после успешной привязки Telegram
-watch(telegramStatus, (newStatus) => {
-  if (newStatus === 'verified' && telegramVerifiedData.value) {
-    if (telegramVerifiedData.value.telegramId) {
-      userStore.updateUser({
-        telegramId: telegramVerifiedData.value.telegramId,
-        telegram: telegramVerifiedData.value.telegramUsername
-          ? `@${telegramVerifiedData.value.telegramUsername}`
-          : ''
-      })
+  // Успешная привязка — обновить store
+  if (route.query.telegram_linked === '1') {
+    try {
+      const user = await $fetch<{ telegramId: string | null; telegram: string }>('/api/user/me')
+      userStore.updateUser({ telegramId: user.telegramId, telegram: user.telegram })
+    } catch {
+      // ignore
     }
+    navigateTo({ path: '/profile', query: {} }, { replace: true })
   }
 })
 
@@ -190,7 +172,6 @@ onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateIsMobile)
   }
-  resetTelegram()
 })
 </script>
 
@@ -250,40 +231,18 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Кнопка привязки Telegram (idle / error / expired → показываем кнопку) -->
+          <!-- Telegram: кнопка привязки или перепривязки -->
           <UiButton
-            v-if="contact.isTelegram && !isTelegramLinked && telegramStatus !== 'waiting'"
+            v-if="contact.isTelegram"
             size="sm"
-            variant="primary"
-            :loading="telegramLoading"
+            :variant="isTelegramLinked ? 'secondary' : 'primary'"
+            :loading="telegramOidcLinking"
             @click="startTelegramLink"
           >
             <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1" />
-            {{ telegramStatus === 'expired' || telegramStatus === 'error' ? 'Повторить' : 'Привязать' }}
+            {{ isTelegramLinked ? 'Перепривязать' : 'Привязать' }}
           </UiButton>
-          <!-- Статус ожидания: deeplink + таймер -->
-          <template v-else-if="contact.isTelegram && telegramStatus === 'waiting'">
-            <div class="flex flex-col items-end gap-1">
-              <a
-                :href="telegramDeeplink || undefined"
-                target="_blank"
-                class="text-xs text-[#0088cc] hover:text-[#0077b5] flex items-center gap-1"
-              >
-                <Icon name="simple-icons:telegram" class="w-3 h-3" />
-                Открыть бота
-              </a>
-              <span class="text-xs text-[var(--text-muted)] font-mono">
-                {{ formatTelegramTimer(telegramRemainingSeconds) }}
-              </span>
-              <button
-                class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-                @click="resetTelegram"
-              >
-                Отмена
-              </button>
-            </div>
-          </template>
-          <!-- Бейджи статуса -->
+          <!-- Бейджи статуса (для не-Telegram полей) -->
           <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
             Подтверждён
           </UiBadge>
@@ -293,14 +252,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Сообщения о статусе Telegram -->
-      <div v-if="telegramError" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
+      <!-- Ошибка из query (после OIDC callback) -->
+      <div v-if="route.query?.error" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
         <Icon name="heroicons:exclamation-circle" class="w-4 h-4 shrink-0" />
-        {{ telegramError }}
-      </div>
-      <div v-else-if="telegramStatus === 'expired'" class="p-2 rounded-lg bg-yellow-500/10 text-yellow-400 text-xs flex items-center gap-2 mt-2">
-        <Icon name="heroicons:clock" class="w-4 h-4 shrink-0" />
-        Время истекло. Нажмите «Повторить» для новой попытки.
+        {{ decodeURIComponent(String(route.query.error)) }}
       </div>
     </div>
 
