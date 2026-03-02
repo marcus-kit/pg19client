@@ -28,6 +28,7 @@ export default defineEventHandler(async (event) => {
 
   const secretToken = getHeader(event, 'x-telegram-bot-api-secret-token')
   if (!config.telegramWebhookSecret || secretToken !== config.telegramWebhookSecret) {
+    console.warn('[Webhook] Отклонён: неверный или отсутствующий secret_token')
     return { ok: true }
   }
 
@@ -38,6 +39,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { text, from, chat } = body.message
+  console.log(`[Webhook] Получено сообщение от @${from.username || from.id}: "${text}"`)
 
   const match = text.match(/^\/start\s+AUTH_([a-zA-Z0-9]+)$/)
   if (!match) {
@@ -58,6 +60,7 @@ export default defineEventHandler(async (event) => {
   const authRequest = await prisma.telegramAuthRequest.findFirst({
     where: { token, status: 'pending' }
   })
+  console.log(`[Webhook] Поиск токена ${token}: ${authRequest ? `найден (purpose: ${authRequest.purpose})` : 'не найден'}`)
 
   if (!authRequest) {
     await sendTelegramMessage(
@@ -134,6 +137,7 @@ export default defineEventHandler(async (event) => {
       telegram_username: from.username ?? null
     }
   })
+  console.log(`[Webhook] Статус обновлён на 'verified' для токена ${token}, telegram_id: ${from.id}`)
 
   const successMessage =
     authRequest.purpose === 'login'
