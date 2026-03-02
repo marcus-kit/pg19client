@@ -304,9 +304,15 @@ watch(authMethod, async (method) => {
 // TELEGRAM WIDGET
 // =============================================================================
 
+const telegramWidgetLoaded = ref(false)
+
 function initTelegramWidget(): void {
   if (!tgWidgetRef.value || !import.meta.client) return
+
   tgWidgetRef.value.innerHTML = ''
+  telegramWidgetLoaded.value = false
+  telegramError.value = null
+
   const script = document.createElement('script')
   script.src = 'https://telegram.org/js/telegram-widget.js?22'
   script.setAttribute('data-telegram-login', botUsername.value)
@@ -315,6 +321,23 @@ function initTelegramWidget(): void {
   script.setAttribute('data-onauth', 'onTelegramAuthCallback(user)')
   script.setAttribute('data-request-access', 'write')
   script.async = true
+
+  script.onload = () => {
+    telegramWidgetLoaded.value = true
+  }
+
+  script.onerror = () => {
+    telegramError.value = 'Не удалось загрузить Telegram виджет. Проверьте подключение к интернету.'
+  }
+
+  // Если через 5 сек iframe от Telegram не появился — показываем ошибку
+  setTimeout(() => {
+    if (!tgWidgetRef.value?.querySelector('iframe')) {
+      telegramError.value =
+        `Telegram виджет не загрузился. Убедитесь, что в BotFather для бота @${botUsername.value} выполнена команда /setdomain и указан домен без https:// (пример: master-dev.doka.team).`
+    }
+  }, 5000)
+
   tgWidgetRef.value.appendChild(script)
 }
 
@@ -443,6 +466,14 @@ onUnmounted(() => {
               <p class="text-[var(--text-muted)]">
                 <Icon name="heroicons:information-circle" class="w-4 h-4 inline mr-1" />
                 Если ваш Telegram не привязан к аккаунту, войдите по номеру договора и привяжите его в профиле.
+              </p>
+            </div>
+
+            <!-- Ошибка виджета (домен не настроен и т.д.) -->
+            <div v-if="telegramError" class="p-3 rounded-lg bg-red-500/10 text-red-400 text-sm">
+              <p class="flex items-start gap-2">
+                <Icon name="heroicons:exclamation-circle" class="w-4 h-4 mt-0.5 shrink-0" />
+                {{ telegramError }}
               </p>
             </div>
           </div>
