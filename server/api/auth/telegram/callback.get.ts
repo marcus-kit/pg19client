@@ -92,16 +92,25 @@ export default defineEventHandler(async (event) => {
     return sendRedirect(event, `/login?error=${encodeURIComponent(errMsg)}`)
   }
 
+  // Верификация JWT: проверяем подпись, затем aud/iss вручную (Telegram может отдавать aud числом)
   const jwks = jose.createRemoteJWKSet(new URL(JWKS_URL))
   let payload: IdTokenPayload
   try {
     const { payload: p } = await jose.jwtVerify(tokenResponse.id_token, jwks, {
-      issuer: 'https://oauth.telegram.org',
-      audience: clientId
+      clockTolerance: 30
     })
     payload = p as unknown as IdTokenPayload
-  } catch (e) {
-    console.error('[OIDC] JWT verification failed:', e)
+  } catch (e: any) {
+    const decoded = jose.decodeJwt(tokenResponse.id_token) as Record<string, unknown>
+    console.error('[OIDC] JWT verification failed:', e?.message || e, 'decoded:', JSON.stringify({ iss: decoded.iss, aud: decoded.aud, sub: decoded.sub }))
+    return sendRedirect(event, '/login?error=' + encodeURIComponent('Неверный токен авторизации'))
+  }
+
+  // Ручная проверка iss и aud (Telegram может отдавать aud числом)
+  const audOk = payload.aud !== undefined && String(payload.aud) === String(clientId)
+  const issOk = payload.iss === 'https://oauth.telegram.org' || payload.iss === 'oauth.telegram.org'
+  if (!audOk || !issOk) {
+    console.error('[OIDC] Claims validation failed:', { aud: payload.aud, iss: payload.iss, expectedClientId: clientId })
     return sendRedirect(event, '/login?error=' + encodeURIComponent('Неверный токен авторизации'))
   }
 
