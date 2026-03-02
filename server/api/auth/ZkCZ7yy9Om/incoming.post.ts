@@ -29,15 +29,20 @@ function extractPhoneFromBody(body: Record<string, unknown> | null | undefined):
  * - { "data": { "from": "79001234567" } } — вложенная структура
  */
 export default defineEventHandler(async (event) => {
-  const body = await readBody<Record<string, unknown>>(event).catch(() => ({}))
+  const body = await readBody<Record<string, unknown>>(event).catch((err) => {
+    console.warn('[CallVerify Incoming] Body parse error:', err?.message || err)
+    return {}
+  })
   const rawPhone = extractPhoneFromBody(body)
 
   if (!rawPhone) {
+    console.log('[CallVerify Incoming] No phone in body, keys:', Object.keys(body || {}))
     return { ok: true }
   }
 
   const normalizedPhone = String(rawPhone).replace(/\D/g, '').replace(/^8/, '7').trim()
   if (!/^7\d{10}$/.test(normalizedPhone)) {
+    console.log('[CallVerify Incoming] Invalid phone format:', { raw: rawPhone, normalized: normalizedPhone })
     return { ok: true }
   }
 
@@ -57,9 +62,9 @@ export default defineEventHandler(async (event) => {
       where: { id: request.id },
       data: { status: 'verified' }
     })
-    if (process.dev) {
-      console.log('[CallVerify Incoming] Verified:', { phone: normalizedPhone, token: request.token })
-    }
+    console.log('[CallVerify Incoming] Verified:', { phone: normalizedPhone, token: request.token })
+  } else {
+    console.log('[CallVerify Incoming] No pending request for phone:', normalizedPhone)
   }
 
   return { ok: true }
