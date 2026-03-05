@@ -81,7 +81,8 @@ const contacts = computed(() => [
     verified: false,
     type: 'text',
     placeholder: 'id123456789',
-    readonly: false
+    readonly: false,
+    isVk: true
   }
 ])
 
@@ -92,6 +93,15 @@ const contacts = computed(() => [
 function updateIsMobile(): void {
   if (typeof window === 'undefined') return
   isMobile.value = window.innerWidth < 768
+}
+
+/** В email запрещены русские буквы — убираем кириллицу при вводе (в nextTick, чтобы перезаписать v-model) */
+function onEmailInput(e: Event): void {
+  const target = e.target as HTMLInputElement
+  const sanitized = target.value.replace(/[\u0400-\u04FF]/g, '')
+  if (sanitized !== target.value) {
+    nextTick(() => { editData.value.email = sanitized })
+  }
 }
 
 function truncateMobileValue(value: string, maxChars = 20): string {
@@ -147,6 +157,11 @@ function startTelegramLink(): void {
   if (!userStore.user?.id) return
   telegramOidcLinking.value = true
   window.location.href = '/api/auth/telegram/authorize?purpose=link'
+}
+
+// Привязка/перепривязка VK ID — переход в режим редактирования
+function startVkLink(): void {
+  startEdit()
 }
 
 const route = useRoute()
@@ -231,18 +246,30 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Telegram: кнопка привязки или перепривязки -->
-          <UiButton
-            v-if="contact.isTelegram"
-            size="sm"
-            :variant="isTelegramLinked ? 'secondary' : 'primary'"
-            :loading="telegramOidcLinking"
-            @click="startTelegramLink"
-          >
-            <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1" />
-            {{ isTelegramLinked ? 'Перепривязать' : 'Привязать' }}
-          </UiButton>
-          <!-- Бейджи статуса (для не-Telegram полей) -->
+          <!-- Telegram: кнопка привязки/перепривязки (компактно, одна ширина с VK) -->
+          <span v-if="contact.isTelegram" class="contact-link-btn">
+            <UiButton
+              variant="primary"
+              size="sm"
+              :loading="telegramOidcLinking"
+              @click="startTelegramLink"
+            >
+              <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1 shrink-0" />
+              {{ isTelegramLinked ? 'Перепривязать' : 'Привязать' }}
+            </UiButton>
+          </span>
+          <!-- VK ID: кнопка привязки/перепривязки (та же ширина, что Telegram) -->
+          <span v-else-if="contact.isVk" class="contact-link-btn">
+            <UiButton
+              variant="primary"
+              size="sm"
+              @click="startVkLink"
+            >
+              <Icon name="simple-icons:vk" class="w-3 h-3 mr-1 shrink-0" />
+              {{ contact.value ? 'Перепривязать' : 'Привязать' }}
+            </UiButton>
+          </span>
+          <!-- Бейджи статуса (для остальных полей) -->
           <UiBadge v-else-if="contact.value && contact.verified" variant="success" size="sm">
             Подтверждён
           </UiBadge>
@@ -285,6 +312,7 @@ onUnmounted(() => {
             :type="contact.type"
             class="flex-1 px-3 py-1.5 text-sm rounded-lg border border-[var(--glass-border)] bg-[var(--bg-surface)] text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-primary/50"
             :placeholder="contact.placeholder"
+            @input="contact.key === 'email' ? onEmailInput($event) : undefined"
           />
         </div>
       </div>
@@ -296,3 +324,18 @@ onUnmounted(() => {
     </div>
   </UiCard>
 </template>
+
+<style scoped>
+/* Кнопки Привязать/Перепривязать — компактные и одной ширины (Telegram и VK ID) */
+.contact-link-btn {
+  display: inline-block;
+  min-width: 8.25rem;
+}
+
+.contact-link-btn :deep(.u-btn) {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  min-height: auto;
+}
+</style>

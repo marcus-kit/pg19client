@@ -320,21 +320,6 @@ onUnmounted(() => {
             </div>
           </div>
         </UiCard>
-
-        <!-- CTA — не нашли ответ -->
-        <UiCard class="p-4 mt-4 md:mt-6">
-          <div class="text-center">
-            <div class="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-primary/20 to-secondary/10 flex items-center justify-center mx-auto mb-3 md:mb-4">
-              <Icon name="heroicons:chat-bubble-left-right" class="w-6 h-6 md:w-8 md:h-8 text-primary" />
-            </div>
-            <h3 class="text-base md:text-lg font-semibold text-[var(--text-primary)] mb-1 md:mb-2">Не нашли ответ?</h3>
-            <p class="text-xs md:text-base text-[var(--text-muted)] mb-3 md:mb-4">Создайте заявку, и мы ответим в течение 15 минут</p>
-            <!-- <UiButton size="sm" @click="showNewTicketModal = true">
-              <Icon name="heroicons:pencil-square" class="w-4 h-4 md:w-5 md:h-5 mr-2" />
-              Создать заявку
-            </UiButton> -->
-          </div>
-        </UiCard>
       </template>
     </div>
 

@@ -53,6 +53,17 @@ const isFormValid = computed(() => {
          phoneValid.value
 })
 
+// В поле email на этой странице запрещены русские буквы
+watch(
+  () => form.email,
+  (val) => {
+    if (typeof val !== 'string') return
+    const sanitized = val.replace(/[\u0400-\u04FF]/g, '')
+    if (sanitized !== val) form.email = sanitized
+  },
+  { flush: 'sync' }
+)
+
 // =============================================================================
 // METHODS
 // =============================================================================
@@ -264,58 +275,6 @@ onUnmounted(() => {
             />
             <p v-if="phoneError" class="mt-1.5 text-sm text-red-400">{{ phoneError }}</p>
           </div>
-        </div>
-      </UiCard>
-
-      <!-- Состав услуг -->
-      <UiCard padding="lg" class="relative">
-        <!-- Вертикальная линия как левая рамка -->
-        <div class="absolute left-0 top-0 bottom-0 w-1 bg-blue-600 rounded-l-2xl"></div>
-        
-        <!-- Контент -->
-        <div class="space-y-4">
-          <h2 class="text-base font-bold text-[var(--text-primary)]">Состав услуг:</h2>
-          
-          <!-- Адрес -->
-          <div class="p-4 rounded-xl" style="background: var(--glass-bg); border: 1px solid var(--glass-border);">
-            <p class="text-sm font-semibold text-[var(--text-primary)]">
-              обл Ростовская, г Таганрог, пер Комсомольский, д. 27
-            </p>
-          </div>
-
-          <!-- Услуги -->
-          <div class="space-y-4">
-              <!-- Услуга 1 -->
-              <div class="flex items-start gap-4">
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm md:text-base text-[var(--text-primary)] font-medium mb-1">
-                    Ежемесячная плата за аренду участка сети передачи данных (СПД)
-                  </p>
-                  <p class="text-xs text-[var(--text-muted)] leading-relaxed">
-                    От клиента до порта доступа ЛС АМИК<br>
-                    <span class="text-[var(--text-secondary)]">г. Таганрог, Неклиновский р-н, Матвеево-курганский р-н, Мясниковский р-н</span>
-                  </p>
-                </div>
-                <div class="text-base md:text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0 whitespace-nowrap ml-4">
-                  399.00 Р
-                </div>
-              </div>
-
-              <!-- Услуга 2 -->
-              <div class="flex items-start gap-4">
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm md:text-base text-[var(--text-primary)] font-medium mb-1">
-                    Ежемесячный пакет "Режим работы порта доступа ЛС АМИК"
-                  </p>
-                  <p class="text-xs text-[var(--text-muted)] leading-relaxed">
-                    Профиль "ИНТЕРНЕТ ПЖ19"
-                  </p>
-                </div>
-                <div class="text-base md:text-lg font-bold text-blue-600 dark:text-blue-400 flex-shrink-0 whitespace-nowrap ml-4">
-                  300.00 Р
-                </div>
-              </div>
-            </div>
         </div>
       </UiCard>
 

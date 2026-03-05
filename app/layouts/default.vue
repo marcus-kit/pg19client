@@ -42,26 +42,17 @@ const mobileMainNav = [
   { name: 'Поддержка', href: '/support', icon: 'heroicons:chat-bubble-left-right' }
 ]
 
-// Mobile меню "Ещё" — дополнительные пункты
-const mobileMoreNav = [
-]
-
 // Проверка активного пункта (точное совпадение или вложенный путь)
 const isActive = (href: string) => route.path === href || route.path.startsWith(href + '/')
-
-// Подсветка кнопки "Ещё" если активен один из её пунктов
-const isMoreActive = computed(() => mobileMoreNav.some(item => isActive(item.href)))
 
 // -----------------------------------------------------------------------------
 // Состояние UI
 // -----------------------------------------------------------------------------
 
-const isScrolled = ref(false)    // true когда страница прокручена > 20px
-const showMoreMenu = ref(false)  // показать/скрыть мобильное меню "Ещё"
+const isScrolled = ref(false)
 
-// Выход из аккаунта
+// Выход из аккаунта (desktop: кнопка в шапке; mobile: кнопка внизу страницы профиля)
 async function handleLogout(): Promise<void> {
-  showMoreMenu.value = false
   try {
     await $fetch('/api/auth/logout', { method: 'POST' })
   } finally {
@@ -155,7 +146,7 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <!-- Mobile: иконки в шапке -->
+          <!-- Mobile: иконки в шапке (без кнопки профиля — профиль в нижней панели) -->
           <div class="flex md:hidden items-center gap-2">
             <!-- Переключатель темы: system -> dark -> light -->
             <button
@@ -168,20 +159,13 @@ onUnmounted(() => {
                 class="w-5 h-5"
               />
             </button>
-            <!-- Ссылка на профиль -->
-            <NuxtLink
-              to="/profile"
-              class="p-2 text-[var(--text-muted)] hover:text-primary rounded-lg transition-colors"
-            >
-              <Icon name="heroicons:user-circle" class="w-6 h-6" />
-            </NuxtLink>
           </div>
         </div>
       </div>
     </header>
 
     <main class="flex-1 pt-16 pb-20 md:pb-0">
-      <div class="container mx-auto max-w-5xl px-4 py-6">
+      <div class="container mx-auto max-w-5xl px-4 pt-6">
         <slot />
       </div>
     </main>
@@ -192,87 +176,20 @@ onUnmounted(() => {
         class="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg border-t safe-area-bottom"
         style="background: var(--header-blur-bg); border-color: var(--glass-border);"
       >
-        <div class="flex items-center justify-around h-16 px-2">
-          <!-- Основные пункты навигации -->
+        <div class="flex items-center justify-between h-16 px-2 gap-2">
+          <!-- Основные пункты навигации — равная ширина, одинаковые отступы между кнопками -->
           <NuxtLink
             v-for="item in mobileMainNav"
             :key="item.href"
             :to="item.href"
-            class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors"
+            class="flex-1 flex flex-col items-center justify-center gap-1 py-2 min-w-0 rounded-lg transition-colors"
             :class="isActive(item.href) ? 'text-primary' : 'text-[var(--text-muted)]'"
-            @click="showMoreMenu = false"
           >
-            <Icon :name="item.icon" class="w-6 h-6" />
-            <span class="text-xs font-medium">{{ item.name }}</span>
+            <Icon :name="item.icon" class="w-6 h-6 shrink-0" />
+            <span class="text-xs font-medium truncate">{{ item.name }}</span>
           </NuxtLink>
-
-          <!-- Кнопка "Ещё" — открывает дополнительное меню -->
-          <button
-            @click="showMoreMenu = !showMoreMenu"
-            class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg transition-colors"
-            :class="showMoreMenu || isMoreActive ? 'text-primary' : 'text-[var(--text-muted)]'"
-          >
-            <Icon name="heroicons:ellipsis-horizontal" class="w-6 h-6" />
-            <span class="text-xs font-medium">Ещё</span>
-          </button>
         </div>
       </nav>
-
-      <!-- Выпадающее меню "Ещё" -->
-      <Transition
-        enter-active-class="transition-all duration-200 ease-out"
-        leave-active-class="transition-all duration-150 ease-in"
-        enter-from-class="opacity-0 translate-y-4"
-        leave-to-class="opacity-0 translate-y-4"
-      >
-        <div
-          v-if="showMoreMenu"
-          class="fixed bottom-16 left-0 right-0 z-50 p-4 safe-area-bottom"
-          style="background: var(--bg-surface); border-top: 1px solid var(--glass-border);"
-        >
-          <div class="flex flex-col gap-1">
-            <!-- Дополнительные пункты навигации -->
-            <NuxtLink
-              v-for="item in mobileMoreNav"
-              :key="item.href"
-              :to="item.href"
-              class="flex items-center gap-3 px-4 py-3 rounded-xl transition-colors"
-              :class="isActive(item.href) ? 'text-primary bg-primary/10' : 'text-[var(--text-secondary)] active:bg-[var(--glass-bg)]'"
-              @click="showMoreMenu = false"
-            >
-              <Icon :name="item.icon" class="w-5 h-5" />
-              <span class="font-medium">{{ item.name }}</span>
-            </NuxtLink>
-
-            <!-- Разделитель -->
-            <div class="my-2 h-px" style="background: var(--glass-border);" />
-
-            <!-- Кнопка выхода -->
-            <button
-              @click="handleLogout"
-              class="flex items-center gap-3 px-4 py-3 rounded-xl text-red-400 active:bg-red-500/10 transition-colors w-full"
-            >
-              <Icon name="heroicons:arrow-right-on-rectangle" class="w-5 h-5" />
-              <span class="font-medium">Выйти</span>
-            </button>
-          </div>
-        </div>
-      </Transition>
-
-      <!-- Backdrop — затемнение при открытом меню "Ещё" -->
-      <Transition
-        enter-active-class="transition-opacity duration-200"
-        leave-active-class="transition-opacity duration-150"
-        enter-from-class="opacity-0"
-        leave-to-class="opacity-0"
-      >
-        <div
-          v-if="showMoreMenu"
-          class="fixed inset-0 z-40"
-          style="background: rgba(0, 0, 0, 0.5);"
-          @click="showMoreMenu = false"
-        />
-      </Transition>
     </div>
   </div>
 </template>

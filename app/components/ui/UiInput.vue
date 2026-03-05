@@ -28,10 +28,19 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | number]
 }>()
 
-// Двусторонняя привязка для v-model
+// Удаление кириллицы из строки (для email)
+function stripCyrillic(value: string | number): string | number {
+  if (typeof value !== 'string') return value
+  return value.replace(/[\u0400-\u04FF]/g, '')
+}
+
+// Двусторонняя привязка для v-model; для type="email" убираем русские буквы
 const inputValue = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: (value) => {
+    const out = props.type === 'email' ? stripCyrillic(value as string) : value
+    emit('update:modelValue', out)
+  }
 })
 </script>
 

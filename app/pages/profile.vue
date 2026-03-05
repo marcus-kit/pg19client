@@ -17,6 +17,7 @@ definePageMeta({
 // =============================================================================
 
 const userStore = useUserStore()
+const { logout } = useAuthInit()
 
 // =============================================================================
 // STATE
@@ -100,6 +101,19 @@ onMounted(() => {
     }, 700)
   }
 })
+
+// Выход из личного кабинета (на мобилке кнопка в футере убрана — выход только здесь)
+const isLoggingOut = ref(false)
+async function handleLogout(): Promise<void> {
+  isLoggingOut.value = true
+  try {
+    await $fetch('/api/auth/logout', { method: 'POST' })
+  } finally {
+    logout()
+    navigateTo('/login')
+    isLoggingOut.value = false
+  }
+}
 </script>
 
 <template>
@@ -128,6 +142,22 @@ onMounted(() => {
       <!-- Информация о договоре -->
       <ProfileContractInfo />
       <ProfileAddressInfo />
+
+      <!-- Выход из личного кабинета (компактно на мобилке) -->
+      <div class="pt-2 md:pt-4 border-t" style="border-color: var(--glass-border);">
+        <button
+          type="button"
+          :disabled="isLoggingOut"
+          class="flex items-center justify-center w-full px-3 py-2 md:px-4 md:py-3 rounded-lg md:rounded-xl text-base md:text-lg text-red-400 hover:bg-red-500/10 active:bg-red-500/15 transition-colors font-medium disabled:opacity-50"
+          @click="handleLogout"
+        >
+          <span class="inline-flex items-center justify-center gap-1.5 md:gap-2">
+            <Icon v-if="isLoggingOut" name="heroicons:arrow-path" class="w-4 h-4 md:w-5 md:h-5 animate-spin shrink-0" />
+            <Icon v-else name="heroicons:arrow-right-on-rectangle" class="w-4 h-4 md:w-5 md:h-5 shrink-0" />
+            <span class="text-center">{{ isLoggingOut ? 'Выход...' : 'Выйти из личного кабинета' }}</span>
+          </span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
