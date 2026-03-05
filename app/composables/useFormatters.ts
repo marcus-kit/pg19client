@@ -87,11 +87,13 @@ export function formatDateShort(dateStr: string | null | undefined): string {
   const date = new Date(dateStr)
   const now = new Date()
 
-  return date.toLocaleDateString('ru-RU', {
+  const formatted = date.toLocaleDateString('ru-RU', {
     day: 'numeric',
     month: 'short',
     year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
   })
+  // Неразрывный пробел перед «г.» — дата не переносит «г.» на новую строку
+  return formatted.replace(/\sг\.$/, '\u00A0г.')
 }
 
 /**

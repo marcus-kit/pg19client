@@ -438,10 +438,11 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   padding: 0.875rem 1rem 0;
 }
 
+/* 3 равные колонки, отступ между колонками 16px */
 .invoices-mobile__details {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1rem;
 }
 
@@ -461,15 +462,35 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   line-height: 1.4;
 }
 
+/* Дата в одну строку (2025 г. не переносится) */
+.invoices-mobile__detail:not(.invoices-mobile__detail--amount) .invoices-mobile__value {
+  white-space: nowrap;
+}
+
 .invoices-mobile__detail {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   min-height: 3rem;
+  min-width: 0;
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
 }
 
+/* Сумма — выравнивание по правому краю */
 .invoices-mobile__detail--amount {
   align-items: flex-end;
+  text-align: right;
+}
+
+.invoices-mobile__detail--amount .invoices-mobile__label,
+.invoices-mobile__detail--amount .invoices-row__amount {
+  text-align: right;
+}
+
+.invoices-mobile__detail--amount .invoices-row__amount {
+  font-size: 0.9375rem;
+  font-weight: 700;
 }
 
 .invoices-mobile__detail--amount .invoices-row__amount {
