@@ -28,11 +28,45 @@ const emit = defineEmits<{
   'update:modelValue': [value: string | number]
 }>()
 
-// Двусторонняя привязка для v-model
+// Удаление кириллицы из строки (для email)
+function stripCyrillic(value: string | number): string | number {
+  if (typeof value !== 'string') return value
+  return value.replace(/[\u0400-\u04FF]/g, '')
+}
+
+// Двусторонняя привязка для v-model; для type="email" убираем русские буквы
 const inputValue = computed({
   get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  set: (value) => {
+    const out = props.type === 'email' ? stripCyrillic(value as string) : value
+    emit('update:modelValue', out)
+  }
 })
+
+// Запрет ввода русских букв в поле email (keydown + paste)
+function isCyrillicChar(key: string): boolean {
+  return key.length === 1 && /[\u0400-\u04FF]/.test(key)
+}
+
+function onEmailKeydown(e: KeyboardEvent): void {
+  if (props.type !== 'email') return
+  const { key } = e
+  if (isCyrillicChar(key)) {
+    e.preventDefault()
+    return
+  }
+  if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(key)) return
+  if ((e.ctrlKey || e.metaKey) && ['a', 'c', 'v', 'x'].includes(key.toLowerCase())) return
+}
+
+function onEmailPaste(e: ClipboardEvent): void {
+  if (props.type !== 'email') return
+  e.preventDefault()
+  const pasted = e.clipboardData?.getData('text') ?? ''
+  const sanitized = (typeof inputValue.value === 'string' ? inputValue.value : '') + pasted
+  const cleaned = String(stripCyrillic(sanitized))
+  emit('update:modelValue', cleaned)
+}
 </script>
 
 <template>
@@ -48,6 +82,8 @@ const inputValue = computed({
       :type="type"
       :placeholder="placeholder"
       :disabled="disabled"
+      @keydown="onEmailKeydown"
+      @paste="onEmailPaste"
       class="w-full px-4 py-3 rounded-xl text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
       :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500/20': error }"
       :style="{

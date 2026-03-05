@@ -659,7 +659,7 @@ onUnmounted(() => {
             </button>
 
             <!-- Контентная область (scrollable) -->
-            <div class="flex-1 overflow-y-auto p-8">
+            <div class="register-modal-scroll flex-1 overflow-y-auto p-8">
               <!-- Заголовок -->
               <h2 class="font-bold text-orange-500 mb-4 pr-8">
                 Вам необходимо заключить договор на аренду сети
@@ -749,3 +749,29 @@ onUnmounted(() => {
 
   </div>
 </template>
+
+<style scoped>
+/* Скролл в модалке «Мы больше не принимаем платежи»: фон трека как у модалки, ползунок чуть темнее */
+.register-modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--glass-bg) 35%, var(--bg-surface)) var(--bg-surface);
+}
+
+.register-modal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.register-modal-scroll::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+  border-radius: 4px;
+}
+
+.register-modal-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--glass-bg) 35%, var(--bg-surface));
+  border-radius: 4px;
+}
+
+.register-modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--glass-bg) 55%, var(--bg-surface));
+}
+</style>
