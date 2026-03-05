@@ -157,8 +157,8 @@ function openInvoice(invoiceId: string): void {
           </div>
         </div>
 
-        <!-- Mobile: карточки -->
-        <div class="md:hidden space-y-3">
+        <!-- Mobile: карточки (чуть шире за счёт отрицательного отступа) -->
+        <div class="md:hidden space-y-3 dashboard-invoices-mobile-wrap">
           <div
             v-for="invoice in lastThreeInvoices"
             :key="invoice.id"
@@ -356,6 +356,23 @@ function openInvoice(invoiceId: string): void {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.5rem 4.5rem;
   padding: 0.75rem 1rem;
+}
+
+/* На мобилке — таблица чуть шире */
+@media (max-width: 767px) {
+  .dashboard-invoices-mobile-wrap {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+    width: calc(100% + 1rem);
+  }
+  .dashboard-invoices-mobile__top {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  .dashboard-invoices-mobile__details {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 .dashboard-invoices-mobile__label {
