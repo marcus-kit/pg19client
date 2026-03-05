@@ -63,7 +63,7 @@ export default defineEventHandler(async (event) => {
   return {
     success: true,
     token,
-    callNumber: config.public.beelineCallNumber || '+7 960 459-69-45',
+    callNumber: config.public.beelineCallNumber || '+7 863 443 14-30',
     expiresAt: expiresAt.toISOString(),
     expiresInSeconds: 180
   }

@@ -47,12 +47,28 @@ const initialTab = (['faq', 'chat'].includes(route.query.tab as string)
   : 'chat') as 'faq' | 'chat'
 const activeTab = ref<'faq' | 'chat'>(initialTab)
 
-// Bitrix24 чат URL
+// Bitrix24 чат URL (десктоп)
 const bitrix24ChatUrl = 'https://pg19.bitrix24.ru/online/support'
 
-// Переход в чат поддержки
+// Telegram-бот поддержки (мобилка)
+const telegramSupportUrl = 'https://t.me/pg19client_bot'
+
+// Переход в чат поддержки: на мобилке — Telegram, на десктопе — Bitrix24
 function openSupportChat() {
-  window.open(bitrix24ChatUrl, '_blank')
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    window.open(telegramSupportUrl, '_blank')
+  } else {
+    window.open(bitrix24ChatUrl, '_blank')
+  }
+}
+
+// На мобилке по клику на «Чат с поддержкой» сразу открыть Telegram; на десктопе — переключить вкладку
+function onChatTabClick() {
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    window.open(telegramSupportUrl, '_blank')
+  } else {
+    activeTab.value = 'chat'
+  }
 }
 
 // FAQ
@@ -204,9 +220,9 @@ onUnmounted(() => {
          Action Bar — иконки чата, FAQ и создания заявки на одном уровне (mobile)
          ===================================================================== -->
     <div class="md:hidden flex items-center gap-2">
-      <!-- Чат -->
+      <!-- Чат: на мобилке по клику — сразу переход в Telegram -->
       <button
-        @click="activeTab = 'chat'"
+        @click="onChatTabClick"
         class="flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg transition-colors relative"
         :class="activeTab === 'chat'
           ? 'bg-primary text-white'
@@ -340,7 +356,7 @@ onUnmounted(() => {
 
         <!-- Описание -->
         <p class="text-sm md:text-base text-[var(--text-muted)] mb-6">
-          Перейдите в онлайн-чат Bitrix24 для общения с операторами поддержки
+          Перейдите в онлайн-чат для общения с операторами поддержки
         </p>
 
         <!-- Кнопка перехода -->
