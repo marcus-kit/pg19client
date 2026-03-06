@@ -14,6 +14,7 @@
 // =============================================================================
 
 const userStore = useUserStore()
+const config = useRuntimeConfig()
 const {
   isLoading: telegramLinking,
   error: telegramLinkError,
@@ -36,6 +37,11 @@ const editData = ref({
   vkId: ''
 })
 
+const vkCode = ref<string | null>(null)
+const vkCodeExpiresAt = ref<string | null>(null)
+const vkIsLoading = ref(false)
+const vkError = ref<string | null>(null)
+
 // Мобильная версия — для адаптивного отображения длинных значений
 const isMobile = ref(false)
 
@@ -46,6 +52,19 @@ const isMobile = ref(false)
 // Telegram привязан
 const isTelegramLinked = computed(() => !!userStore.user?.telegramId)
 const telegramUsername = computed(() => userStore.user?.telegram || '')
+
+const vkDialogUrl = computed(() => {
+  const screenName = (config.public as any).vkGroupScreenName as string | undefined
+  const groupId = (config.public as any).vkGroupId as string | undefined
+
+  if (screenName) {
+    return `https://vk.me/${screenName}`
+  }
+  if (groupId) {
+    return `https://vk.com/im?sel=-${groupId}`
+  }
+  return null
+})
 
 // Конфигурация полей контактов
 const contacts = computed(() => [
@@ -170,8 +189,26 @@ async function startTelegramLink(): Promise<void> {
 }
 
 // Привязка/перепривязка VK ID — переход в режим редактирования
-function startVkLink(): void {
-  startEdit()
+async function startVkLink(): Promise<void> {
+  vkError.value = null
+  vkIsLoading.value = true
+  try {
+    const res = await $fetch<{
+      code: string
+      expiresAt: string
+      expiresInSeconds: number
+    }>('/api/auth/vk/link-code', {
+      method: 'POST'
+    })
+
+    vkCode.value = res.code
+    vkCodeExpiresAt.value = res.expiresAt
+  } catch (e: any) {
+    const message = e?.data?.message || e?.message || 'Не удалось получить код привязки VK.'
+    vkError.value = message
+  } finally {
+    vkIsLoading.value = false
+  }
 }
 
 watch(telegramLinkStatus, (newStatus) => {
@@ -283,6 +320,7 @@ onUnmounted(() => {
             <UiButton
               variant="primary"
               size="sm"
+              :loading="vkIsLoading"
               @click="startVkLink"
             >
               <Icon name="simple-icons:vk" class="w-3 h-3 mr-1 shrink-0" />
@@ -303,6 +341,50 @@ onUnmounted(() => {
       <div v-if="telegramLinkError" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
         <Icon name="heroicons:exclamation-circle" class="w-4 h-4 shrink-0" />
         {{ telegramLinkError }}
+      </div>
+
+      <!-- Информация о коде привязки VK -->
+      <div
+        v-if="vkCode"
+        class="mt-3 p-3 rounded-lg border text-xs space-y-2"
+        style="border-color: var(--glass-border); background: var(--glass-bg);"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <div>
+            <p class="text-[var(--text-muted)] mb-0.5">
+              Код для привязки VK (отправьте его в сообщения нашего сообщества VK):
+            </p>
+            <p class="font-mono text-base text-[var(--text-primary)] tracking-wider">
+              {{ vkCode }}
+            </p>
+          </div>
+          <div class="text-[var(--text-muted)] text-right">
+            <span v-if="vkCodeExpiresAt">
+              Действителен до
+              {{ new Date(vkCodeExpiresAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) }}
+            </span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <a
+            v-if="vkDialogUrl"
+            :href="vkDialogUrl"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-md bg-[#2787F5] text-white text-xs font-medium hover:opacity-90"
+          >
+            <Icon name="simple-icons:vk" class="w-3 h-3" />
+            Открыть диалог VK
+          </a>
+          <span class="text-[var(--text-muted)]">
+            Отправьте код одним сообщением. После успешной привязки статус обновится в этом блоке.
+          </span>
+        </div>
+
+        <div v-if="vkError" class="mt-2 p-2 rounded bg-red-500/10 text-red-400 flex items-center gap-1">
+          <Icon name="heroicons:exclamation-circle" class="w-3 h-3" />
+          <span>{{ vkError }}</span>
+        </div>
       </div>
     </div>
 
