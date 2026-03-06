@@ -58,13 +58,6 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    if (user.telegram_id) {
-      throw createError({
-        statusCode: 409,
-        message: 'Telegram уже привязан к этому аккаунту'
-      })
-    }
-
     const account = await prisma.account.findFirst({
       where: { user_id: body.userId! },
       select: { id: true }
