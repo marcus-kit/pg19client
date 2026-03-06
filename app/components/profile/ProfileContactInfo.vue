@@ -202,11 +202,25 @@ async function startVkLink(): Promise<void> {
       method: 'POST'
     })
 
-    vkCode.value = res.code
-    vkCodeExpiresAt.value = res.expiresAt
+    // Если код вернулся — показываем блок с инструкцией
+    if (res.code) {
+      vkCode.value = res.code
+      vkCodeExpiresAt.value = res.expiresAt
+    }
   } catch (e: any) {
     const message = e?.data?.message || e?.message || 'Не удалось получить код привязки VK.'
-    vkError.value = message
+    console.error('[VK Link] Error requesting link code', e)
+
+    // Частный случай: VK уже привязан к аккаунту — просто обновляем статус из сессии
+    const alreadyLinked =
+      typeof message === 'string' && message.toLowerCase().includes('vk уже привязан')
+
+    if (alreadyLinked) {
+      await refreshVkStatus()
+      vkError.value = null
+    } else {
+      vkError.value = message
+    }
   } finally {
     vkIsLoading.value = false
   }
