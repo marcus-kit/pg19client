@@ -41,6 +41,7 @@ const vkCode = ref<string | null>(null)
 const vkCodeExpiresAt = ref<string | null>(null)
 const vkIsLoading = ref(false)
 const vkError = ref<string | null>(null)
+const vkStatusLoading = ref(false)
 
 // Мобильная версия — для адаптивного отображения длинных значений
 const isMobile = ref(false)
@@ -208,6 +209,25 @@ async function startVkLink(): Promise<void> {
     vkError.value = message
   } finally {
     vkIsLoading.value = false
+  }
+}
+
+async function refreshVkStatus(): Promise<void> {
+  vkStatusLoading.value = true
+  try {
+    const data = await $fetch<{ user: any; account: any }>('/api/auth/session')
+    if (data?.user) {
+      userStore.setUser(data.user)
+      // Если VK привязался, можно скрыть код
+      if (data.user.vkId) {
+        vkCode.value = null
+        vkCodeExpiresAt.value = null
+      }
+    }
+  } catch (e: any) {
+    console.error('[VK Status] Failed to refresh status', e)
+  } finally {
+    vkStatusLoading.value = false
   }
 }
 
@@ -379,6 +399,14 @@ onUnmounted(() => {
           <span class="text-[var(--text-muted)]">
             Отправьте код одним сообщением. После успешной привязки статус обновится в этом блоке.
           </span>
+          <button
+            type="button"
+            class="text-[var(--text-primary)] text-xs underline-offset-2 underline disabled:opacity-60"
+            :disabled="vkStatusLoading"
+            @click="refreshVkStatus"
+          >
+            {{ vkStatusLoading ? 'Проверяем привязку…' : 'Проверить привязку' }}
+          </button>
         </div>
 
         <div v-if="vkError" class="mt-2 p-2 rounded bg-red-500/10 text-red-400 flex items-center gap-1">
