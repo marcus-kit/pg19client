@@ -14,8 +14,15 @@
 // =============================================================================
 
 const userStore = useUserStore()
-
-const telegramOidcLinking = ref(false)
+const {
+  isLoading: telegramLinking,
+  error: telegramLinkError,
+  status: telegramLinkStatus,
+  deeplink: telegramDeeplink,
+  verifiedData: telegramVerifiedData,
+  requestAuth: requestTelegramAuth,
+  reset: resetTelegramLink
+} = useTelegramDeeplink()
 
 // =============================================================================
 // STATE — реактивное состояние
@@ -152,11 +159,14 @@ async function saveChanges(): Promise<void> {
   }
 }
 
-// Запуск привязки/перепривязки Telegram через OIDC
-function startTelegramLink(): void {
+// Запуск привязки/перепривязки Telegram через Deeplink
+async function startTelegramLink(): Promise<void> {
   if (!userStore.user?.id) return
-  telegramOidcLinking.value = true
-  window.location.href = '/api/auth/telegram/authorize?purpose=link'
+  try {
+    await requestTelegramAuth('link', userStore.user.id)
+  } catch {
+    // ошибка в telegramLinkError
+  }
 }
 
 // Привязка/перепривязка VK ID — переход в режим редактирования
@@ -164,22 +174,21 @@ function startVkLink(): void {
   startEdit()
 }
 
-const route = useRoute()
+watch(telegramLinkStatus, (newStatus) => {
+  if (newStatus === 'verified' && telegramVerifiedData.value && 'telegramId' in telegramVerifiedData.value) {
+    const data = telegramVerifiedData.value
+    userStore.updateUser({
+      telegramId: data.telegramId,
+      telegram: data.telegramUsername ? `@${data.telegramUsername}` : ''
+    })
+    resetTelegramLink()
+  }
+})
 
-onMounted(async () => {
+onMounted(() => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateIsMobile)
-  }
-  // Успешная привязка — обновить store
-  if (route.query.telegram_linked === '1') {
-    try {
-      const user = await $fetch<{ telegramId: string | null; telegram: string }>('/api/user/me')
-      userStore.updateUser({ telegramId: user.telegramId, telegram: user.telegram })
-    } catch {
-      // ignore
-    }
-    navigateTo({ path: '/profile', query: {} }, { replace: true })
   }
 })
 
@@ -246,17 +255,28 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
-          <!-- Telegram: кнопка привязки/перепривязки (компактно, одна ширина с VK) -->
+          <!-- Telegram: кнопка привязки/перепривязки (Deeplink) -->
           <span v-if="contact.isTelegram" class="contact-link-btn">
             <UiButton
+              v-if="telegramLinkStatus !== 'waiting'"
               variant="primary"
               size="sm"
-              :loading="telegramOidcLinking"
+              :loading="telegramLinking"
               @click="startTelegramLink"
             >
               <Icon name="simple-icons:telegram" class="w-3 h-3 mr-1 shrink-0" />
               {{ isTelegramLinked ? 'Перепривязать' : 'Привязать' }}
             </UiButton>
+            <a
+              v-else-if="telegramDeeplink"
+              :href="telegramDeeplink"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="inline-flex items-center justify-center gap-1 w-full px-2 py-1 text-xs font-medium rounded-lg bg-[#0088cc] text-white hover:opacity-90"
+            >
+              <Icon name="simple-icons:telegram" class="w-3 h-3" />
+              Открыть Telegram
+            </a>
           </span>
           <!-- VK ID: кнопка привязки/перепривязки (та же ширина, что Telegram) -->
           <span v-else-if="contact.isVk" class="contact-link-btn">
@@ -279,10 +299,10 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Ошибка из query (после OIDC callback) -->
-      <div v-if="route.query?.error" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
+      <!-- Ошибка привязки Telegram -->
+      <div v-if="telegramLinkError" class="p-2 rounded-lg bg-red-500/10 text-red-400 text-xs flex items-center gap-2 mt-2">
         <Icon name="heroicons:exclamation-circle" class="w-4 h-4 shrink-0" />
-        {{ decodeURIComponent(String(route.query.error)) }}
+        {{ telegramLinkError }}
       </div>
     </div>
 

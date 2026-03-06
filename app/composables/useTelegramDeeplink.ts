@@ -1,5 +1,5 @@
 /**
- * Composable для привязки Telegram к аккаунту через deeplink.
+ * Composable для авторизации и привязки Telegram через deeplink.
  * Использует SSE (Server-Sent Events) вместо HTTP-polling для мгновенного
  * обнаружения изменения статуса в БД.
  */
@@ -17,6 +17,33 @@ interface LinkCompleteResponse {
   telegramUsername: string | null
 }
 
+export interface LoginCompleteResponse {
+  success: boolean
+  user: {
+    id: string
+    firstName?: string
+    lastName?: string
+    middleName?: string
+    phone: string
+    email: string
+    telegram: string
+    telegramId: string
+    vkId: string
+    avatar: string | null
+    birthDate: string | null
+    role: string
+  }
+  account: {
+    contractNumber: string
+    balance: number
+    status: string
+    tariff: string
+    address: string
+    startDate: string | null
+    payDay: number
+  } | null
+}
+
 type Status = 'idle' | 'waiting' | 'verified' | 'expired' | 'error'
 
 export function useTelegramDeeplink() {
@@ -28,21 +55,30 @@ export function useTelegramDeeplink() {
   const deeplink = ref<string | null>(null)
   const token = ref<string | null>(null)
   const remainingSeconds = ref(0)
-  const verifiedData = ref<LinkCompleteResponse | null>(null)
+  const verifiedData = ref<LinkCompleteResponse | LoginCompleteResponse | null>(null)
 
   let countdownInterval: ReturnType<typeof setInterval> | null = null
   let eventSource: EventSource | null = null
   let sseRetryTimer: ReturnType<typeof setTimeout> | null = null
 
-  async function requestAuth(purpose: 'link', userId: string): Promise<DeeplinkResponse> {
+  async function requestAuth(purpose: 'login'): Promise<DeeplinkResponse>
+  async function requestAuth(purpose: 'link', userId: string): Promise<DeeplinkResponse>
+  async function requestAuth(
+    purpose: 'login' | 'link',
+    userId?: string
+  ): Promise<DeeplinkResponse> {
     stopAll()
     isLoading.value = true
     error.value = null
 
     try {
+      const body = purpose === 'link' && userId
+        ? { purpose, userId }
+        : { purpose: 'login' as const }
+
       const response = await $fetch<DeeplinkResponse>('/api/auth/telegram-deeplink/request', {
         method: 'POST',
-        body: { purpose, userId }
+        body
       })
 
       token.value = response.token
@@ -116,11 +152,11 @@ export function useTelegramDeeplink() {
     }
   }
 
-  async function completeAuth(): Promise<LinkCompleteResponse | null> {
+  async function completeAuth(): Promise<LinkCompleteResponse | LoginCompleteResponse | null> {
     if (!token.value) return null
 
     try {
-      const response = await $fetch<LinkCompleteResponse>(
+      const response = await $fetch<LinkCompleteResponse | LoginCompleteResponse>(
         `/api/auth/telegram-deeplink/complete/${token.value}`
       )
       verifiedData.value = response
@@ -128,7 +164,7 @@ export function useTelegramDeeplink() {
     } catch (e: unknown) {
       const err = e as { data?: { message?: string } }
       console.error('[TelegramDeeplink] Complete error:', e)
-      error.value = err.data?.message || 'Ошибка завершения привязки'
+      error.value = err.data?.message || 'Ошибка завершения'
       return null
     }
   }
