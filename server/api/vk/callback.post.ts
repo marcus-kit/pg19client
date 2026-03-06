@@ -29,6 +29,12 @@ export default defineEventHandler(async (event) => {
 
   const body = await readBody<VkUpdate>(event)
 
+  console.log('[VK Callback] Получен запрос', {
+    type: body.type,
+    groupId: body.group_id,
+    hasSecret: !!body.secret
+  })
+
   // Подтверждение сервера ВК
   if (body.type === 'confirmation') {
     if (!confirmationCode) {
@@ -39,22 +45,34 @@ export default defineEventHandler(async (event) => {
       })
     }
     // ВК ожидает просто строку с кодом
+    console.log('[VK Callback] Отправляю confirmationCode')
     return confirmationCode
   }
 
   // Проверка секрета (если настроен)
   if (vkSecret && body.secret !== vkSecret) {
-    console.warn('[VK Callback] Отклонён: неверный secret')
+    console.warn('[VK Callback] Отклонён: неверный secret', {
+      received: body.secret
+    })
     return 'ok'
   }
 
   if (body.type !== 'message_new' || !body.object?.message) {
+    console.log('[VK Callback] Неподдерживаемый тип события или нет message', {
+      type: body.type
+    })
     return 'ok'
   }
 
   const message = body.object.message
   const text = (message.text || '').trim()
   const vkUserId = message.from_id
+
+  console.log('[VK Callback] Новое сообщение', {
+    fromId: vkUserId,
+    peerId: message.peer_id,
+    text
+  })
 
   const prisma = usePrisma()
 
@@ -64,12 +82,15 @@ export default defineEventHandler(async (event) => {
   // Ищем код вида PG19-XXXX...
   const codeMatch = text.match(/PG19-[A-Z0-9]+/i)
   if (!codeMatch) {
+    console.log('[VK Callback] Сообщение не содержит кода PG19-XXXX', { text })
     // Можно отправить подсказку, но не обязательно
     return 'ok'
   }
 
   const code = codeMatch[0].toUpperCase()
   const now = new Date()
+
+  console.log('[VK Callback] Найден код привязки', { code })
 
   const linkRequest = await prisma.vkLinkRequest.findFirst({
     where: {
@@ -82,6 +103,9 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!linkRequest) {
+    console.warn('[VK Callback] Запрос привязки по коду не найден или истёк', {
+      code
+    })
     if (groupToken) {
       await sendVkMessage(
         message.peer_id,
@@ -102,6 +126,11 @@ export default defineEventHandler(async (event) => {
   })
 
   if (existingUserWithVk && existingUserWithVk.id !== linkRequest.user_id) {
+    console.warn('[VK Callback] VK уже привязан к другому пользователю', {
+      vkUserId,
+      existingUserId: existingUserWithVk.id,
+      requestedUserId: linkRequest.user_id
+    })
     if (groupToken) {
       await sendVkMessage(
         message.peer_id,
@@ -129,6 +158,12 @@ export default defineEventHandler(async (event) => {
       }
     })
   ])
+
+  console.log('[VK Callback] Привязка VK успешно завершена', {
+    vkUserId,
+    userId: linkRequest.user_id,
+    code
+  })
 
   if (groupToken) {
     await sendVkMessage(

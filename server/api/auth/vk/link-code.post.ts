@@ -7,6 +7,11 @@ export default defineEventHandler(async (event) => {
 
   const now = new Date()
 
+  console.log('[VK Link-Code] Запрос кода привязки', {
+    userId: sessionUser.id,
+    time: now.toISOString()
+  })
+
   // Если VK уже привязан, не даём создать новый код
   const existingUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },
@@ -14,10 +19,12 @@ export default defineEventHandler(async (event) => {
   })
 
   if (!existingUser) {
+    console.error('[VK Link-Code] Пользователь не найден', { userId: sessionUser.id })
     throw createError({ statusCode: 404, message: 'Пользователь не найден' })
   }
 
   if (existingUser.vk_id) {
+    console.warn('[VK Link-Code] VK уже привязан к аккаунту', { userId: sessionUser.id })
     throw createError({
       statusCode: 400,
       message: 'VK уже привязан к этому аккаунту'
@@ -39,6 +46,11 @@ export default defineEventHandler(async (event) => {
   })
 
   if (activeRequest) {
+    console.log('[VK Link-Code] Нашёл активный запрос привязки', {
+      userId: sessionUser.id,
+      code: activeRequest.code,
+      expiresAt: activeRequest.expires_at
+    })
     return {
       code: activeRequest.code,
       expiresAt: activeRequest.expires_at.toISOString(),
@@ -79,6 +91,12 @@ export default defineEventHandler(async (event) => {
       status: 'pending',
       expires_at: expiresAt
     }
+  })
+
+  console.log('[VK Link-Code] Создан новый код привязки', {
+    userId: sessionUser.id,
+    code,
+    expiresAt
   })
 
   return {
