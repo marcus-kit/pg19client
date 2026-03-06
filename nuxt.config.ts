@@ -71,7 +71,10 @@ export default defineNuxtConfig({
     telegramWebhookSecret: process.env.TELEGRAM_WEBHOOK_SECRET || '', // Секрет для проверки webhook от Telegram
     supabaseSecretKey: process.env.SUPABASE_SECRET_KEY || '',       // Service role ключ Supabase
     openaiApiKey: process.env.OPENAI_API_KEY || '',                 // API ключ OpenAI (AI-бот в чате)
-    jwtSecret: process.env.JWT_SECRET || '',                     // Секрет для подписи JWT (авторизация)
+    jwtSecret: process.env.JWT_SECRET || '',                        // Секрет для подписи JWT (авторизация)
+    vkWebhookSecret: process.env.VK_WEBHOOK_SECRET || '',           // Секрет для проверки Callback API от VK
+    vkConfirmationCode: process.env.VK_CONFIRMATION_CODE || '',     // Код подтверждения сервера VK
+    vkGroupToken: process.env.VK_GROUP_TOKEN || '',                 // Access token сообщества VK для отправки сообщений
 
     // Публичные переменные (доступны на клиенте)
     public: {
@@ -79,7 +82,9 @@ export default defineNuxtConfig({
       supabaseKey: process.env.SUPABASE_KEY || '',              // Anon ключ Supabase
       telegramBotUsername: process.env.TELEGRAM_BOT_USERNAME || 'PG19CONNECTBOT',
       beelineCallNumber: '+7 863 443-14-30',                    // Номер для авторизации по звонку
-      siteUrl: process.env.SITE_URL || 'https://master-dev.doka.team' // Базовый URL сайта
+      siteUrl: process.env.SITE_URL || 'https://master-dev.doka.team', // Базовый URL сайта
+      vkGroupScreenName: process.env.VK_GROUP_SCREEN_NAME || '',
+      vkGroupId: process.env.VK_GROUP_ID || ''
     }
   },
 

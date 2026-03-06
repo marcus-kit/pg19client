@@ -132,12 +132,14 @@ async function handleLogout(): Promise<void> {
     <div class="space-y-6">
       <!-- Персональные данные и Контакты в ряд на десктопе -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <!-- Персональные данные -->
-      <!-- ФИО, дата рождения -->
-      <ProfilePersonalInfo />
-        <!-- Телефон, email, Telegram -->
-      <ProfileContactInfo />
-    </div>
+        <!-- Персональные данные (ФИО, дата рождения) -->
+        <ProfilePersonalInfo />
+        <!-- Контакты + привязки Telegram/VK -->
+        <div class="space-y-4">
+          <ProfileContactInfo />
+          <ProfileVkLink />
+        </div>
+      </div>
 
       <!-- Информация о договоре -->
       <ProfileContractInfo />

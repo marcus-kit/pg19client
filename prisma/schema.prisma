@@ -148,6 +148,22 @@ model TelegramAuthRequest {
   @@schema("client")
 }
 
+model VkLinkRequest {
+  id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
+  user_id    String
+  code       String   @unique
+  status     String   @default("pending")
+  vk_user_id BigInt?
+  expires_at DateTime @db.Timestamp(6)
+  created_at DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+  updated_at DateTime @default(dbgenerated("(now() AT TIME ZONE 'utc'::text)")) @db.Timestamp(6)
+
+  @@index([user_id], map: "idx_vk_link_requests_user_id")
+  @@index([status], map: "idx_vk_link_requests_status")
+  @@map("vk_link_requests")
+  @@schema("client")
+}
+
 model PhoneVerificationRequest {
   id         String   @id @default(dbgenerated("(gen_random_uuid())::text"))
   token      String   @unique
