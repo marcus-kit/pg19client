@@ -1,5 +1,5 @@
 import crypto from 'crypto'
-import { requireUser } from '../../../server/utils/userAuth'
+import { requireUser } from '../../../utils/userAuth'
 
 export default defineEventHandler(async (event) => {
   const sessionUser = await requireUser(event)
