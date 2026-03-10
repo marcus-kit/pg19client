@@ -117,7 +117,8 @@ export default defineEventHandler(async (event) => {
     return 'ok'
   }
 
-  // Проверяем, не привязан ли уже этот VK к другому пользователю
+  // Уникальность VK: один VK-аккаунт не может быть привязан к разным пользователям.
+  // Перепривязка на том же пользователе (смена vk_id на другой) разрешена — обновление ниже перезапишет User.vk_id.
   const existingUserWithVk = await prisma.user.findFirst({
     where: {
       vk_id: vkUserId.toString()

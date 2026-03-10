@@ -211,7 +211,7 @@ async function startVkLink(): Promise<void> {
     const message = e?.data?.message || e?.message || 'Не удалось получить код привязки VK.'
     console.error('[VK Link] Error requesting link code', e)
 
-    // Частный случай: VK уже привязан к аккаунту — просто обновляем статус из сессии
+    // Fallback: если сервер вернул «VK уже привязан» (legacy/edge case), обновляем статус из сессии
     const alreadyLinked =
       typeof message === 'string' && message.toLowerCase().includes('vk уже привязан')
 

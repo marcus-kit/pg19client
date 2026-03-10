@@ -12,23 +12,15 @@ export default defineEventHandler(async (event) => {
     time: now.toISOString()
   })
 
-  // Если VK уже привязан, не даём создать новый код
+  // Разрешаем выдачу кода и при уже привязанном VK (перепривязка без отдельной отвязки)
   const existingUser = await prisma.user.findUnique({
     where: { id: sessionUser.id },
-    select: { vk_id: true }
+    select: { id: true }
   })
 
   if (!existingUser) {
     console.error('[VK Link-Code] Пользователь не найден', { userId: sessionUser.id })
     throw createError({ statusCode: 404, message: 'Пользователь не найден' })
-  }
-
-  if (existingUser.vk_id) {
-    console.warn('[VK Link-Code] VK уже привязан к аккаунту', { userId: sessionUser.id })
-    throw createError({
-      statusCode: 400,
-      message: 'VK уже привязан к этому аккаунту'
-    })
   }
 
   // Пытаемся переиспользовать актуальный pending-запрос
