@@ -43,7 +43,6 @@ export default defineEventHandler(async (event) => {
   }
 
   const prisma = usePrisma()
-  let accountId: string | null = null
 
   if (body.purpose === 'link') {
     const user = await prisma.user.findUnique({
@@ -57,20 +56,6 @@ export default defineEventHandler(async (event) => {
         message: 'Пользователь не найден'
       })
     }
-
-    const account = await prisma.account.findFirst({
-      where: { user_id: body.userId! },
-      select: { id: true }
-    })
-
-    if (!account) {
-      throw createError({
-        statusCode: 404,
-        message: 'Аккаунт не найден'
-      })
-    }
-
-    accountId = account.id
   }
 
   const clientId = getClientIdentifier(event)
@@ -103,7 +88,7 @@ export default defineEventHandler(async (event) => {
       token,
       purpose: body.purpose,
       user_id: body.userId ?? null,
-      account_id: accountId,
+      account_id: null,
       ip_address: clientId,
       user_agent: getHeader(event, 'user-agent') ?? null,
       status: 'pending',
