@@ -67,6 +67,16 @@ const vkDialogUrl = computed(() => {
   return null
 })
 
+const vkIsExpired = ref(false)
+const vkPollingActive = ref(false)
+let vkPollTimer: ReturnType<typeof setInterval> | null = null
+
+function computeVkExpired(): boolean {
+  if (!vkCode.value || !vkCodeExpiresAt.value) return false
+  const expiresAtMs = new Date(vkCodeExpiresAt.value).getTime()
+  return Number.isFinite(expiresAtMs) ? Date.now() >= expiresAtMs : false
+}
+
 // Конфигурация полей контактов
 const contacts = computed(() => [
   {
@@ -192,6 +202,7 @@ async function startTelegramLink(): Promise<void> {
 // Привязка/перепривязка VK ID — переход в режим редактирования
 async function startVkLink(): Promise<void> {
   vkError.value = null
+  vkIsExpired.value = false
   vkIsLoading.value = true
   try {
     const res = await $fetch<{
@@ -206,6 +217,8 @@ async function startVkLink(): Promise<void> {
     if (res.code) {
       vkCode.value = res.code
       vkCodeExpiresAt.value = res.expiresAt
+      vkIsExpired.value = computeVkExpired()
+      startVkPolling()
     }
   } catch (e: any) {
     const message = e?.data?.message || e?.message || 'Не удалось получить код привязки VK.'
@@ -245,6 +258,50 @@ async function refreshVkStatus(): Promise<void> {
   }
 }
 
+function stopVkPolling(): void {
+  vkPollingActive.value = false
+  if (vkPollTimer) {
+    clearInterval(vkPollTimer)
+    vkPollTimer = null
+  }
+}
+
+function startVkPolling(): void {
+  if (vkPollTimer) return
+  if (!vkCode.value || !vkCodeExpiresAt.value) return
+  vkIsExpired.value = computeVkExpired()
+  if (vkIsExpired.value) return
+  if (userStore.user?.vkId) return
+
+  vkPollingActive.value = true
+
+  // Быстро обновим статус сразу, затем продолжим раз в ~5 секунд
+  if (!vkStatusLoading.value) {
+    void refreshVkStatus()
+  }
+
+  vkPollTimer = setInterval(() => {
+    if (!vkCode.value || !vkCodeExpiresAt.value) return stopVkPolling()
+    vkIsExpired.value = computeVkExpired()
+    if (vkIsExpired.value) return stopVkPolling()
+    if (userStore.user?.vkId) return stopVkPolling()
+    if (!vkStatusLoading.value) {
+      void refreshVkStatus()
+    }
+  }, 5000)
+}
+
+function onVisibilityChange(): void {
+  if (typeof document === 'undefined') return
+  if (document.visibilityState !== 'visible') return
+  if (!vkCode.value || !vkCodeExpiresAt.value) return
+  vkIsExpired.value = computeVkExpired()
+  if (vkIsExpired.value) return
+  if (!vkStatusLoading.value) {
+    void refreshVkStatus()
+  }
+}
+
 watch(telegramLinkStatus, (newStatus) => {
   if (newStatus === 'verified' && telegramVerifiedData.value && 'telegramId' in telegramVerifiedData.value) {
     const data = telegramVerifiedData.value
@@ -256,10 +313,21 @@ watch(telegramLinkStatus, (newStatus) => {
   }
 })
 
+watch([vkCode, vkCodeExpiresAt], () => {
+  if (!vkCode.value || !vkCodeExpiresAt.value) return stopVkPolling()
+  vkIsExpired.value = computeVkExpired()
+  if (vkIsExpired.value) return stopVkPolling()
+  if (userStore.user?.vkId) return stopVkPolling()
+  startVkPolling()
+})
+
 onMounted(() => {
   updateIsMobile()
   if (typeof window !== 'undefined') {
     window.addEventListener('resize', updateIsMobile)
+  }
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', onVisibilityChange)
   }
 })
 
@@ -267,6 +335,10 @@ onUnmounted(() => {
   if (typeof window !== 'undefined') {
     window.removeEventListener('resize', updateIsMobile)
   }
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('visibilitychange', onVisibilityChange)
+  }
+  stopVkPolling()
 })
 </script>
 
@@ -413,14 +485,11 @@ onUnmounted(() => {
           <span class="text-[var(--text-muted)]">
             Отправьте код одним сообщением. После успешной привязки статус обновится в этом блоке.
           </span>
-          <button
-            type="button"
-            class="text-[var(--text-primary)] text-xs underline-offset-2 underline disabled:opacity-60"
-            :disabled="vkStatusLoading"
-            @click="refreshVkStatus"
-          >
-            {{ vkStatusLoading ? 'Проверяем привязку…' : 'Проверить привязку' }}
-          </button>
+          <span class="text-[var(--text-muted)]">
+            <span v-if="vkIsExpired">Код истёк — сгенерируйте новый.</span>
+            <span v-else-if="vkStatusLoading || vkPollingActive">Ожидаем привязку…</span>
+            <span v-else>Ожидаем привязку…</span>
+          </span>
         </div>
 
         <div v-if="vkError" class="mt-2 p-2 rounded bg-red-500/10 text-red-400 flex items-center gap-1">
