@@ -58,8 +58,6 @@ const vkDialogUrl = computed(() => {
   const screenName = (config.public as any).vkGroupScreenName as string | undefined
   const groupId = (config.public as any).vkGroupId as string | undefined
 
-  console.log('[VK Dialog] config.public:', { screenName, groupId })
-
   if (screenName) {
     return `https://vk.me/${screenName}`
   }
@@ -244,16 +242,25 @@ async function startVkLink(): Promise<void> {
 async function refreshVkStatus(): Promise<void> {
   vkStatusLoading.value = true
   try {
-    const data = await $fetch<{ user: any; account: any }>('/api/auth/session')
-    if (data?.user) {
-      const oldVkId = userStore.user?.vkId
-      userStore.setUser(data.user)
-      // Скрыть код только если VK ID изменился (привязка завершена),
-      // а не просто остался старый — иначе при перепривязке блок с кодом пропадёт
-      if (data.user.vkId && data.user.vkId !== oldVkId) {
-        vkCode.value = null
-        vkCodeExpiresAt.value = null
-      }
+    const currentCode = vkCode.value
+
+    const [sessionData, linkStatus] = await Promise.all([
+      $fetch<{ user: any; account: any }>('/api/auth/session'),
+      currentCode
+        ? $fetch<{ status: string; expired?: boolean }>('/api/auth/vk/link-status', {
+            query: { code: currentCode }
+          })
+        : null
+    ])
+
+    if (sessionData?.user) {
+      userStore.setUser(sessionData.user)
+    }
+
+    // Скрыть код, если запрос привязки завершён (статус 'completed')
+    if (linkStatus?.status === 'completed') {
+      vkCode.value = null
+      vkCodeExpiresAt.value = null
     }
   } catch (e: any) {
     console.error('[VK Status] Failed to refresh status', e)
@@ -270,17 +277,11 @@ function stopVkPolling(): void {
   }
 }
 
-/** VK ID, который был у пользователя в момент генерации кода (для отслеживания изменения при перепривязке) */
-const vkIdAtLinkStart = ref<string | null>(null)
-
 function startVkPolling(): void {
   if (vkPollTimer) return
   if (!vkCode.value || !vkCodeExpiresAt.value) return
   vkIsExpired.value = computeVkExpired()
   if (vkIsExpired.value) return
-
-  // Запоминаем текущий VK ID — поллинг завершится, когда он изменится
-  vkIdAtLinkStart.value = userStore.user?.vkId ?? null
 
   vkPollingActive.value = true
 
@@ -289,17 +290,11 @@ function startVkPolling(): void {
     void refreshVkStatus()
   }
 
-  const isLinkCompleted = () => {
-    const currentVkId = userStore.user?.vkId ?? null
-    // Привязка завершена, если VK ID появился (первая привязка) или изменился (перепривязка)
-    return currentVkId !== null && currentVkId !== vkIdAtLinkStart.value
-  }
-
   vkPollTimer = setInterval(() => {
+    // Если код уже очищен (привязка завершена в refreshVkStatus) — стоп
     if (!vkCode.value || !vkCodeExpiresAt.value) return stopVkPolling()
     vkIsExpired.value = computeVkExpired()
     if (vkIsExpired.value) return stopVkPolling()
-    if (isLinkCompleted()) return stopVkPolling()
     if (!vkStatusLoading.value) {
       void refreshVkStatus()
     }
