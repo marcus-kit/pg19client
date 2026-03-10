@@ -42,6 +42,7 @@ const vkCodeExpiresAt = ref<string | null>(null)
 const vkIsLoading = ref(false)
 const vkError = ref<string | null>(null)
 const vkStatusLoading = ref(false)
+const vkCodeCopied = ref(false)
 
 // Мобильная версия — для адаптивного отображения длинных значений
 const isMobile = ref(false)
@@ -196,6 +197,17 @@ async function startTelegramLink(): Promise<void> {
     await requestTelegramAuth('link', userStore.user.id)
   } catch {
     // ошибка в telegramLinkError
+  }
+}
+
+async function copyVkCode(): Promise<void> {
+  if (!vkCode.value) return
+  try {
+    await navigator.clipboard.writeText(vkCode.value)
+    vkCodeCopied.value = true
+    setTimeout(() => { vkCodeCopied.value = false }, 2000)
+  } catch {
+    // fallback не нужен — clipboard API поддерживается во всех актуальных браузерах
   }
 }
 
@@ -469,8 +481,19 @@ onUnmounted(() => {
             <p class="text-[var(--text-muted)] mb-0.5">
               Код для привязки VK (отправьте его в сообщения нашего сообщества VK):
             </p>
-            <p class="font-mono text-base text-[var(--text-primary)] tracking-wider">
+            <p class="font-mono text-base text-[var(--text-primary)] tracking-wider flex items-center gap-1.5">
               {{ vkCode }}
+              <button
+                class="inline-flex items-center justify-center w-6 h-6 rounded hover:bg-[var(--glass-border)] transition-colors"
+                title="Скопировать код"
+                @click="copyVkCode"
+              >
+                <Icon
+                  :name="vkCodeCopied ? 'heroicons:check' : 'heroicons:clipboard-document'"
+                  class="w-4 h-4"
+                  :class="vkCodeCopied ? 'text-green-400' : 'text-[var(--text-muted)]'"
+                />
+              </button>
             </p>
           </div>
           <div class="text-[var(--text-muted)] text-right">
