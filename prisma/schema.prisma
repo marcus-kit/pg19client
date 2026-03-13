@@ -17,7 +17,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
   schemas  = ["billing", "client", "public"]
 }
 
@@ -464,6 +463,27 @@ enum subscription_status {
   cancelled
 
   @@schema("billing")
+}
+
+model Customer {
+  id           Int       @id
+  added_date   DateTime? @db.Timestamptz
+  number       String?
+  last_name    String?
+  first_name   String?
+  middle_name  String?
+  region       String?
+  area         String?
+  city         String?
+  settlement   String?
+  street       String?
+  house        String?
+  flats        String?
+  phone_number String?
+  email        String?
+
+  @@map("customers")
+  @@schema("public")
 }
 
 enum contract_status {

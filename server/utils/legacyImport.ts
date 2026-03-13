@@ -18,20 +18,47 @@ function determineServiceType(priceName: string): string {
 /**
  * Проверяет пароль в старой БД, получает данные из API,
  * создаёт User, Contract, ContractServices и Account в локальной БД.
- * Возвращает null если пароль неверный или договор не найден в legacy.
+ * Возвращает null если пароль неверный или договор не найден.
+ *
+ * Перед обращением к legacy DB проверяет наличие договора в public.customers.
+ * Если договор не найден в customers — сразу возвращает null (legacy не вызывается).
+ * ФИО, телефон и email берутся из customers.
  */
 export async function importContractFromLegacy(contractNumber: string, password: string) {
-  // 1. Проверяем пароль в старой БД
-  const legacyPassword = await queryLegacyContractPassword(contractNumber)
-  if (legacyPassword === null || legacyPassword !== password) {
+  console.log(`[LegacyImport] Starting import for ${contractNumber}`)
+
+  // 0. Проверяем наличие договора в public.customers
+  const prisma = usePrisma()
+  const customer = await prisma.customer.findFirst({
+    where: { number: contractNumber }
+  })
+
+  if (!customer) {
+    console.log(`[LegacyImport] Contract ${contractNumber} not found in public.customers — skipping legacy DB`)
     return null
   }
+
+  console.log(`[LegacyImport] Contract ${contractNumber} found in customers (id=${customer.id}), checking legacy password...`)
+
+  // 1. Проверяем пароль в старой БД
+  const legacyPassword = await queryLegacyContractPassword(contractNumber)
+
+  if (legacyPassword === null) {
+    console.log(`[LegacyImport] Contract ${contractNumber} not found in Legacy DB`)
+    return null
+  }
+
+  if (legacyPassword !== password) {
+    console.log(`[LegacyImport] Password mismatch for ${contractNumber}`)
+    return null
+  }
+
+  console.log(`[LegacyImport] Password correct, fetching full info for ${contractNumber}...`)
 
   // 2. Получаем данные из API
   const apiData = await fetchLegacyContractInfo(contractNumber)
 
   // 3. Создаём сущности в локальной БД
-  const prisma = usePrisma()
   const now = new Date()
   const userId = randomUUID()
   const contractId = randomUUID()
@@ -40,16 +67,17 @@ export async function importContractFromLegacy(contractNumber: string, password:
 
   try {
     return await prisma.$transaction(async (tx) => {
-      // User
+      // User — ФИО, телефон, email берём из public.customers
+      const fullNameParts = [customer.last_name, customer.first_name, customer.middle_name].filter(Boolean)
       await tx.user.create({
         data: {
           id: userId,
-          first_name: null,
-          last_name: null,
-          middle_name: null,
-          full_name: null,
-          email: null,
-          phone: null,
+          first_name: customer.first_name || null,
+          last_name: customer.last_name || null,
+          middle_name: customer.middle_name || null,
+          full_name: fullNameParts.length ? fullNameParts.join(' ') : null,
+          email: customer.email || null,
+          phone: customer.phone_number || null,
           telegram_id: null,
           telegram_username: null,
           birth_date: null,
@@ -79,7 +107,7 @@ export async function importContractFromLegacy(contractNumber: string, password:
           pay_day: 20,
           executive_id: LEGACY_EXECUTIVE_ID,
           address_full: firstAddress,
-          start_date: null,
+          start_date: customer.added_date ? new Date(customer.added_date) : null,
           id_1c: null,
           is_blocked: false,
           contract_password: password,
@@ -128,10 +156,12 @@ export async function importContractFromLegacy(contractNumber: string, password:
           balance,
           status: 'active',
           address_full: firstAddress,
-          start_date: null
+          start_date: customer.added_date ? new Date(customer.added_date) : null
         },
         select: { id: true }
       })
+
+      const startDate = customer.added_date ? new Date(customer.added_date) : null
 
       return {
         contract: {
@@ -143,15 +173,15 @@ export async function importContractFromLegacy(contractNumber: string, password:
           is_blocked: false,
           pay_day: 20,
           address_full: firstAddress,
-          start_date: null
+          start_date: startDate
         },
         user: {
           id: userId,
-          first_name: null,
-          last_name: null,
-          middle_name: null,
-          email: null,
-          phone: null,
+          first_name: customer.first_name || null,
+          last_name: customer.last_name || null,
+          middle_name: customer.middle_name || null,
+          email: customer.email || null,
+          phone: customer.phone_number || null,
           telegram_id: null,
           telegram_username: null,
           birth_date: null,

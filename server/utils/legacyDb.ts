@@ -19,9 +19,17 @@ function getPool(): pg.Pool {
  * Возвращает пароль или null, если договор не найден.
  */
 export async function queryLegacyContractPassword(contractNumber: string): Promise<string | null> {
-  const result = await getPool().query<{ password: string }>(
-    'SELECT password FROM contracts WHERE number = $1',
-    [contractNumber]
-  )
-  return result.rows[0]?.password ?? null
+  console.log(`[LegacyDB] Querying password for contract: ${contractNumber}`)
+  try {
+    const result = await getPool().query<{ password: string }>(
+      'SELECT password FROM contracts WHERE number = $1',
+      [contractNumber]
+    )
+    const password = result.rows[0]?.password ?? null
+    console.log(`[LegacyDB] Result for ${contractNumber}: ${password ? 'Found' : 'Not Found'}`)
+    return password
+  } catch (err) {
+    console.error(`[LegacyDB] Error querying contract ${contractNumber}:`, err)
+    throw err
+  }
 }

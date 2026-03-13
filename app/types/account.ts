@@ -12,6 +12,8 @@ export interface Account {
   status: AccountStatus
   tariff: string
   address: string
+  /** Все адреса подключения из услуг договора */
+  addresses?: string[]
   startDate: string
   /** День месяца для оплаты (1–31), для блока «Следующая оплата» */
   payDay?: number

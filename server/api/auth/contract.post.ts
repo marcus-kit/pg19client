@@ -48,7 +48,7 @@ export default defineEventHandler(async (event) => {
     status: string
   } | null = null
   let accountId: string
-  let contractServices: Array<{ name: string; type: string | null }> = []
+  let contractServices: Array<{ name: string; type: string | null; object_address?: string | null }> = []
 
   if (contract) {
     // --- Стандартный путь: договор найден локально ---
@@ -114,7 +114,7 @@ export default defineEventHandler(async (event) => {
 
     contractServices = await prisma.contractService.findMany({
       where: { contract_id: contract.id, is_active: true },
-      select: { name: true, type: true }
+      select: { name: true, type: true, object_address: true }
     })
   } else {
     // --- Fallback: ищем в старой БД (mlink), импортируем ---
@@ -164,6 +164,17 @@ export default defineEventHandler(async (event) => {
   const internetService = contractServices.find((s) => s.type === 'internet')
   const tariffName = internetService?.name ?? contractServices[0]?.name ?? 'Не подключен'
 
+  // Уникальные адреса из услуг договора
+  const seen = new Set<string>()
+  const addresses: string[] = []
+  for (const cs of contractServices) {
+    const addr = cs.object_address?.trim()
+    if (addr && !seen.has(addr)) {
+      seen.add(addr)
+      addresses.push(addr)
+    }
+  }
+
   await createUserSession(event, user!.id, accountId, 'contract', contractNumber, {})
 
   return {
@@ -188,6 +199,7 @@ export default defineEventHandler(async (event) => {
       status: (contract!.is_blocked ? 'blocked' : 'active') as 'active' | 'blocked',
       tariff: tariffName,
       address: contract!.address_full ?? '',
+      addresses,
       startDate: contract!.start_date,
       payDay: contract!.pay_day ?? 20
     }

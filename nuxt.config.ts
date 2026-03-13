@@ -120,6 +120,9 @@ export default defineNuxtConfig({
   vite: {
     optimizeDeps: {
       include: ['cookie']
+    },
+    server: {
+      allowedHosts: ['pg19client-dev.tagan.ru']
     }
   }
 })

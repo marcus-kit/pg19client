@@ -132,10 +132,21 @@ export default defineEventHandler(async (event) => {
 
   const contractServices = await prisma.contractService.findMany({
     where: { contract_id: account.contract_id, is_active: true },
-    select: { name: true, type: true }
+    select: { name: true, type: true, object_address: true }
   })
   const internetService = contractServices.find((s) => s.type === 'internet')
   const tariffName = internetService?.name ?? contractServices[0]?.name ?? 'Не подключен'
+
+  // Уникальные адреса из услуг договора
+  const seen = new Set<string>()
+  const addresses: string[] = []
+  for (const cs of contractServices) {
+    const addr = cs.object_address?.trim()
+    if (addr && !seen.has(addr)) {
+      seen.add(addr)
+      addresses.push(addr)
+    }
+  }
 
   return {
     account: {
@@ -144,6 +155,7 @@ export default defineEventHandler(async (event) => {
       status: (contract?.is_blocked ? 'blocked' : 'active') as 'active' | 'blocked',
       tariff: tariffName,
       address: account.address_full ?? '',
+      addresses,
       startDate: account.start_date,
       payDay: contract?.pay_day ?? 20
     }
