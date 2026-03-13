@@ -130,6 +130,35 @@ function toggleFaq(id: number) {
   expandedFaq.value = expandedFaq.value === id ? null : id
 }
 
+function escapeHtml(value: string) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll('\'', '&#39;')
+}
+
+function formatFaqAnswer(item: { id: number, answer: string }) {
+  const escapedAnswer = escapeHtml(item.answer)
+
+  if (item.id === 1) {
+    return escapedAnswer.replace(
+      'https://taganrog.pg19.ru',
+      '<a href="https://taganrog.pg19.ru" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">https://taganrog.pg19.ru</a>'
+    )
+  }
+
+  if (item.id === 4) {
+    return escapedAnswer.replace(
+      'http://pg19.speedtestcustom.com/',
+      '<a href="http://pg19.speedtestcustom.com/" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">http://pg19.speedtestcustom.com/</a>'
+    )
+  }
+
+  return escapedAnswer
+}
+
 // Отправка новой заявки
 async function submitTicket() {
   if (!newTicket.value.subject.trim() || !newTicket.value.description.trim()) return
@@ -332,7 +361,10 @@ onUnmounted(() => {
               class="mt-2 md:mt-3 pt-2 md:pt-3"
               style="border-top: 1px solid var(--glass-border);"
             >
-              <p class="text-sm md:text-sm text-[var(--text-secondary)]">{{ item.answer }}</p>
+              <p
+                class="text-sm md:text-sm text-[var(--text-secondary)]"
+                v-html="formatFaqAnswer(item)"
+              />
             </div>
           </div>
         </UiCard>
