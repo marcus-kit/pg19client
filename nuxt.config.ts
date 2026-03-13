@@ -75,6 +75,7 @@ export default defineNuxtConfig({
     vkWebhookSecret: process.env.VK_WEBHOOK_SECRET || '',           // Секрет для проверки Callback API от VK
     vkConfirmationCode: process.env.VK_CONFIRMATION_CODE || '',     // Код подтверждения сервера VK
     vkGroupToken: process.env.VK_GROUP_TOKEN || '',                 // Access token сообщества VK для отправки сообщений
+    legacyDbUrl: process.env.LEGACY_DB_URL || '',                    // Legacy БД (mlink) для fallback авторизации по договору
 
     // Публичные переменные (доступны на клиенте)
     public: {
