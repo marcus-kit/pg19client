@@ -15,7 +15,6 @@
 
 const userStore = useUserStore()
 const accountStore = useAccountStore()
-const { logout } = useAuthInit()
 const route = useRoute()
 const { themeIcon, themeLabel, cycleTheme } = useThemeDetect()
 
@@ -50,16 +49,6 @@ const isActive = (href: string) => route.path === href || route.path.startsWith(
 // -----------------------------------------------------------------------------
 
 const isScrolled = ref(false)
-
-// Выход из аккаунта (desktop: кнопка в шапке; mobile: кнопка внизу страницы профиля)
-async function handleLogout(): Promise<void> {
-  try {
-    await $fetch('/api/auth/logout', { method: 'POST' })
-  } finally {
-    logout()
-    navigateTo('/login')
-  }
-}
 
 // -----------------------------------------------------------------------------
 // Lifecycle
@@ -116,7 +105,7 @@ onUnmounted(() => {
             </NuxtLink>
           </nav>
 
-          <!-- Desktop: профиль и действия -->
+          <!-- Desktop: профиль -->
           <div class="hidden md:flex items-center gap-3">
             <!-- Переключатель темы: system -> dark -> light -->
             <button
@@ -136,14 +125,6 @@ onUnmounted(() => {
               <p class="text-xs text-[var(--text-muted)]">Договор {{ accountStore.account?.contractNumber ?? '—' }}</p>
             </div>
 
-            <!-- Кнопка выхода -->
-            <button
-              @click="handleLogout"
-              class="p-2 text-[var(--text-muted)] hover:text-primary hover:bg-[var(--glass-bg)] rounded-lg transition-colors"
-              title="Выйти"
-            >
-              <Icon name="heroicons:arrow-right-on-rectangle" class="w-5 h-5" />
-            </button>
           </div>
 
           <!-- Mobile: иконки в шапке (без кнопки профиля — профиль в нижней панели) -->

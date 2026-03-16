@@ -334,13 +334,13 @@ function openInvoice(invoiceId: string): void {
   overflow: hidden;
   background: var(--bg-surface);
   border: 1px solid var(--glass-border);
-  box-shadow: 0 2px 12px var(--glass-shadow);
+  box-shadow: 0 1px 6px var(--glass-shadow);
   cursor: pointer;
   transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
 .dashboard-invoices-mobile:active {
-  box-shadow: 0 1px 4px var(--glass-shadow);
+  box-shadow: 0 1px 3px var(--glass-shadow);
 }
 
 .dashboard-invoices-mobile__top {
