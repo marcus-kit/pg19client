@@ -81,7 +81,7 @@ export async function queryLegacyPays(contractNumber: string): Promise<LegacyPay
       `SELECT p.sum, p.pay_date, p.source
        FROM pays p
        WHERE p.contract_id = (SELECT id FROM contracts WHERE number = $1)
-         AND p.pay_date > '2025-11-01'
+         AND p.pay_date > '2025-12-01'
        ORDER BY p.pay_date ASC`,
       [contractNumber]
     )

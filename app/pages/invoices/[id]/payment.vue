@@ -3,7 +3,9 @@
  * Страница счета на оплату — квитанция (как в two.html), сохранение в PDF
  */
 import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoiceServices'
-import { formatKopeks } from '~/composables/useFormatters'
+import { formatKopeks, formatDate } from '~/composables/useFormatters'
+import { useUserStore } from '~/stores/user'
+import { useAccountStore } from '~/stores/account'
 
 definePageMeta({
   middleware: 'auth'
@@ -12,6 +14,8 @@ definePageMeta({
 const route = useRoute()
 const router = useRouter()
 const invoiceId = route.params.id as string
+const userStore = useUserStore()
+const accountStore = useAccountStore()
 
 const isSavingPdf = ref(false)
 const invoicePdfRef = ref<HTMLElement | null>(null)
@@ -20,7 +24,7 @@ const isLoadingDetails = ref(true)
 const logoSrc = '/logo.png'
 const qrSrc = '/qr-payment.png'
 
-const defaultDetails: InvoiceDetails = { addresses: [], totalAmount: 0, balance: 0, totalToPay: 0 }
+const defaultDetails: InvoiceDetails = { addresses: [], totalAmount: 0, balance: 0, totalToPay: 0, contractNumber: '', invoiceNumber: '', issuedAt: '', periodStart: null, periodEnd: null }
 const invoiceDetails = ref<InvoiceDetails>(defaultDetails)
 
 const invoiceServices = useInvoiceServices()
@@ -34,6 +38,39 @@ onMounted(async () => {
     isLoadingDetails.value = false
   }
 })
+
+const fullName = computed(() => {
+  const u = userStore.user
+  if (!u) return '—'
+  return [u.lastName, u.firstName, u.middleName].filter(Boolean).join(' ') || '—'
+})
+
+const contractNumber = computed(() =>
+  invoiceDetails.value.contractNumber || String(accountStore.account?.contractNumber ?? '')
+)
+
+const invoiceDisplayNumber = computed(() => {
+  const d = invoiceDetails.value.issuedAt ? new Date(invoiceDetails.value.issuedAt) : new Date()
+  const year = d.getFullYear()
+  const num = invoiceDetails.value.invoiceNumber || invoiceId.slice(0, 8)
+  return `СЧ-${year}-${num}`
+})
+
+const issuedDateFormatted = computed(() => formatDate(invoiceDetails.value.issuedAt))
+
+const dueDateFormatted = computed(() => {
+  const payDay = accountStore.account?.payDay ?? 20
+  if (!invoiceDetails.value.periodEnd) return '—'
+  const pe = new Date(invoiceDetails.value.periodEnd)
+  const dueDate = new Date(pe.getFullYear(), pe.getMonth(), payDay)
+  return formatDate(dueDate.toISOString())
+})
+
+const totalFormatted = computed(() => formatKopeks(invoiceDetails.value.totalToPay))
+
+const paymentLink = computed(() =>
+  `https://artelmik.ru/external-payment.html?contract=${contractNumber.value}`
+)
 
 const groupedServices = computed(() => {
   return invoiceDetails.value.addresses.map(address => ({
@@ -204,7 +241,7 @@ async function saveAsPdf(): Promise<void> {
             <div class="header-right">
               <h2 class="invoice-title">КВИТАНЦИЯ НА ОПЛАТУ</h2>
               <div class="invoice-number">
-                <strong>№ СЧ-2026-00003</strong> от <strong>19 декабря 2025 г.</strong>
+                <strong>№ {{ invoiceDisplayNumber }}</strong> от <strong>{{ issuedDateFormatted }}</strong>
               </div>
             </div>
           </header>
@@ -225,13 +262,13 @@ async function saveAsPdf(): Promise<void> {
               <div class="info-title">Плательщик</div>
               <div class="info-content table-style">
                 <span class="label">ФИО:</span>
-                <span class="value"><strong>Иванов Иван Иванович</strong></span>
+                <span class="value"><strong>{{ fullName }}</strong></span>
                 <span class="label">Договор:</span>
-                <span class="value">№101533</span>
+                <span class="value">№{{ contractNumber }}</span>
                 <span class="label">Дата формирования:</span>
-                <span class="value"><strong>19 декабря 2025 г.</strong></span>
+                <span class="value"><strong>{{ issuedDateFormatted }}</strong></span>
                 <span class="label">Срок оплаты до:</span>
-                <span class="value"><strong>29 декабря 2025 г.</strong></span>
+                <span class="value"><strong>{{ dueDateFormatted }}</strong></span>
               </div>
             </div>
           </section>
@@ -261,7 +298,7 @@ async function saveAsPdf(): Promise<void> {
               <tfoot>
                 <tr class="total-row">
                   <td class="total-label">Итого:</td>
-                  <td class="total-amount">3 095.00 ₽</td>
+                  <td class="total-amount">{{ totalFormatted }} ₽</td>
                 </tr>
               </tfoot>
             </table>
@@ -279,8 +316,8 @@ async function saveAsPdf(): Promise<void> {
               <div class="hero-content">
                 <div class="hero-title">Оплата онлайн</div>
                 <div class="hero-desc">Безопасный платеж через защищенный шлюз</div>
-                <a href="https://artelmik.ru/external-payment.html?contract=101533" target="_blank" rel="noopener noreferrer" data-pdf-link="true" class="hero-link">
-                  https://artelmik.ru/external-payment.html?contract=101533
+                <a :href="paymentLink" target="_blank" rel="noopener noreferrer" data-pdf-link="true" class="hero-link">
+                  {{ paymentLink }}
                 </a>
               </div>
             </div>
@@ -297,7 +334,7 @@ async function saveAsPdf(): Promise<void> {
                   <div class="account-info">40702810610002027590</div>
                   <p><strong>Банк:</strong></p>
                   <div class="account-info">АО "ТБанк"<br>БИК: 044525974</div>
-                  <p class="payment-purpose"><strong>Назначение платежа:</strong><br>Оплата по договору №101533, счет СЧ-2026-00003</p>
+                  <p class="payment-purpose"><strong>Назначение платежа:</strong><br>Оплата по договору №{{ contractNumber }}, счет {{ invoiceDisplayNumber }}</p>
                 </div>
               </div>
               <div class="payment-card">

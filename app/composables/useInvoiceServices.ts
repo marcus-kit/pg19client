@@ -17,6 +17,11 @@ export interface InvoiceDetails {
   totalAmount: number // в копейках
   balance: number // в копейках
   totalToPay: number // в копейках
+  contractNumber: string
+  invoiceNumber: string
+  issuedAt: string
+  periodStart: string | null
+  periodEnd: string | null
 }
 
 export function useInvoiceServices() {

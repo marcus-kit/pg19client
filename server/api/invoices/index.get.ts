@@ -12,6 +12,15 @@ export default defineEventHandler(async (event) => {
   })
   if (!account?.contract_id) return { invoices: [] as Invoice[] }
 
+  // Ленивая синхронизация billing из legacy (не чаще раза в 6 часов)
+  const contract = await prisma.contract.findFirst({
+    where: { id: account.contract_id },
+    select: { contract_number: true }
+  })
+  if (contract?.contract_number) {
+    await syncContractBillingIfNeeded(account.contract_id, contract.contract_number)
+  }
+
   const query = getQuery(event)
   const statusFilter = query.status as InvoiceStatus | undefined
   const limit = Math.min(Number(query.limit) || 50, 100)

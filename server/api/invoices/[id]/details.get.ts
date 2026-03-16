@@ -4,6 +4,11 @@ interface InvoiceDetailsResponse {
   totalAmount: number
   balance: number
   totalToPay: number
+  contractNumber: string
+  invoiceNumber: string
+  issuedAt: string
+  periodStart: string | null
+  periodEnd: string | null
 }
 
 /** Элемент услуги в JSON из БД (в рублях: amount или price) */
@@ -65,13 +70,13 @@ export default defineEventHandler(async (event): Promise<InvoiceDetailsResponse>
   const prisma = usePrisma()
   const account = await prisma.account.findFirst({
     where: { id: sessionUser.accountId, user_id: sessionUser.id },
-    select: { contract_id: true }
+    select: { contract_id: true, contract_number: true }
   })
   if (!account?.contract_id) throw createError({ statusCode: 403, message: 'Договор не найден' })
 
   const row = await prisma.invoiceLog.findFirst({
     where: { id, contract_id: account.contract_id },
-    select: { id: true, balance: true, total_amount: true, services: true }
+    select: { id: true, balance: true, total_amount: true, services: true, created_at: true }
   })
 
   if (!row) throw createError({ statusCode: 404, message: 'Счёт не найден' })
@@ -84,10 +89,23 @@ export default defineEventHandler(async (event): Promise<InvoiceDetailsResponse>
 
   const addresses = normalizeServices(row.services ?? [])
 
+  let periodStart: string | null = null
+  let periodEnd: string | null = null
+  if (row.created_at) {
+    const d = new Date(row.created_at)
+    periodStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+    periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString()
+  }
+
   return {
     addresses,
     totalAmount,
     balance,
-    totalToPay
+    totalToPay,
+    contractNumber: account.contract_number ?? '',
+    invoiceNumber: row.id.slice(0, 8),
+    issuedAt: row.created_at?.toISOString() ?? '',
+    periodStart,
+    periodEnd
   }
 })
