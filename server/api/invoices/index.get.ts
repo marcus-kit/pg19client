@@ -13,41 +13,64 @@ export default defineEventHandler(async (event) => {
   if (!account?.contract_id) return { invoices: [] as Invoice[] }
 
   const query = getQuery(event)
-  const status = query.status as InvoiceStatus | undefined
+  const statusFilter = query.status as InvoiceStatus | undefined
   const limit = Math.min(Number(query.limit) || 50, 100)
 
-  const where: { contract_id: string; operation_type?: string } = { contract_id: account.contract_id }
-  if (status) where.operation_type = status
-
-  const data = await prisma.invoiceLog.findMany({
-    where,
-    orderBy: { created_at: 'desc' },
-    take: limit
+  // Получаем все charge-записи (ASC для хронологического расчёта оплаты)
+  const charges = await prisma.invoiceLog.findMany({
+    where: { contract_id: account.contract_id, operation_type: 'charge' },
+    orderBy: { created_at: 'asc' }
   })
 
-  const invoices: Invoice[] = data.map(row => {
+  // Получаем сумму всех платежей
+  const paysResult = await prisma.pays.aggregate({
+    where: { contract_id: account.contract_id },
+    _sum: { amount: true }
+  })
+  let totalPaid = Number(paysResult._sum.amount ?? 0)
+
+  // Маркируем charge-записи: идём хронологически, вычитая из totalPaid
+  const invoices: Invoice[] = charges.map(row => {
     const totalRub = Number(row.total_amount ?? 0)
-    return {
-    id: row.id,
-    invoiceNumber: row.id.slice(0, 8),
-    accountId: sessionUser.accountId!,
-    contractId: row.contract_id ?? '',
-    status: mapOperationTypeToStatus(row.operation_type ?? ''),
-    amount: Math.round(totalRub * 100),
-    description: row.operation_type ?? '',
-    periodStart: null,
-    periodEnd: null,
-    issuedAt: row.created_at?.toISOString() ?? '',
-    dueDate: null,
-    paidAt: row.operation_type === 'paid' ? (row.created_at?.toISOString() ?? null) : null,
-    createdAt: row.created_at?.toISOString() ?? '',
-    updatedAt: row.created_at?.toISOString() ?? ''
-  }
-  })
-  return { invoices }
-})
+    let invoiceStatus: InvoiceStatus = 'pending'
 
-function mapOperationTypeToStatus(operationType: string): InvoiceStatus {
-  const m: Record<string, InvoiceStatus> = { paid: 'paid', invoice: 'sent', payment: 'paid' }
-  return m[operationType?.toLowerCase()] ?? 'pending'
-}
+    if (totalPaid >= totalRub) {
+      invoiceStatus = 'paid'
+      totalPaid -= totalRub
+    }
+
+    // Период (начало/конец месяца) из created_at
+    let periodStart: string | null = null
+    let periodEnd: string | null = null
+    if (row.created_at) {
+      const d = new Date(row.created_at)
+      periodStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString()
+      periodEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString()
+    }
+
+    return {
+      id: row.id,
+      invoiceNumber: row.id.slice(0, 8),
+      accountId: sessionUser.accountId!,
+      contractId: row.contract_id ?? '',
+      status: invoiceStatus,
+      amount: Math.round(totalRub * 100),
+      description: row.operation_type ?? '',
+      periodStart,
+      periodEnd,
+      issuedAt: row.created_at?.toISOString() ?? '',
+      dueDate: null,
+      paidAt: invoiceStatus === 'paid' ? (row.created_at?.toISOString() ?? null) : null,
+      createdAt: row.created_at?.toISOString() ?? '',
+      updatedAt: row.created_at?.toISOString() ?? ''
+    }
+  })
+
+  // Фильтр по статусу (после вычисления)
+  let result = statusFilter ? invoices.filter(i => i.status === statusFilter) : invoices
+
+  // Новые сверху + лимит
+  result = result.reverse().slice(0, limit)
+
+  return { invoices: result }
+})

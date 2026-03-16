@@ -55,8 +55,12 @@ export async function importContractFromLegacy(contractNumber: string, password:
 
   console.log(`[LegacyImport] Password correct, fetching full info for ${contractNumber}...`)
 
-  // 2. Получаем данные из API
-  const apiData = await fetchLegacyContractInfo(contractNumber)
+  // 2. Получаем данные из API + billing-историю параллельно
+  const [apiData, legacyServices, legacyPays] = await Promise.all([
+    fetchLegacyContractInfo(contractNumber),
+    queryLegacyServices(contractNumber),
+    queryLegacyPays(contractNumber)
+  ])
 
   // 3. Создаём сущности в локальной БД
   const now = new Date()
@@ -160,6 +164,57 @@ export async function importContractFromLegacy(contractNumber: string, password:
         },
         select: { id: true }
       })
+
+      // Billing: начисления из legacy services → invoice_logs
+      if (legacyServices.length > 0) {
+        // Группируем по месяцу
+        const monthGroups = new Map<string, typeof legacyServices>()
+        for (const row of legacyServices) {
+          const d = new Date(row.service_time)
+          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+          if (!monthGroups.has(key)) monthGroups.set(key, [])
+          monthGroups.get(key)!.push(row)
+        }
+
+        const chargeRecords = Array.from(monthGroups.entries()).map(([, rows]) => {
+          const totalKopeks = rows.reduce((s, r) => s + Number(r.cost), 0)
+          const services = rows
+            .filter(r => Number(r.cost) > 0)
+            .map(r => ({ name: r.service_name, amount: Number(r.cost) / 100 }))
+          return {
+            id: randomUUID(),
+            contract_id: contractId,
+            operation_type: 'charge',
+            balance: new Prisma.Decimal(0),
+            total_amount: new Prisma.Decimal(totalKopeks / 100),
+            services,
+            created_at: new Date(rows[0]!.service_time),
+            created_by: 'legacy-import'
+          }
+        })
+
+        await tx.invoiceLog.createMany({ data: chargeRecords })
+        console.log(`[LegacyImport] Created ${chargeRecords.length} charge invoice_logs for ${contractNumber}`)
+      }
+
+      // Billing: платежи из legacy pays → только billing.pays
+      if (legacyPays.length > 0) {
+        const payRecords = legacyPays.map(row => ({
+          id: randomUUID(),
+          contract_id: contractId,
+          pay_date: new Date(row.pay_date),
+          amount: new Prisma.Decimal(Number(row.sum) / 100),
+          note: null as string | null,
+          document_number: null as string | null,
+          source: row.source || 'неопределен',
+          remote: true,
+          created_at: new Date(row.pay_date),
+          updated_at: new Date(row.pay_date)
+        }))
+
+        await tx.pays.createMany({ data: payRecords })
+        console.log(`[LegacyImport] Created ${payRecords.length} pays for ${contractNumber}`)
+      }
 
       const startDate = customer.added_date ? new Date(customer.added_date) : null
 
