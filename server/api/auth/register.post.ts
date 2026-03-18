@@ -71,7 +71,64 @@ export default defineEventHandler(async (event) => {
     }
   })
 
-  await createUserSession(event, userId, null, 'register', phoneNormalized, {
+  // Импорт договоров из legacy по номеру телефона
+  let accountData: {
+    contractNumber: string
+    balance: number
+    status: 'active' | 'blocked'
+    tariff: string
+    address: string
+    startDate: Date | null
+    payDay: number
+  } | null = null
+  let accountId: string | null = null
+
+  try {
+    const imported = await importContractsByPhone(phoneNormalized, userId)
+    if (imported?.accountIds.length) {
+      accountId = imported.accountIds[0]
+      const acc = await prisma.account.findUnique({
+        where: { id: accountId },
+        select: { contract_id: true, contract_number: true, balance: true, status: true, address_full: true, start_date: true }
+      })
+      if (acc) {
+        let tariffName = 'Не подключен'
+        let payDay = 20
+        let isBlocked = false
+        if (acc.contract_id) {
+          const [services, contract] = await Promise.all([
+            prisma.contractService.findMany({
+              where: { contract_id: acc.contract_id, is_active: true },
+              select: { name: true, type: true }
+            }),
+            prisma.contract.findUnique({
+              where: { id: acc.contract_id },
+              select: { pay_day: true, is_blocked: true }
+            })
+          ])
+          const internet = services.find(s => s.type === 'internet')
+          tariffName = internet?.name ?? services[0]?.name ?? tariffName
+          if (contract) {
+            payDay = contract.pay_day ?? 20
+            isBlocked = contract.is_blocked ?? false
+          }
+        }
+        accountData = {
+          contractNumber: acc.contract_number ?? '',
+          balance: Number(acc.balance),
+          status: isBlocked ? 'blocked' : 'active',
+          tariff: tariffName,
+          address: acc.address_full ?? '',
+          startDate: acc.start_date,
+          payDay
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Register] Failed to import contracts from legacy:', err)
+  }
+
+  await createUserSession(event, userId, accountId, 'register', phoneNormalized, {
     last_name: body.lastName.trim(),
     first_name: body.firstName.trim()
   })
@@ -92,6 +149,6 @@ export default defineEventHandler(async (event) => {
       birthDate: null,
       role: 'user' as const
     },
-    account: null
+    account: accountData
   }
 })
