@@ -10,8 +10,15 @@
  * - expired — просроченный
  */
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
-import { invoiceStatusLabels, invoiceStatusColors } from '~/types/invoice'
+import { invoiceStatusLabels, invoiceStatusColors, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
+import { useAccountStore } from '~/stores/account'
+
+const accountStore = useAccountStore()
+const paymentLink = computed(() => {
+  const contract = accountStore.account?.contractNumber ?? ''
+  return `https://artelmik.ru/external-payment.html?contract=${contract}`
+})
 
 definePageMeta({
   middleware: 'auth'
@@ -179,7 +186,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
               :key="invoice.id"
               :id="`invoice-${invoice.id}`"
               class="invoices-row group"
-              @click="navigateTo(`/invoices/${invoice.id}`)"
+              @click="navigateTo(`/invoices/${invoice.id}/payment`)"
             >
               <div class="invoices-col invoices-col--status">
                 <span
@@ -211,21 +218,24 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
               <div class="invoices-col invoices-col--actions">
                 <NuxtLink
                   v-if="!unpaidStatuses.includes(invoice.status)"
-                  :to="`/invoices/${invoice.id}`"
+                  :to="`/invoices/${invoice.id}/payment`"
                 >
                   <UiButton variant="ghost" size="sm">
                     Подробнее
                     <Icon name="heroicons:chevron-right" class="w-4 h-4" />
                   </UiButton>
                 </NuxtLink>
-                <NuxtLink
+                <a
                   v-if="unpaidStatuses.includes(invoice.status)"
-                  :to="`/invoices/${invoice.id}`"
+                  :href="paymentLink"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  @click.stop
                 >
                   <UiButton variant="primary" size="sm">
                     Оплатить
                   </UiButton>
-                </NuxtLink>
+                </a>
               </div>
             </div>
           </div>
@@ -242,7 +252,7 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
             :key="invoice.id"
             :id="`invoice-${invoice.id}`"
             class="invoices-mobile"
-            @click="navigateTo(`/invoices/${invoice.id}`)"
+            @click="navigateTo(`/invoices/${invoice.id}/payment`)"
           >
             <div class="invoices-mobile__top">
               <span
@@ -259,6 +269,16 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
 
             <div class="invoices-mobile__details">
               <div class="invoices-mobile__detail">
+                <span class="invoices-mobile__label">Период</span>
+                <span class="invoices-mobile__value">{{ formatInvoicePeriod(invoice) || '—' }}</span>
+              </div>
+              <div class="invoices-mobile__detail invoices-mobile__detail--amount">
+                <span class="invoices-mobile__label">Сумма</span>
+                <span class="invoices-row__amount">
+                  {{ formatKopeks(invoice.amount) }}<span class="invoices-row__currency">₽</span>
+                </span>
+              </div>
+              <div class="invoices-mobile__detail">
                 <span class="invoices-mobile__label">Выставлен</span>
                 <span class="invoices-mobile__value">{{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}</span>
               </div>
@@ -268,18 +288,12 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                   {{ invoice.paidAt ? formatDateShort(invoice.paidAt) : (invoice.dueDate ? formatDateShort(invoice.dueDate) : '—') }}
                 </span>
               </div>
-              <div class="invoices-mobile__detail invoices-mobile__detail--amount">
-                <span class="invoices-mobile__label">Сумма</span>
-                <span class="invoices-row__amount">
-                  {{ formatKopeks(invoice.amount) }}<span class="invoices-row__currency">₽</span>
-                </span>
-              </div>
             </div>
 
             <div class="invoices-mobile__actions" @click.stop>
               <NuxtLink
                 v-if="!unpaidStatuses.includes(invoice.status)"
-                :to="`/invoices/${invoice.id}`"
+                :to="`/invoices/${invoice.id}/payment`"
                 class="flex-1"
               >
                 <UiButton variant="ghost" size="sm" block>
@@ -287,15 +301,17 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
                   <Icon name="heroicons:chevron-right" class="w-4 h-4" />
                 </UiButton>
               </NuxtLink>
-              <NuxtLink
+              <a
                 v-if="unpaidStatuses.includes(invoice.status)"
-                :to="`/invoices/${invoice.id}`"
+                :href="paymentLink"
+                target="_blank"
+                rel="noopener noreferrer"
                 class="flex-shrink-0"
               >
                 <UiButton variant="primary" size="sm">
                   Оплатить
                 </UiButton>
-              </NuxtLink>
+              </a>
             </div>
           </div>
 
@@ -438,11 +454,11 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   padding: 0.875rem 1rem 0;
 }
 
-/* 3 равные колонки, отступ между колонками 16px */
+/* 2×2 сетка: Период+Сумма, Выставлен+Оплачен */
 .invoices-mobile__details {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
   padding: 0.75rem 1rem;
 }
 
@@ -477,20 +493,13 @@ function getStatusBadgeClass(status: InvoiceStatus): string {
   padding-right: 0.5rem;
 }
 
-/* Сумма — выравнивание по правому краю */
 .invoices-mobile__detail--amount {
-  align-items: flex-end;
   text-align: right;
 }
 
 .invoices-mobile__detail--amount .invoices-mobile__label,
 .invoices-mobile__detail--amount .invoices-row__amount {
   text-align: right;
-}
-
-.invoices-mobile__detail--amount .invoices-row__amount {
-  font-size: 0.9375rem;
-  font-weight: 700;
 }
 
 .invoices-mobile__detail--amount .invoices-row__amount {

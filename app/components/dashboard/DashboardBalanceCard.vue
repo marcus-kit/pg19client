@@ -137,7 +137,12 @@ const visibleAddresses = computed(() => {
 // =============================================================================
 
 function handlePayClick(): void {
-  navigateTo('/invoices?filter=unpaid')
+  const list = unpaidInvoices.value
+  if (list.length >= 1) {
+    const contract = accountStore.account?.contractNumber ?? ''
+    const url = `https://artelmik.ru/external-payment.html?contract=${contract}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
 }
 </script>
 
@@ -151,10 +156,10 @@ function handlePayClick(): void {
           Статус договора
         </p>
         <span
-          class="flex-shrink-0 inline-flex items-center gap-2.5 rounded-full py-2 px-4 text-base font-semibold border"
+          class="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full py-1 px-3 text-sm font-semibold border"
           :class="[statusConfig.pillClass, statusConfig.textClass, statusConfig.borderClass]"
         >
-          <span class="h-2.5 w-2.5 rounded-full flex-shrink-0" :class="statusConfig.dotClass" aria-hidden="true" />
+          <span class="h-2 w-2 rounded-full flex-shrink-0" :class="statusConfig.dotClass" aria-hidden="true" />
           {{ statusConfig.text }}
         </span>
       </div>
@@ -170,6 +175,13 @@ function handlePayClick(): void {
           <span class="text-sm text-[var(--text-primary)]">{{ nextPaymentDate ?? '—' }}</span>
         </div>
         <div class="flex items-center justify-between gap-4">
+          <span class="text-sm text-[var(--text-muted)]">Баланс счёта:</span>
+          <span class="text-sm text-[var(--text-primary)]">
+            <span class="font-bold">{{ formatKopeks(accountStore.account?.balance ?? 0) }}</span>
+            <span class="font-normal"> ₽</span>
+          </span>
+        </div>
+        <div class="flex items-center justify-between gap-4">
           <span class="text-sm text-[var(--text-muted)]">К оплате:</span>
           <span class="text-sm text-[var(--text-primary)]">
             <span class="font-bold">{{ formatKopeks(amountToPayKopeks) }}</span>
@@ -178,7 +190,7 @@ function handlePayClick(): void {
         </div>
       </div>
 
-      <UiButton v-if="accountStore.account" size="sm" variant="primary" class="w-full sm:w-auto" @click="handlePayClick">
+      <UiButton v-if="accountStore.account && unpaidInvoices.length > 0" size="sm" variant="primary" class="w-full sm:w-auto" @click="handlePayClick">
         Оплатить сейчас
       </UiButton>
     </UiCard>
@@ -191,9 +203,6 @@ function handlePayClick(): void {
           <p class="text-xl font-semibold text-[var(--text-primary)] mt-2">
             {{ connectionStatus }}
           </p>
-        </div>
-        <div class="icon-container">
-          <Icon name="heroicons:wifi" class="w-6 h-6 text-primary" />
         </div>
       </div>
 

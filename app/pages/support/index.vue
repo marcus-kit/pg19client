@@ -156,6 +156,13 @@ function formatFaqAnswer(item: { id: number, answer: string }) {
     )
   }
 
+  if (item.id === 8) {
+    return escapedAnswer.replace(
+      'a@pg19.ru',
+      '<a href="mailto:a@pg19.ru" class="text-primary hover:underline">a@pg19.ru</a>'
+    )
+  }
+
   return escapedAnswer
 }
 
