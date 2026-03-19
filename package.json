@@ -18,12 +18,14 @@
     "@pinia/nuxt": "^0.11.3",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
+    "@types/qrcode": "^1.5.6",
     "imask": "^7.6.1",
     "jose": "^5.9.6",
     "nuxt": "^4.2.2",
     "openai": "^6.15.0",
     "pg": "^8.20.0",
-    "pinia-plugin-persistedstate": "^4.7.1"
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "qrcode": "^1.5.4"
   },
   "devDependencies": {
     "@iconify-json/heroicons": "^1.2.3",
