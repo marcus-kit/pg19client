@@ -7,6 +7,7 @@ import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoic
 import { formatKopeks, formatDate } from '~/composables/useFormatters'
 import { useUserStore } from '~/stores/user'
 import { useAccountStore } from '~/stores/account'
+import QRCode from 'qrcode'
 
 definePageMeta({
   middleware: 'auth'
@@ -87,6 +88,18 @@ const totalFormatted = computed(() => formatKopeks(invoiceDetails.value.totalToP
 const paymentLink = computed(() =>
   `https://artelmik.ru/external-payment.html?contract=${contractNumber.value}`
 )
+
+const qrDataUrl = ref('')
+
+watch(paymentLink, async (link) => {
+  if (link) {
+    try {
+      qrDataUrl.value = await QRCode.toDataURL(link, { width: 160, margin: 1 })
+    } catch {
+      qrDataUrl.value = ''
+    }
+  }
+}, { immediate: true })
 
 const groupedServices = computed(() => {
   return invoiceDetails.value.addresses.map(address => ({
@@ -274,6 +287,7 @@ async function saveAsPdf(): Promise<void> {
                 <p>Р/с 40702810610002027590</p>
                 <p>АО "ТБанк"</p>
                 <p>БИК 044525974</p>
+                <p>К/с 30101810145250000974</p>
               </div>
             </div>
             <div class="info-block">
@@ -359,8 +373,19 @@ async function saveAsPdf(): Promise<void> {
                   <p><strong>Номер счета:</strong></p>
                   <div class="account-info">40702810610002027590</div>
                   <p><strong>Банк:</strong></p>
-                  <div class="account-info">АО "ТБанк"<br>БИК: 044525974</div>
+                  <div class="account-info">АО "ТБанк"<br>БИК: 044525974<br>К/с: 30101810145250000974</div>
                   <p class="payment-purpose"><strong>Назначение платежа:</strong><br>Оплата по договору №{{ contractNumber }}, счет {{ invoiceDisplayNumber }}</p>
+                  <p class="payment-notice">При оплате банковским переводом средства поступают в течение трёх дней.</p>
+                </div>
+              </div>
+              <div v-if="qrDataUrl" class="payment-card qr-card">
+                <div class="card-title">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h-3z"/><path d="M20 14v3h-3"/><path d="M14 20h3"/><path d="M20 20h0"/></svg>
+                  QR-код для оплаты
+                </div>
+                <div class="qr-content">
+                  <img :src="qrDataUrl" alt="QR-код для оплаты" class="qr-image" />
+                  <span class="qr-notice">Зачисление денежных средств происходит в течение трёх рабочих дней.</span>
                 </div>
               </div>
             </div>
@@ -501,7 +526,7 @@ async function saveAsPdf(): Promise<void> {
 .info-content.table-style .value { color: var(--text-dark); }
 .info-content strong { font-weight: 600; }
 
-.table-container { margin-bottom: 40px; }
+.table-container { margin-bottom: 40px; break-inside: avoid; page-break-inside: avoid; }
 .table-title {
   font-size: 12px;
   font-weight: 700;
@@ -546,7 +571,7 @@ async function saveAsPdf(): Promise<void> {
 .total-label { text-transform: uppercase; letter-spacing: 0.5px; }
 .total-amount { text-align: right; font-size: 14px; }
 
-.payment-section { margin-top: 20px; }
+.payment-section { margin-top: 20px; break-inside: avoid; page-break-inside: avoid; }
 .payment-title {
   font-size: 14px;
   font-weight: 700;
@@ -565,6 +590,8 @@ async function saveAsPdf(): Promise<void> {
   display: flex;
   align-items: center;
   gap: 20px;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .hero-icon {
   width: 48px;
@@ -593,10 +620,37 @@ async function saveAsPdf(): Promise<void> {
 }
 .hero-link:hover { text-decoration: underline; }
 
+.qr-card {
+  display: flex;
+  flex-direction: column;
+}
+.qr-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  justify-content: center;
+}
+.qr-image {
+  width: 150px;
+  height: 150px;
+  border-radius: 6px;
+  border: 1px solid #dbeafe;
+}
+.qr-notice {
+  font-size: 11px;
+  color: var(--text-gray);
+  line-height: 1.5;
+  text-align: center;
+}
+
 .payment-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 25px;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 .payment-card {
   background: #fafafa;
@@ -628,11 +682,14 @@ async function saveAsPdf(): Promise<void> {
   font-size: 11px;
 }
 .payment-purpose { margin-top: 8px; font-size: 11px; color: var(--text-gray); }
+.payment-notice { margin-top: 10px; font-size: 11px; color: var(--text-gray); line-height: 1.5; }
 
 .paid-stamp-section {
   margin-top: 30px;
   display: flex;
   justify-content: center;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .paid-stamp {
@@ -667,6 +724,7 @@ async function saveAsPdf(): Promise<void> {
   .header-right { text-align: left; }
   .info-section { grid-template-columns: 1fr; gap: 30px; }
   .payment-online-hero { flex-direction: column; text-align: center; }
+  .payment-grid { grid-template-columns: 1fr; }
   .payment-grid { grid-template-columns: 1fr; }
 }
 </style>

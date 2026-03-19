@@ -200,7 +200,7 @@ function handlePayClick(): void {
       <div class="flex items-start justify-between mb-4">
         <div>
           <p class="text-sm text-[var(--text-muted)] mb-1">Подключение</p>
-          <p class="text-xl font-semibold text-[var(--text-primary)] mt-2">
+          <p class="text-lg font-semibold text-[var(--text-primary)] mt-2">
             {{ connectionStatus }}
           </p>
         </div>
