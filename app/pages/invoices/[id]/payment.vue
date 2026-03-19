@@ -2,6 +2,7 @@
 /**
  * Страница счета на оплату — квитанция (как в two.html), сохранение в PDF
  */
+import type { Invoice } from '~/types/invoice'
 import { useInvoiceServices, type InvoiceDetails } from '~/composables/useInvoiceServices'
 import { formatKopeks, formatDate } from '~/composables/useFormatters'
 import { useUserStore } from '~/stores/user'
@@ -22,7 +23,10 @@ const invoicePdfRef = ref<HTMLElement | null>(null)
 const isLoadingDetails = ref(true)
 
 const logoSrc = '/logo.png'
-const qrSrc = '/qr-payment.png'
+
+const invoice = ref<Invoice | null>(null)
+const unpaidStatuses = ['pending', 'sent', 'viewed', 'expired']
+const isPaid = computed(() => invoice.value?.status === 'paid')
 
 const defaultDetails: InvoiceDetails = { addresses: [], totalAmount: 0, balance: 0, totalToPay: 0, contractNumber: '', invoiceNumber: '', issuedAt: '', periodStart: null, periodEnd: null }
 const invoiceDetails = ref<InvoiceDetails>(defaultDetails)
@@ -30,6 +34,13 @@ const invoiceDetails = ref<InvoiceDetails>(defaultDetails)
 const invoiceServices = useInvoiceServices()
 
 onMounted(async () => {
+  try {
+    const data = await $fetch<{ invoices: Invoice[] }>('/api/invoices')
+    invoice.value = (data.invoices ?? []).find(inv => inv.id === invoiceId) ?? null
+  } catch {
+    // ignore
+  }
+
   try {
     invoiceDetails.value = await invoiceServices.fetchInvoiceDetails(invoiceId)
   } catch {
@@ -64,6 +75,11 @@ const dueDateFormatted = computed(() => {
   const pe = new Date(invoiceDetails.value.periodEnd)
   const dueDate = new Date(pe.getFullYear(), pe.getMonth(), payDay)
   return formatDate(dueDate.toISOString())
+})
+
+const paidDateFormatted = computed(() => {
+  if (!invoice.value?.paidAt) return '—'
+  return formatDate(invoice.value.paidAt)
 })
 
 const totalFormatted = computed(() => formatKopeks(invoiceDetails.value.totalToPay))
@@ -229,7 +245,9 @@ async function saveAsPdf(): Promise<void> {
         Назад к счетам
       </button>
 
-      <h1 class="text-2xl font-bold text-[var(--text-primary)] mb-6">Счет на оплату</h1>
+      <h1 class="text-2xl font-bold text-[var(--text-primary)] mb-6">
+        {{ isPaid ? 'Квитанция об оплате' : 'Счет на оплату' }}
+      </h1>
 
       <!-- Квитанция (то же содержимое, что в two.html) — отображается и уходит в PDF -->
       <div ref="invoicePdfRef" class="receipt-wrapper">
@@ -239,7 +257,7 @@ async function saveAsPdf(): Promise<void> {
               <img :src="logoSrc" alt="ПЖ19" class="receipt-logo" />
             </div>
             <div class="header-right">
-              <h2 class="invoice-title">КВИТАНЦИЯ НА ОПЛАТУ</h2>
+              <h2 class="invoice-title">{{ isPaid ? 'КВИТАНЦИЯ ОБ ОПЛАТЕ' : 'КВИТАНЦИЯ НА ОПЛАТУ' }}</h2>
               <div class="invoice-number">
                 <strong>№ {{ invoiceDisplayNumber }}</strong> от <strong>{{ issuedDateFormatted }}</strong>
               </div>
@@ -267,8 +285,8 @@ async function saveAsPdf(): Promise<void> {
                 <span class="value">№{{ contractNumber }}</span>
                 <span class="label">Дата формирования:</span>
                 <span class="value"><strong>{{ issuedDateFormatted }}</strong></span>
-                <span class="label">Срок оплаты до:</span>
-                <span class="value"><strong>{{ dueDateFormatted }}</strong></span>
+                <span class="label">{{ isPaid ? 'Дата оплаты:' : 'Срок оплаты до:' }}</span>
+                <span class="value"><strong>{{ isPaid ? paidDateFormatted : dueDateFormatted }}</strong></span>
               </div>
             </div>
           </section>
@@ -304,7 +322,15 @@ async function saveAsPdf(): Promise<void> {
             </table>
           </section>
 
-          <section class="payment-section">
+          <!-- Штамп "Оплачено" для оплаченных счетов -->
+          <section v-if="isPaid" class="paid-stamp-section">
+            <div class="paid-stamp">
+              <span class="paid-stamp__text">ОПЛАЧЕНО</span>
+              <span class="paid-stamp__date">{{ paidDateFormatted }}</span>
+            </div>
+          </section>
+
+          <section v-if="!isPaid" class="payment-section">
             <div class="payment-title">Варианты оплаты</div>
             <div class="payment-online-hero" data-pdf-link-block="true">
               <div class="hero-icon">
@@ -335,13 +361,6 @@ async function saveAsPdf(): Promise<void> {
                   <p><strong>Банк:</strong></p>
                   <div class="account-info">АО "ТБанк"<br>БИК: 044525974</div>
                   <p class="payment-purpose"><strong>Назначение платежа:</strong><br>Оплата по договору №{{ contractNumber }}, счет {{ invoiceDisplayNumber }}</p>
-                </div>
-              </div>
-              <div class="payment-card">
-                <div class="card-title qr-title">Быстрая оплата</div>
-                <div class="qr-wrapper">
-                  <img :src="qrSrc" alt="QR для оплаты" class="qr-image" />
-                  <div class="qr-caption">Отсканируйте камерой<br>банковского приложения</div>
                 </div>
               </div>
             </div>
@@ -576,7 +595,7 @@ async function saveAsPdf(): Promise<void> {
 
 .payment-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 25px;
 }
 .payment-card {
@@ -597,7 +616,6 @@ async function saveAsPdf(): Promise<void> {
   align-items: center;
   gap: 8px;
 }
-.card-title.qr-title { justify-content: center; }
 .bank-details { font-size: 12px; color: var(--text-dark); line-height: 1.5; }
 .bank-details p { margin-bottom: 5px; }
 .bank-details strong { font-weight: 600; }
@@ -611,25 +629,37 @@ async function saveAsPdf(): Promise<void> {
 }
 .payment-purpose { margin-top: 8px; font-size: 11px; color: var(--text-gray); }
 
-.qr-wrapper {
+.paid-stamp-section {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+}
+
+.paid-stamp {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  text-align: center;
-  height: 100%;
+  gap: 4px;
+  padding: 16px 40px;
+  border: 3px solid #00A651;
+  border-radius: 8px;
+  transform: rotate(-3deg);
 }
-.qr-image {
-  width: 140px;
-  height: 140px;
-  background: white;
-  padding: 10px;
-  border: 1px solid var(--border-color);
-  margin-bottom: 10px;
-  border-radius: 4px;
-  object-fit: contain;
+
+.paid-stamp__text {
+  font-size: 28px;
+  font-weight: 800;
+  color: #00A651;
+  letter-spacing: 4px;
+  text-transform: uppercase;
 }
-.qr-caption { font-size: 12px; color: var(--text-gray); line-height: 1.4; }
+
+.paid-stamp__date {
+  font-size: 13px;
+  font-weight: 600;
+  color: #00A651;
+}
+
 
 @media (max-width: 768px) {
   .invoice-paper { padding: 30px 20px; }

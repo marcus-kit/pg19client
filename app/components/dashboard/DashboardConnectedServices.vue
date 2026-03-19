@@ -14,7 +14,7 @@
 import type { Service, Subscription, SubscriptionStatus } from '~/types/service'
 import { subscriptionStatusLabels, subscriptionStatusColors } from '~/types/service'
 import type { Invoice, InvoiceStatus } from '~/types/invoice'
-import { invoiceStatusLabels } from '~/types/invoice'
+import { invoiceStatusLabels, formatInvoicePeriod } from '~/types/invoice'
 import { formatKopeks, formatDateShort } from '~/composables/useFormatters'
 
 // =============================================================================
@@ -71,7 +71,7 @@ function getServiceIcon(service: Service | undefined): string {
 
 // Перейти на страницу конкретного счёта (состав услуг)
 function openInvoice(invoiceId: string): void {
-  navigateTo(`/invoices/${invoiceId}`)
+  navigateTo(`/invoices/${invoiceId}/payment`)
 }
 </script>
 
@@ -96,6 +96,7 @@ function openInvoice(invoiceId: string): void {
         <div class="dashboard-invoices hidden md:block">
           <div class="dashboard-invoices__header">
             <div class="dashboard-invoices__col dashboard-invoices__col--status">Статус</div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--period">Период</div>
             <div class="dashboard-invoices__col dashboard-invoices__col--date">Дата выставления</div>
             <div class="dashboard-invoices__col dashboard-invoices__col--date">Оплачен / Срок</div>
             <div class="dashboard-invoices__col dashboard-invoices__col--amount">Сумма</div>
@@ -117,6 +118,11 @@ function openInvoice(invoiceId: string): void {
                   class="w-4 h-4"
                 />
                 {{ invoiceStatusLabels[invoice.status] }}
+              </span>
+            </div>
+            <div class="dashboard-invoices__col dashboard-invoices__col--period">
+              <span class="text-[var(--text-secondary)] capitalize">
+                {{ formatInvoicePeriod(invoice) || '—' }}
               </span>
             </div>
             <div class="dashboard-invoices__col dashboard-invoices__col--date">
@@ -146,7 +152,7 @@ function openInvoice(invoiceId: string): void {
               </UiButton>
               <NuxtLink
                 v-if="unpaidStatuses.includes(invoice.status)"
-                :to="`/invoices/${invoice.id}`"
+                :to="`/invoices/${invoice.id}/payment`"
                 class="inline-flex"
               >
                 <UiButton variant="primary" size="sm">
@@ -180,6 +186,10 @@ function openInvoice(invoiceId: string): void {
 
             <div class="dashboard-invoices-mobile__details">
               <div class="dashboard-invoices-mobile__detail">
+                <span class="dashboard-invoices-mobile__label">Период</span>
+                <span class="dashboard-invoices-mobile__value capitalize">{{ formatInvoicePeriod(invoice) || '—' }}</span>
+              </div>
+              <div class="dashboard-invoices-mobile__detail">
                 <span class="dashboard-invoices-mobile__label">Выставлен</span>
                 <span class="dashboard-invoices-mobile__value">{{ invoice.issuedAt ? formatDateShort(invoice.issuedAt) : '—' }}</span>
               </div>
@@ -210,7 +220,7 @@ function openInvoice(invoiceId: string): void {
               </UiButton>
               <NuxtLink
                 v-if="unpaidStatuses.includes(invoice.status)"
-                :to="`/invoices/${invoice.id}`"
+                :to="`/invoices/${invoice.id}/payment`"
                 class="flex-shrink-0"
               >
                 <UiButton variant="primary" size="sm">
@@ -243,8 +253,9 @@ function openInvoice(invoiceId: string): void {
 .dashboard-invoices__header,
 .dashboard-invoices__row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
-  gap: 0 1rem;
+  /* Статус | Период | Дата выставления | Оплачен/Срок | Сумма | Действия */
+  grid-template-columns: 1.1fr 1fr 1.1fr 1fr 0.8fr 0.9fr;
+  gap: 0 0.75rem;
 }
 
 .dashboard-invoices__header {
@@ -350,11 +361,11 @@ function openInvoice(invoiceId: string): void {
   padding: 1rem 1rem 0.75rem 1rem;
 }
 
-/* 3 равные колонки, отступ между колонками 16px */
+/* 2 колонки на ряд */
 .dashboard-invoices-mobile__details {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem 4.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
   padding: 0.75rem 1rem;
 }
 
@@ -406,9 +417,7 @@ function openInvoice(invoiceId: string): void {
   padding-right: 0.5rem;
 }
 
-/* Сумма — выравнивание по правому краю */
 .dashboard-invoices-mobile__detail--amount {
-  align-items: flex-end;
   text-align: right;
 }
 
